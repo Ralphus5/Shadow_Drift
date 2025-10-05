@@ -55,9 +55,9 @@ class Player(pygame.sprite.Sprite):
             
 
         # adjust sprite when facing a side
-        if keys[pygame.K_RIGHT]:
+        if self.direction.x > 0:
             self.facing = 'right'
-        elif keys[pygame.K_LEFT]:
+        elif self.direction.x < 0:
             self.facing = 'left'
 
         self.update_sprite()
@@ -66,7 +66,6 @@ class Player(pygame.sprite.Sprite):
         self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH+20, WINDOW_HEIGHT+20))
 
 class Obstacle(pygame.sprite.Sprite):
-    
     def __init__(self, groups, speed, record_sound):
         super().__init__(groups)
         self.record_sound = record_sound

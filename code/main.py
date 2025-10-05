@@ -5,24 +5,35 @@ from sprites import *
 class Game:
     def __init__(self):
         # initialization and window
+        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
         pygame.init()
         self.running = True
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
         pygame.display.set_caption('Shadow Drift')
+        icon = pygame.image.load(join('images', 'icon.png')).convert_alpha()
+        pygame.display.set_icon(icon)
 
         # font
         self.font1 = pygame.font.Font(None, 50)
         self.font2 = pygame.font.SysFont('Times New Roman', 200)
 
+        # background animation setup
+        self.bg_index = 0
+        self.bg_timer = 0
+        self.bg_interval = 100
+        for key, frames in BACKGROUNDS.items():
+            BACKGROUNDS[key] = [frame.convert_alpha() for frame in frames]
+
+
         # sounds
-        self.music = pygame.mixer.Sound(join('audio', '8-Bit-Indigestion.mp3'))
-        self.music.set_volume(0.5)
-        self.music.play(loops=-1)
-        self.damage_sound = pygame.mixer.Sound(join('audio', 'damage.wav'))
-        self.death_sound = pygame.mixer.Sound(join('audio', 'death-sound.mp3'))
-        self.record_sound = pygame.mixer.Sound(join('audio', 'new_record_sound.wav'))
-        self.ability_sound = pygame.mixer.Sound(join('audio', 'ability.wav'))
+        pygame.mixer.music.load(join('audio', '8-Bit-Indigestion.ogg'))
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        self.damage_sound = pygame.mixer.Sound(join('audio', 'damage.ogg'))
+        self.death_sound = pygame.mixer.Sound(join('audio', 'death-sound.ogg'))
+        self.record_sound = pygame.mixer.Sound(join('audio', 'new_record_sound.ogg'))
+        self.ability_sound = pygame.mixer.Sound(join('audio', 'ability.ogg'))
         
         # sprite groups
         self.all_sprites = pygame.sprite.Group()
@@ -40,6 +51,12 @@ class Game:
         self.obstacle_event = pygame.event.custom_type()
         pygame.time.set_timer(self.obstacle_event, 500)
 
+    def save_record(self):
+        if STATS['score'] > STATS['record']:
+            STATS['record'] = STATS['score']
+        with open(join('data', 'record.txt'), 'w') as f:
+            json.dump(STATS['record'], f)
+
     def collision(self):
         return pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
 
@@ -52,9 +69,9 @@ class Game:
                 if event.type == pygame.QUIT:
                     self.running = False 
                 elif event.type == self.obstacle_event:
-                    if game_time < 20:
+                    if settings.game_time < 20000:
                         Obstacle((self.all_sprites, self.obstacle_sprites), 250, self.record_sound)
-                    elif 20 <= game_time < 40:
+                    elif 20000 <= settings.game_time < 40:
                         Obstacle((self.all_sprites, self.obstacle_sprites), 350, self.record_sound)
                     else:
                         Obstacle((self.all_sprites, self.obstacle_sprites), 450, self.record_sound)
@@ -72,15 +89,20 @@ class Game:
                     self.player.kill()
                     self.running = False
 
-            # background color after time
-            if game_time < 20:
-                self.screen.fill(COLORS["bg-1"])
-            elif 20 <= game_time < 40:
-                self.screen.fill(COLORS['bg-2'])
+            # background after time
+            self.bg_timer += dt * 1000
+            if self.bg_timer >= self.bg_interval:
+                self.bg_timer = 0
+                self.bg_index = (self.bg_index + 1) % len(BACKGROUNDS['bg1'])
+            if settings.game_time < 20000:
+                bg_frames = BACKGROUNDS['bg1']
+            elif 20000 <= settings.game_time < 40:
+                bg_frames = BACKGROUNDS['bg2']
             else:
-                self.screen.fill(COLORS['bg-3'])
+                bg_frames = BACKGROUNDS['bg3']
 
             # draw
+            self.screen.blit(bg_frames[self.bg_index % len(bg_frames)], (0, 0))
             self.all_sprites.draw(self.screen)
             
             # draw text
@@ -93,15 +115,11 @@ class Game:
 
             pygame.display.update()
 
-        # --- CLOSING THE GAME ---
-        # save
-        if STATS['score'] > STATS['record']:
-            STATS['record'] = STATS['score']
-        with open(join('data', 'record.txt'), 'w') as f:
-            json.dump(STATS['record'], f)
+        # closing sequence
+        self.save_record()
 
         # game-over screen
-        game.music.fadeout(3000)
+        pygame.mixer.music.fadeout(3000)
         for i in range(1,11):
             pygame.draw.rect(game.screen,'black',((0,0),(130 * i,WINDOW_HEIGHT)))
             pygame.display.update()

@@ -19,10 +19,16 @@ STATS = {
     'record': record
 }
 
-COLORS = {
-   'bg-1': '#caa0de',
-   'bg-2': '#c94087',
-   'bg-3': '#b02143',
+bg1_frames = [pygame.image.load(join('images', 'background1', f'bg1_{i}.png')) for i in range(11)]
+
+bg2_frames = [pygame.image.load(join('images', 'background1', f'bg1_{i}.png')) for i in range(11)]
+
+bg3_frames = [pygame.image.load(join('images', 'background1', f'bg1_{i}.png')) for i in range(11)]
+
+BACKGROUNDS = {
+   'bg1': bg1_frames,
+   'bg2': bg2_frames,
+   'bg3': bg3_frames,
 }
 
 def update_time():
