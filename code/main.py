@@ -2,7 +2,7 @@ import settings
 from sprites import *
 
 # --- variables from settings not to be prefixed with 'settings.' ---
-from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, IMG_DIR, AUDIO_DIR, FONT_DIR, SAVE_FILE, STATS)
+from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, IMG_DIR, AUDIO_DIR, FONT_DIR, SAVE_FILE, STATS, OBSTACLE_SPAWN_RATE)
 
 
 class Game:
@@ -10,23 +10,51 @@ class Game:
         # --- initialization and window ---
         pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
         pygame.init()
-        self.running = True
         self.clock = pygame.time.Clock()
-
-        self.display_surface = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         self.screen = pygame.Surface(BASE_RESOLUTION).convert_alpha()
-
-
         pygame.display.set_caption('Shadow Drift')
         icon = pygame.image.load(join(IMG_DIR, 'icon.png')).convert_alpha()
         pygame.display.set_icon(icon)
-        self.fullscreen = False
+        self.fullscreen = True
+        self.running = True
 
+        self.load_assets()
+        self.load_sounds()
+        self.init_state()
+        self.init_sprites()
+        self.create_custom_events()
+        self.load_save()
+
+    def load_assets(self):
         # --- fonts ---
         self.font1 = pygame.font.Font(join(FONT_DIR, 'slkscr.ttf'), 35)
         self.font2 = pygame.font.Font(join(FONT_DIR, 'slkscr.ttf'), 150)
 
-        # --- stats text rendering optimization ---
+        # --- images ---
+        self.backgrounds: dict = {
+            'bg1': [pygame.image.load(join(IMG_DIR, 'background1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
+            'bg2': [pygame.image.load(join(IMG_DIR, 'background2', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
+            'bg3': [pygame.image.load(join(IMG_DIR, 'background3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
+
+        self.explosion_frames: list = [pygame.image.load(join(IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
+
+    def load_sounds(self):
+        # --- game music ---
+        pygame.mixer.music.load(join(AUDIO_DIR, '8-Bit-Indigestion.ogg'))
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        # --- other sounds ---
+        self.damage_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'damage.ogg'))
+        self.damage_sound.set_volume(0.3)
+        self.explosion_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'explosion.wav'))
+        self.explosion_sound.set_volume(0.5)
+        self.game_over_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'game-over.ogg'))
+        self.record_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'new_record.ogg'))
+        self.ability_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'ability.ogg'))
+
+    def init_state(self):
+        # --- score text rendering optimization ---
         self.prev_stats = None
         self.stats_text = None
         self.stats_text_shadow = None
@@ -41,44 +69,17 @@ class Game:
         self.explosion_finished = False
         self.explosion_speed = 1.2
 
-        # --- images ---
-        self.backgrounds: dict = {
-            'bg1': [pygame.image.load(join(IMG_DIR, 'background1', f'bg1_{i}.png')).convert_alpha()
-                    for i in range(11)],
-            'bg2': [pygame.image.load(join(IMG_DIR, 'background2', f'bg2_{i}.png')).convert_alpha()
-                    for i in range(11)],
-            'bg3': [pygame.image.load(join(IMG_DIR, 'background3', f'bg3_{i}.png')).convert_alpha()
-                    for i in range(11)],
-        }
-
-        self.explosion_frames: list = [
-            pygame.image.load(join(IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha()
-            for i in range(16)
-        ]
-
-        # --- sounds ---
-        pygame.mixer.music.load(join(AUDIO_DIR, '8-Bit-Indigestion.ogg'))
-        pygame.mixer.music.set_volume(0.5)
-        pygame.mixer.music.play(-1)
-
-        self.damage_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'damage.ogg'))
-        self.damage_sound.set_volume(0.3)
-        self.explosion_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'explosion.wav'))
-        self.explosion_sound.set_volume(0.5)
-        self.game_over_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'game-over.ogg'))
-        self.record_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'new_record.ogg'))
-        self.ability_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'ability.ogg'))
-
-        # --- sprite groups ---
+    def init_sprites(self):
         self.all_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
         self.player = Player(self.all_sprites, self.ability_sound)
 
-        # --- custom events ---
+    def create_custom_events(self):
+        # --- obstacles spawning ---
         self.obstacle_event = pygame.event.custom_type()
-        pygame.time.set_timer(self.obstacle_event, 500)
-        
-        # --- load save ---
+        pygame.time.set_timer(self.obstacle_event, OBSTACLE_SPAWN_RATE)
+
+    def load_save(self):
         try:
             with open(SAVE_FILE) as f:
                 data = json.load(f)
@@ -96,17 +97,17 @@ class Game:
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
         if self.fullscreen:
-            self.display_surface = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+            self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            self.display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-    # --- game over sequence ---
     def game_over(self):
+        # --- music fade ---
         self.game_over_sound.play()
         pygame.mixer.music.fadeout(3000)
 
-        # fade to black animation (scaled for fullscreen)
-        window_w, window_h = self.display_surface.get_size()
+        # --- fade to black animation (scaled for fullscreen) ---
+        window_w, window_h = self.window.get_size()
         steps = 10
         bar_width = WINDOW_WIDTH // steps
 
@@ -118,7 +119,7 @@ class Game:
             )
             # scale and show
             scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-            self.display_surface.blit(scaled, (0, 0))
+            self.window.blit(scaled, (0, 0))
             pygame.display.flip()
             sleep(0.25)
 
@@ -129,7 +130,7 @@ class Game:
 
         # scale and display
         scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-        self.display_surface.blit(scaled, (0, 0))
+        self.window.blit(scaled, (0, 0))
         pygame.display.flip()
 
         sleep(3)
@@ -188,12 +189,15 @@ class Game:
                 self.bg_timer = 0
                 self.bg_index = (self.bg_index + 1) % len(bg_frames)
 
-
             # --- drawing on base surface (1280x720) ---
+
+            # draw background
             self.screen.blit(bg_frames[self.bg_index], (0, 0))
+
+            # draw sprites
             self.all_sprites.draw(self.screen)
 
-            # draw explosion on top of all sprites
+            # draw explosion if player is dead
             if self.player.health <= 0 and not self.explosion_finished:
                 if self.explosion_index < len(self.explosion_frames):
                     frame = self.explosion_frames[int(self.explosion_index)]
@@ -203,8 +207,7 @@ class Game:
                     self.explosion_finished = True
                     self.running = False
 
-
-            # text and glow
+            # draw text
             self.current_stats = (self.player.health, STATS['score'], STATS['record'])
             if self.current_stats != self.prev_stats:
                 text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
@@ -213,14 +216,17 @@ class Game:
                 self.prev_stats = self.current_stats
             self.screen.blit(self.stats_text_shadow, (22, 22))
             self.screen.blit(self.stats_text, (20, 20))
+
+            # draw player glow if alive
             if self.player.ability_ready and self.player.health:
                 self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
 
-            # --- scale 1280x720 -> fullscreen resolution ---
-            window_w, window_h = self.display_surface.get_size()
+            # --- scale 1280x720 to fullscreen resolution ---
+            window_w, window_h = self.window.get_size()
             scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-            self.display_surface.blit(scaled, (0, 0))
+            self.window.blit(scaled, (0, 0))
             pygame.display.flip()
+
 
         self.save()
         self.game_over()
