@@ -2,7 +2,7 @@ import settings
 from sprites import *
 
 # --- variables from settings not to be prefixed with 'settings.' ---
-from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, IMG_DIR, AUDIO_DIR, FONT_DIR, SAVE_FILE, STATS, OBSTACLE_SPAWN_RATE)
+from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, IMG_DIR, AUDIO_DIR, FONT_DIR, SAVE_FILE, STATS, OBSTACLE_SPAWN_TIME)
 
 
 class Game:
@@ -44,6 +44,7 @@ class Game:
         pygame.mixer.music.load(join(AUDIO_DIR, '8-Bit-Indigestion.ogg'))
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play(-1)
+
         # --- other sounds ---
         self.damage_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'damage.ogg'))
         self.damage_sound.set_volume(0.3)
@@ -70,29 +71,31 @@ class Game:
         self.explosion_speed = 1.2
 
     def init_sprites(self):
+        # --- group sprites ---
         self.all_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
+
+        # --- instantiate player sprite ---
         self.player = Player(self.all_sprites, self.ability_sound)
 
     def create_custom_events(self):
-        # --- obstacles spawning ---
+        # --- obstacle spawning ---
         self.obstacle_event = pygame.event.custom_type()
-        pygame.time.set_timer(self.obstacle_event, OBSTACLE_SPAWN_RATE)
+        pygame.time.set_timer(self.obstacle_event, OBSTACLE_SPAWN_TIME)
 
     def load_save(self):
         try:
             with open(SAVE_FILE) as f:
-                data = json.load(f)
-                STATS['record'] = data.get('record', 0)
-        except FileNotFoundError:
+                save_data = json.load(f)
+                STATS['record'] = save_data.get('record',0)
+        except:
             pass
 
     def save(self):
         if STATS['score'] > STATS['record']:
-            STATS['record'] = STATS['score']
-        save_data = {'record': STATS['record']}
-        with open(SAVE_FILE, 'w') as f:
-            json.dump(save_data, f, indent=2)
+            save_data = {'record': STATS['score']}
+            with open(SAVE_FILE, 'w') as f:
+                json.dump(save_data, f, indent=2)
 
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
@@ -101,49 +104,49 @@ class Game:
         else:
             self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
+    def scale_and_flip(self):
+        # get current window size
+        window_w, window_h = self.window.get_size()
+        # scale screen to window size
+        scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
+        # draw rescaled screen on window
+        self.window.blit(scaled, (0, 0))
+        # update frame
+        pygame.display.flip()
+
     def game_over(self):
         # --- music fade ---
         self.game_over_sound.play()
         pygame.mixer.music.fadeout(3000)
 
-        # --- fade to black animation (scaled for fullscreen) ---
-        window_w, window_h = self.window.get_size()
+        # --- screen fades to black ---
         steps = 10
         bar_width = WINDOW_WIDTH // steps
-
         for i in range(1, steps + 1):
-            pygame.draw.rect(
-                self.screen,
-                'black',
-                ((0, 0), (bar_width * i, WINDOW_HEIGHT))
-            )
-            # scale and show
-            scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-            self.window.blit(scaled, (0, 0))
-            pygame.display.flip()
+            pygame.draw.rect(self.screen, 'black', ((0, 0), (bar_width * i, WINDOW_HEIGHT)))
+            self.scale_and_flip()
             sleep(0.25)
 
-        # draw final "Game Over!" message on base surface
+        # --- draw "Game Over" message ---
         game_over_msg = self.font2.render("Game Over!", True, "red")
-        rect = game_over_msg.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
-        self.screen.blit(game_over_msg, rect)
+        msg_rect = game_over_msg.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
+        self.screen.blit(game_over_msg, msg_rect)
 
-        # scale and display
-        scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-        self.window.blit(scaled, (0, 0))
-        pygame.display.flip()
-
+        # --- scale and display ---
+        self.scale_and_flip()
         sleep(3)
+
+        # --- exit game ---
         pygame.quit()
         sys.exit()
-
 
     def collision(self):
         return pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
 
-    # --- main loop ---
     def run(self):
         while self.running:
+
+            # ------------------------------ START OF GAME LOOP -------------------------------
             dt = self.clock.tick(FPS) / 1000
             settings.update_time()
 
@@ -221,13 +224,11 @@ class Game:
             if self.player.ability_ready and self.player.health:
                 self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
 
-            # --- scale 1280x720 to fullscreen resolution ---
-            window_w, window_h = self.window.get_size()
-            scaled = pygame.transform.smoothscale(self.screen, (window_w, window_h))
-            self.window.blit(scaled, (0, 0))
-            pygame.display.flip()
+            # --- display frame ---
+            self.scale_and_flip()
+            # ------------------------------ END OF GAME LOOP ------------------------------
 
-
+        # --- closing sequence ---
         self.save()
         self.game_over()
         

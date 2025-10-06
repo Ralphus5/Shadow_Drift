@@ -28,7 +28,7 @@ BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 game_time = pygame.time.get_ticks()
 FPS = 60
 STATS = {'score': 0, 'record': 0}
-OBSTACLE_SPAWN_RATE = 500#ms
+OBSTACLE_SPAWN_TIME = 500#ms
 
 
 def update_time():
