@@ -1,8 +1,12 @@
+"""Sprite classes for player and obstacles."""
+
 import settings
 from settings import *
 
 
 class Player(pygame.sprite.Sprite):
+    """Player sprite: handles movement, abilities, and player presisentation."""
+
     def __init__(self, groups, ability_sound):
         super().__init__(groups)
         self.ability_sound = ability_sound
@@ -20,6 +24,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2()
         self.facing = 'right'
+        self.is_alive = True
         self.health = 2
         self.speed = 250
         self.can_collide = True
@@ -73,6 +78,8 @@ class Player(pygame.sprite.Sprite):
 
 
 class Obstacle(pygame.sprite.Sprite):
+    """Obstacle sprite: moves across the screen and updates score on exit."""
+
     def __init__(self, groups, speed, record_sound):
         super().__init__(groups)
         self.record_sound = record_sound

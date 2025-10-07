@@ -1,3 +1,5 @@
+"""Main game loop and logic control."""
+
 import settings
 from sprites import *
 
@@ -6,6 +8,10 @@ from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, IMG_DIR
 
 
 class Game:
+    """Encapsulates the main game logic, event handling, and rendering loop."""
+
+# --- initialization ---
+
     def __init__(self):
         # --- initialization and window ---
         pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
@@ -19,14 +25,14 @@ class Game:
         self.fullscreen = True
         self.running = True
 
-        self.load_assets()
+        self.load_graphics()
         self.load_sounds()
-        self.init_state()
+        self.init_game_state()
         self.init_sprites()
         self.create_custom_events()
         self.load_save()
 
-    def load_assets(self):
+    def load_graphics(self):
         # --- fonts ---
         self.font1 = pygame.font.Font(join(FONT_DIR, 'slkscr.ttf'), 35)
         self.font2 = pygame.font.Font(join(FONT_DIR, 'slkscr.ttf'), 150)
@@ -54,7 +60,7 @@ class Game:
         self.record_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'new_record.ogg'))
         self.ability_sound = pygame.mixer.Sound(join(AUDIO_DIR, 'ability.ogg'))
 
-    def init_state(self):
+    def init_game_state(self):
         # --- score text rendering optimization ---
         self.prev_stats = None
         self.stats_text = None
@@ -91,11 +97,35 @@ class Game:
         except:
             pass
 
-    def save(self):
-        if STATS['score'] > STATS['record']:
-            save_data = {'record': STATS['score']}
-            with open(SAVE_FILE, 'w') as f:
-                json.dump(save_data, f, indent=2)
+# --- Per-frame Cycle ---
+
+    def update_background(self, dt):
+        # --- background selection ---
+        if settings.game_time < 20000:
+            self.bg_frames = self.backgrounds['bg1']
+        elif settings.game_time < 40000:
+            self.bg_frames = self.backgrounds['bg2']
+        else:
+            self.bg_frames = self.backgrounds['bg3']
+
+        # --- background frame selection ---
+        self.bg_timer += dt * 1000
+        if self.bg_timer >= self.bg_interval:
+            self.bg_timer = 0
+            self.bg_index = (self.bg_index + 1) % len(self.bg_frames)
+
+    def event_checker(self):
+        for event in pygame.event.get():
+            # --- quit game without saving ---
+            if event.type == pygame.QUIT:
+                self.close_game()
+            # --- toggle fullscreen with F11 ---
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F11:
+                    self.toggle_fullscreen()
+            # --- spawn obstacles ---
+            elif event.type == self.obstacle_event:
+                self.spawn_obstacle()
 
     def toggle_fullscreen(self):
         self.fullscreen = not self.fullscreen
@@ -104,7 +134,69 @@ class Game:
         else:
             self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-    def scale_and_flip(self):
+    def spawn_obstacle(self):
+        # --- choose speed of obstacle ---
+        if settings.game_time < 20000:
+            speed = 260
+        elif 20000 <= settings.game_time < 40000:
+            speed = 350
+        else:
+            speed = 450
+        # --- spawn obstacle ---
+        Obstacle((self.all_sprites, self.obstacle_sprites), speed, self.record_sound)
+
+    def check_collisions(self):
+        hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
+        if hit and self.player.can_collide:
+            self.player.health -= 1
+            if self.player.health >= 1:
+                self.damage_sound.play()
+                pygame.draw.circle(self.player.glow, (255, 0, 0, 100), (40, 40), 40, width=5)
+                self.player.speed += 100
+            else:
+                self.explosion_sound.play()
+                self.player.kill()
+                self.player.is_alive = False
+
+    def update_death_animation(self):
+        if not self.player.is_alive and not self.explosion_finished:
+            if self.explosion_index < len(self.explosion_frames):
+                self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
+                self.explosion_index += self.explosion_speed
+            else:
+                self.explosion_finished = True
+
+    def render_ui_text(self):
+        '''Render text surfaces only when stats change.'''
+        self.current_stats = (self.player.health, STATS['score'], STATS['record'])
+        if self.current_stats != self.prev_stats:
+            text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
+            self.stats_text = self.font1.render(text, True, (0, 0, 0))
+            self.stats_text_shadow = self.font1.render(text, True, (255, 255, 255))
+            self.prev_stats = self.current_stats
+
+    def draw(self):
+        # --- DRAWING ORDER ---
+        # 1. background
+        self.screen.blit(self.bg_frames[self.bg_index], (0, 0))
+
+        # 2. gameplay sprites
+        self.all_sprites.draw(self.screen)
+
+        # 3. death explosion
+        if not self.player.is_alive and not self.explosion_finished:
+            self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))
+
+        # 4. UI elements
+        # ability ring
+        if self.player.ability_ready and self.player.health:
+            self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
+
+        # score text
+        self.screen.blit(self.stats_text_shadow, (22, 22))
+        self.screen.blit(self.stats_text, (20, 20))
+
+    def present_frame(self):
         # get current window size
         window_w, window_h = self.window.get_size()
         # scale screen to window size
@@ -114,7 +206,21 @@ class Game:
         # update frame
         pygame.display.flip()
 
-    def game_over(self):
+    def check_game_end(self):
+        if not self.player.is_alive and self.explosion_finished:
+            self.running = False
+
+# --- Utilities ---
+
+
+
+    def save(self):
+        if STATS['score'] > STATS['record']:
+            save_data = {'record': STATS['score']}
+            with open(SAVE_FILE, 'w') as f:
+                json.dump(save_data, f, indent=2)
+
+    def game_over_screen(self):
         # --- music fade ---
         self.game_over_sound.play()
         pygame.mixer.music.fadeout(3000)
@@ -124,7 +230,7 @@ class Game:
         bar_width = WINDOW_WIDTH // steps
         for i in range(1, steps + 1):
             pygame.draw.rect(self.screen, 'black', ((0, 0), (bar_width * i, WINDOW_HEIGHT)))
-            self.scale_and_flip()
+            self.present_frame()
             sleep(0.25)
 
         # --- draw "Game Over" message ---
@@ -133,105 +239,49 @@ class Game:
         self.screen.blit(game_over_msg, msg_rect)
 
         # --- scale and display ---
-        self.scale_and_flip()
+        self.present_frame()
         sleep(3)
 
         # --- exit game ---
+        self.close_game()
+
+    def close_game(self):
         pygame.quit()
         sys.exit()
 
-    def collision(self):
-        return pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
+# --- Main loop ---
 
     def run(self):
         while self.running:
-
             # ------------------------------ START OF GAME LOOP -------------------------------
+            # --- update time and background frame ---
             dt = self.clock.tick(FPS) / 1000
             settings.update_time()
+            self.update_background(dt)
 
-            # --- events ---
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_F11:
-                        self.toggle_fullscreen()
-                elif event.type == self.obstacle_event:
-                    if settings.game_time < 20000:
-                        Obstacle((self.all_sprites, self.obstacle_sprites), 250, self.record_sound)
-                    elif 20000 <= settings.game_time < 40000:
-                        Obstacle((self.all_sprites, self.obstacle_sprites), 350, self.record_sound)
-                    else:
-                        Obstacle((self.all_sprites, self.obstacle_sprites), 450, self.record_sound)
+            # --- check for events ---
+            self.event_checker()
 
+            # --- update sprites and check for collision ---
             self.all_sprites.update(dt)
+            self.check_collisions()
+            self.update_death_animation()
 
-            # --- collisions ---
-            if self.collision() and self.player.can_collide:
-                self.player.health -= 1
-                if self.player.health >= 1:
-                    self.damage_sound.play()
-                    pygame.draw.circle(self.player.glow, (255, 0, 0, 100), (40, 40), 40, width=5)
-                    self.player.speed += 100
-                else:
-                    self.explosion_sound.play()
-                    self.player.kill()
+            # --- prepare UI text if stats changed ---
+            self.render_ui_text()
 
-            # --- background animation ---
-            if settings.game_time < 20000:
-                bg_frames = self.backgrounds['bg1']
-            elif 20000 <= settings.game_time < 40000:
-                bg_frames = self.backgrounds['bg2']
-            else:
-                bg_frames = self.backgrounds['bg3']
+            # --- draw -> scale -> display frame ---
+            self.draw()
+            self.present_frame()
 
-            self.bg_timer += dt * 1000
-            if self.bg_timer >= self.bg_interval:
-                self.bg_timer = 0
-                self.bg_index = (self.bg_index + 1) % len(bg_frames)
-
-            # --- drawing on base surface (1280x720) ---
-
-            # draw background
-            self.screen.blit(bg_frames[self.bg_index], (0, 0))
-
-            # draw sprites
-            self.all_sprites.draw(self.screen)
-
-            # draw explosion if player is dead
-            if self.player.health <= 0 and not self.explosion_finished:
-                if self.explosion_index < len(self.explosion_frames):
-                    frame = self.explosion_frames[int(self.explosion_index)]
-                    self.screen.blit(frame, frame.get_rect(center=self.player.rect.center))
-                    self.explosion_index += self.explosion_speed
-                else:
-                    self.explosion_finished = True
-                    self.running = False
-
-            # draw text
-            self.current_stats = (self.player.health, STATS['score'], STATS['record'])
-            if self.current_stats != self.prev_stats:
-                text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
-                self.stats_text = self.font1.render(text, True, (0, 0, 0))
-                self.stats_text_shadow = self.font1.render(text, True, (255, 255, 255))
-                self.prev_stats = self.current_stats
-            self.screen.blit(self.stats_text_shadow, (22, 22))
-            self.screen.blit(self.stats_text, (20, 20))
-
-            # draw player glow if alive
-            if self.player.ability_ready and self.player.health:
-                self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
-
-            # --- display frame ---
-            self.scale_and_flip()
-            # ------------------------------ END OF GAME LOOP ------------------------------
+            # --- break loop if player dead and explosion finished ---
+            self.check_game_end()
+            # -------------------------------- END OF GAME LOOP --------------------------------
 
         # --- closing sequence ---
         self.save()
-        self.game_over()
-        
+        self.game_over_screen()
+
 
 if __name__ == '__main__':
     game = Game()
