@@ -1,4 +1,4 @@
-"""Global constants and configuration settings"""
+"""Global constants and configuration settings."""
 
 import os, sys, json
 from os.path import join
@@ -30,6 +30,10 @@ BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FPS = 60
 STATS = {'score': 0, 'record': 0}
 OBSTACLE_SPAWN_TIME = 500#ms
+DEFAULT_PLAYER_SPEED = 250
+PLAYER_ABILITY_COOLDOWN = 10000#ms
+PLAYER_ABILITY_DURATION = 1000#ms
+ABILITY_UNUSED = -10000
 
 # --- track absolute game time ---
 def update_time():
