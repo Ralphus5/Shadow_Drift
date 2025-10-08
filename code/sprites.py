@@ -32,7 +32,7 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
         self.glow = pygame.Surface((80, 80), pygame.SRCALPHA)
-        pygame.draw.circle(self.glow, (0, 100, 255, 100), (40, 40), 40, width=5)
+        pygame.draw.circle(self.glow, COLOR['blue_player_glow'], (40, 40), 40, width=5)
 
         # --- motion setup ---
         self.direction = pygame.Vector2()
@@ -97,17 +97,16 @@ class Player(pygame.sprite.Sprite):
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""
 
-    def __init__(self, groups, speed, sprite_variants, record_sound):
+    def __init__(self, groups, speed, sprite_variants):
         super().__init__(groups)
 
         # --- parameters ---
         self.speed = speed
-        self.record_sound = record_sound
 
         # --- visual setup ---
-        self.width = choice((150, 200, 250, 300))
+        self.width = settings.random_of_selection((150, 200, 250, 300))
         self.image = sprite_variants[self.width]
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.width, randint(0, WINDOW_HEIGHT)))
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.width, settings.random_of_spectrum(0, WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
 
         # --- motion setup ---
@@ -123,7 +122,3 @@ class Obstacle(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
             STATS['score'] += 1
-
-        # --- play record sound ---
-        if STATS['score'] == STATS['record'] + 1:
-                self.record_sound.play()
