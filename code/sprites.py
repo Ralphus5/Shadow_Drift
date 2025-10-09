@@ -39,14 +39,15 @@ class Player(pygame.sprite.Sprite):
 
     def activate_ability(self):
         self.ability_sound.play()
-        self.ability_start_time = pygame.time.get_ticks()
+        self.ability_start_time = self.play_time * 1000
         self.ability_ready = False
         self.can_collide = False
 
     def keep_in_window(self):
         self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 20, WINDOW_HEIGHT + 20))
 
-    def handle_input(self, dt):
+    def handle_input(self, dt, play_time):
+        self.play_time = play_time
         # --- check user input ---
         keys = pygame.key.get_pressed()
         recent_keys = pygame.key.get_just_pressed()
@@ -59,7 +60,7 @@ class Player(pygame.sprite.Sprite):
 
         # --- ability use ---
         # check cooldown
-        if settings.game_time - self.ability_start_time >= self.ability_cooldown:
+        if (self.play_time * 1000) - self.ability_start_time >= self.ability_cooldown:
             self.ability_ready = True
 
         # activate ability
@@ -67,7 +68,7 @@ class Player(pygame.sprite.Sprite):
             self.activate_ability()
 
         # end ability duration
-        if settings.game_time - self.ability_start_time >= self.ability_duration:
+        if (self.play_time * 1000) - self.ability_start_time >= self.ability_duration:
             self.can_collide = True
 
     def refresh_appearance(self):
@@ -84,10 +85,10 @@ class Player(pygame.sprite.Sprite):
         # --- blur if ability active ---
         self.image.set_alpha(100 if not self.can_collide else 255)
 
-    def update(self, dt):
-    # --- control flow of player sprite ---
-
-        self.handle_input(dt)
+    def update(self, dt, play_time):
+        # --- control flow of player sprite ---
+        self.play_time = play_time
+        self.handle_input(dt, self.play_time)
 
         self.keep_in_window()
         
@@ -112,9 +113,7 @@ class Obstacle(pygame.sprite.Sprite):
         # --- motion setup ---
         self.direction = pygame.Vector2(-1, 0)
         
-    def update(self, dt):
-        global STATS
-
+    def update(self, dt, play_time):
         # --- move ---
         self.rect.centerx -= self.speed * dt
 

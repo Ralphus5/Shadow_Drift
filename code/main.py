@@ -1,10 +1,8 @@
 """Main game loop and logic control."""
 
 import settings
+from settings import *
 from sprites import *
-
-# --- variables from settings not to be prefixed with 'settings.' ---
-from settings import (WINDOW_WIDTH, WINDOW_HEIGHT, BASE_RESOLUTION, FPS, STATS, COLOR, OBSTACLE_SPAWN_TIME, STOP_SCREEN_DIM_FACTOR, START_TRACK_VOLUME, GAME_OVER_TRACK_VOLUME, GAME_TRACK_1_VOLUME, GAME_TRACK_2_VOLUME, DAMAGE_SOUND_VOLUME, EXPLOSION_SOUND_VOLUME, GAME_OVER_SOUND_VOLUME, RECORD_SOUND_VOLUME, ABILITY_SOUND_VOLUME)
 
 
 class Game:
@@ -52,9 +50,9 @@ class Game:
         # update dt
         # handle events
         # change music track accordingly
-        settings.update_time()
+        self.update_play_time()
         self.update_background(dt)
-        self.all_sprites.update(dt)
+        self.all_sprites.update(dt, self.play_time)
         self.check_collisions()
         self.check_record()
         self.update_death_animation()
@@ -67,21 +65,23 @@ class Game:
         pass
 
     def game_over_screen(self):
-        # --- music fade ---
-        self.game_over_sound.play()
 
+        self.game_over_sound.play()
         self.fade_to_black()
+        self.tracks['game_over_track'].play(-1)
 
         # --- draw "Game Over" message ---
         game_over_msg = self.font2.render("Game Over!", True, COLOR['game_over_text'])
         msg_rect = game_over_msg.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
         self.screen.blit(game_over_msg, msg_rect)
 
-        # --- scale and display ---
-        self.present_frame()
-        sleep(3)
+        # --- game over time ---
+        end_time = perf_counter() + 3
+        while perf_counter() < end_time:
+            self.handle_events()     # allows ESC quit, etc.
+            self.present_frame()     # keeps window responsive
+            self.clock.tick(FPS)
 
-        # --- save and close ---
         self.save_game()
         self.close_game()
 
@@ -185,6 +185,13 @@ class Game:
         self.state = 'start'
         self.record_checked = False
 
+        # --- timing system ---
+        self.play_time = 0.0         # seconds
+        self.pause_moment = 0.0
+        self.paused_duration = 0.0
+        self.is_paused = False
+        self.start_time = perf_counter()
+
         # --- score text rendering setup ---
         self.prev_stats = None
         self.stats_text = None
@@ -224,6 +231,9 @@ class Game:
 # --- Main loop ---
 
     def handle_events(self):
+
+        print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
+        
         for event in pygame.event.get():
             # --- General events ---
             if event.type == pygame.QUIT:
@@ -235,16 +245,15 @@ class Game:
 
             # --- start state ---
             if self.state == 'start':
-
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
                         self.state = 'play'
 
             # --- play state ---
             elif self.state == 'play':
-
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
+                        self.pause_play_time()
                         self.state = 'stop'
 
                 if event.type == self.obstacle_event:
@@ -252,22 +261,21 @@ class Game:
 
             # --- pause state ---
             elif self.state == 'stop':
-
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
+                        self.resume_play_time()
                         self.state = 'play'
 
             # --- game over state ---
             elif self.state == 'game over':
- 
                 if event.type == pygame.KEYDOWN:
                     pass
 
     def spawn_obstacle(self):
         # --- choose speed of obstacle ---
-        if settings.game_time < 20000:
+        if self.play_time < 20000:
             speed = 260
-        elif 20000 <= settings.game_time < 40000:
+        elif 20000 <= self.play_time < 40000:
             speed = 350
         else:
             speed = 450
@@ -279,9 +287,9 @@ class Game:
 
     def update_background(self, dt):
         # --- background selection ---
-        if settings.game_time < 20000:
+        if self.play_time < 20000:
             self.bg_frames = self.backgrounds['bg1']
-        elif settings.game_time < 40000:
+        elif self.play_time < 40000:
             self.bg_frames = self.backgrounds['bg2']
         else:
             self.bg_frames = self.backgrounds['bg3']
@@ -381,13 +389,13 @@ class Game:
         else:
             self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 
-    def fade_to_black(self, duration=1.2, smoothness=500):
+    def fade_to_black(self, duration=1.6, smoothness=500):
         """Fade the screen to black over a fixed duration (seconds), with given smoothness."""
         bar_width = WINDOW_WIDTH / smoothness
-        start_time = settings.get_time()
+        start_time = perf_counter()
 
         while True:
-            elapsed = settings.get_time() - start_time
+            elapsed = perf_counter() - start_time
             progress = min(elapsed / duration, 1.0)
 
             filled = int(progress * smoothness)
@@ -422,7 +430,7 @@ class Game:
                     )
 
             elif self.state == "game over":
-                self.change_track("game_over_track")
+                self.music_channel.stop()
 
             self.prev_state = self.state
 
@@ -435,6 +443,27 @@ class Game:
             self.music_channel = track.play(loops=-1, fade_ms=fade_ms)
             self.music_channel.set_volume(self.base_volumes[key])
             self.current_track = key
+
+# --- Time system ---
+
+    def update_play_time(self):
+        if not self.is_paused:
+            self.play_time = perf_counter() - self.start_time - self.paused_duration
+
+    def pause_play_time(self):
+        if not self.is_paused:
+            self.pause_moment = perf_counter()
+            self.is_paused = True
+
+    def resume_play_time(self):
+        if self.is_paused:
+            self.paused_duration += perf_counter() - self.pause_moment
+            self.is_paused = False
+
+    @property
+    def runtime(self):
+        """Total runtime since the program started (seconds)."""
+        return perf_counter() - self.start_time
 
 # --- Execute Lifecycle ---
 
