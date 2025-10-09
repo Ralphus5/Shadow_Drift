@@ -1,13 +1,31 @@
-"""Sprite classes for player and obstacles."""
-
-import settings
 from settings import *
+from utils import *
 
+class AnimatedBackground(pygame.sprite.Sprite):
+    """Animated background sprite cycling through frames."""
+
+    def __init__(self, groups, layer, frames, interval=BACKGROUND_FRAME_INTERVALL):
+        self._layer = layer
+        super().__init__(groups)
+        self.frames = frames
+        self.index = 0
+        self.timer = 0
+        self.interval = interval  # ms between frame changes
+        self.image = self.frames[self.index]
+        self.rect = self.image.get_rect(topleft=(0, 0))
+
+    def update(self, dt, *_):
+        self.timer += dt * 1000
+        if self.timer >= self.interval:
+            self.timer = 0
+            self.index = (self.index + 1) % len(self.frames)
+            self.image = self.frames[self.index]
 
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
-    def __init__(self, groups, sprite_variants, glows, ability_sound):
+    def __init__(self, groups, layer, sprite_variants, glows, ability_sound):
+        self._layer = layer
         super().__init__(groups)
 
         # --- parameters ---
@@ -31,7 +49,7 @@ class Player(pygame.sprite.Sprite):
         # --- rendering ---
         self.image = self.sprite_variants[self.health]
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
+        self.rect = self.image.get_frect(center=WINDOW_CENTER)
         self.glow = self.glows['blue']
 
         # --- motion setup ---
@@ -44,7 +62,7 @@ class Player(pygame.sprite.Sprite):
         self.can_collide = False
 
     def keep_in_window(self):
-        self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 20, WINDOW_HEIGHT + 20))
+        self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 10, WINDOW_HEIGHT + 10))
 
     def handle_input(self, dt, play_time):
         self.play_time = play_time
@@ -95,6 +113,7 @@ class Player(pygame.sprite.Sprite):
     def update(self, dt, play_time):
         # --- control flow of player sprite ---
         self.play_time = play_time
+
         self.handle_input(dt, self.play_time)
 
         self.keep_in_window()
@@ -105,16 +124,17 @@ class Player(pygame.sprite.Sprite):
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""
 
-    def __init__(self, groups, speed, sprite_variants):
+    def __init__(self, groups, layer, speed, sprite_variants):
+        self._layer = layer
         super().__init__(groups)
 
         # --- parameters ---
         self.speed = speed
 
         # --- visual setup ---
-        self.width = settings.random_of_selection((150, 200, 250, 300))
+        self.width = random_of_selection((150, 200, 250, 300))
         self.image = sprite_variants[self.width]
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.width, settings.random_of_spectrum(0, WINDOW_HEIGHT)))
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.width, random_of_spectrum(0, WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
 
         # --- motion setup ---

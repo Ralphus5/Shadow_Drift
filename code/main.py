@@ -1,15 +1,12 @@
-"""Main game loop and logic control."""
-
-import settings
 from settings import *
+from utils import *
 from sprites import *
 
 
 class Game:
     """Encapsulates the main game logic, event handling, and rendering loop."""
 
-# --- Define Lifecycle ---
-
+# --- Define game modes ---
     def __init__(self):
         # --- initialization and preloading ---
         self.init_paths()
@@ -30,62 +27,64 @@ class Game:
             self.modify_game_music()
 
             if self.state == 'start':
-                self.start_screen()
+                self.start_screen(dt)
 
             elif self.state == 'play':
-                self.game_loop(dt)
+                self.play_loop(dt)
 
             elif self.state == 'stop':
-                self.pause_menu()
+                self.pause_menu(dt)
 
             elif self.state == 'game over':
-                self.game_over_screen()
+                self.game_over_screen(dt)
                 self.save_game()
                 self.close_game()
 
             self.present_frame()
 
-    def start_screen(self):
-            self.screen.fill('lightblue')
+    def start_screen(self, dt):
+            self.screen.fill(COLOR['start_screen_bg'])
+            start_text = self.start_screen_font.render('Shadow Drift', True, COLOR['sart_screen_text'])
+            text_rect = start_text.get_rect(center=WINDOW_CENTER)
+            self.screen.blit(start_text, text_rect)
 
-    def game_loop(self, dt):
+    def play_loop(self, dt):
         # update dt
         # handle events
         # change music track accordingly
+        self.change_background()
         self.update_play_time()
-        self.update_background(dt)
         self.all_sprites.update(dt, self.play_time)
         self.check_collisions()
         self.check_record()
         self.update_death_animation()
         self.render_score_text()
-        self.draw()
+        self.draw_order()
         self.check_game_end()
         # present frame
 
-    def pause_menu(self):
+    def pause_menu(self, dt):
         pass
 
-    def game_over_screen(self):
+    def game_over_screen(self, dt):
 
         self.game_over_sound.play()
         self.fade_to_black()
         self.tracks['game_over_track'].play(-1)
 
         # --- draw "Game Over" message ---
-        game_over_msg = self.game_over_font.render("Game Over!", True, COLOR['game_over_text'])
-        msg_rect = game_over_msg.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
-        self.screen.blit(game_over_msg, msg_rect)
+        game_over_text = self.game_over_font.render("Game Over!", True, COLOR['game_over_text'])
+        text_rect = game_over_text.get_rect(center=WINDOW_CENTER)
+        self.screen.blit(game_over_text, text_rect)
 
         # --- game over time ---
         end_time = perf_counter() + 3
         while perf_counter() < end_time:
             self.handle_events()     # allows ESC quit, etc.
-            self.present_frame()     # keeps window responsive
+            self.present_frame()
             self.clock.tick(FPS)
 
 # --- Initialization steps ---
-
     def init_paths(self):
         # --- detect running mode ---
         if getattr(sys, "frozen", False):
@@ -101,9 +100,9 @@ class Game:
         # --- asset file paths ---
         self.BASE_DIR = base_dir
         self.USER_DIR = user_dir
-        self.IMG_DIR   = join(base_dir, "images")
+        self.IMG_DIR = join(base_dir, "images")
         self.AUDIO_DIR = join(base_dir, "audio")
-        self.DATA_DIR  = join(base_dir, "data")
+        self.DATA_DIR = join(base_dir, "data")
         self.FONT_DIR = join(base_dir, "fonts")
         self.SAVE_FILE = join(user_dir, "save.json")
 
@@ -125,8 +124,9 @@ class Game:
 
     def load_graphics(self):
         # --- fonts ---
-        self.score_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 35)
-        self.game_over_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 150)
+        self.start_screen_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_SCREEN_FONT_SIZE)
+        self.score_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE)
+        self.game_over_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE)
 
         # --- draws ---
         self.player_glows = {
@@ -203,23 +203,31 @@ class Game:
         self.stats_text = None
         self.stats_text_shadow = None
 
-        # --- background animation setup ---
-        self.bg_index = 0
-        self.bg_timer = 0
-        self.bg_interval = 100
-
         # --- player death animation setup ---
         self.explosion_index = 0
         self.explosion_finished = False
-        self.explosion_speed = 1.2
+        self.explosion_speed = PLAYER_EXPLOSION_SPEED
 
     def init_sprites(self):
-        # --- sprite groups ---
-        self.all_sprites = pygame.sprite.Group()
+        # --- sprite groups and layers ---
+        self.all_sprites = pygame.sprite.LayeredUpdates()
         self.obstacle_sprites = pygame.sprite.Group()
 
+        self.LAYERS = {'background': 0,
+                       'player': 1, 
+                       'obstacles': 2,}
+
+        # --- instantiate background ---
+        self.background = AnimatedBackground(self.all_sprites,
+                                             self.LAYERS['background'],
+                                             self.backgrounds['bg1'],)
+
         # --- instantiate player sprite ---
-        self.player = Player(self.all_sprites, self.player_sprite_variants, self.player_glows, self.ability_sound)
+        self.player = Player(self.all_sprites,
+                             self.LAYERS['player'],
+                             self.player_sprite_variants,
+                             self.player_glows,
+                             self.ability_sound)
 
     def create_custom_events(self):
         # --- obstacle spawning ---
@@ -236,8 +244,8 @@ class Game:
             self.previous_runtime = 0.0
 
 # --- Main loop ---
-
     def handle_events(self):
+        '''Check for inputs and initiate custome events.'''
 
         print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
 
@@ -290,24 +298,18 @@ class Game:
             speed = 450
 
         # --- spawn obstacle ---
-        Obstacle((self.all_sprites, self.obstacle_sprites), 
+        Obstacle((self.all_sprites, self.obstacle_sprites),
+                 self.LAYERS['obstacles'], 
                  speed, 
                  self.obstacle_sprite_variants)
 
-    def update_background(self, dt):
-        # --- background selection ---
+    def change_background(self):
         if self.play_time < 20000:
-            self.bg_frames = self.backgrounds['bg1']
+            self.background.frames = self.backgrounds['bg1']
         elif self.play_time < 40000:
-            self.bg_frames = self.backgrounds['bg2']
+            self.background.frames = self.backgrounds['bg2']
         else:
-            self.bg_frames = self.backgrounds['bg3']
-
-        # --- background frame selection ---
-        self.bg_timer += dt * 1000
-        if self.bg_timer >= self.bg_interval:
-            self.bg_timer = 0
-            self.bg_index = (self.bg_index + 1) % len(self.bg_frames)
+            self.background.frames = self.backgrounds['bg3']
 
     def check_collisions(self):
         hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
@@ -330,7 +332,7 @@ class Game:
         if not self.player.is_alive and not self.explosion_finished:
             if self.explosion_index < len(self.explosion_frames):
                 self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
-                self.explosion_index += self.explosion_speed
+                self.explosion_index += PLAYER_EXPLOSION_SPEED
             else:
                 self.explosion_finished = True
 
@@ -343,23 +345,25 @@ class Game:
             self.stats_text_shadow = self.score_font.render(text, True, COLOR['ui_text_shadow'])
             self.prev_stats = self.current_stats
 
-    def draw(self):
+    def draw_order(self):
         # --- DRAWING ORDER ---
-        # 1. background
-        self.screen.blit(self.bg_frames[self.bg_index], (0, 0))
+        self.draw_sprites()
+        self.draw_effects()
+        self.draw_ui()
 
-        # 2. gameplay sprites
+    def draw_sprites(self):
         self.all_sprites.draw(self.screen)
 
-        # 3. death explosion
+    def draw_effects(self):
+        # player death explosion
         if not self.player.is_alive and not self.explosion_finished:
             self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))
 
-        # 4. UI elements
-        # ability ring
+        # player glow
         if self.player.ability_ready and self.player.health:
             self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
 
+    def draw_ui(self):
         # score text
         self.screen.blit(self.stats_text_shadow, (22, 22))
         self.screen.blit(self.stats_text, (20, 20))
@@ -368,7 +372,7 @@ class Game:
         if not self.player.is_alive and self.explosion_finished:
             self.state = 'game over'
 
-# --- Utility ---
+# --- Game functionality ---
     def present_frame(self):
         # get current window size
         window_w, window_h = self.window.get_size()
@@ -407,9 +411,9 @@ class Game:
         if self.fullscreen:
             self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         else:
-            self.window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+            self.window = pygame.display.set_mode(BASE_RESOLUTION)
 
-    def fade_to_black(self, duration=1.6, smoothness=500):
+    def fade_to_black(self, duration=FADE_TO_BLACK_DURATION, smoothness=FADE_TO_BLACK_SMOOTHNESS):
         """Fade the screen to black over a fixed duration (seconds), with given smoothness."""
         bar_width = WINDOW_WIDTH / smoothness
         start_time = perf_counter()
@@ -470,7 +474,7 @@ class Game:
             self.music_channel.set_volume(self.base_volumes[key])
             self.current_track = key
 
-# --- time system ---
+# --- Time system ---
     def update_play_time(self):
         if not self.is_paused and self.play_start is not None:
             self.play_time = perf_counter() - self.play_start - self.total_paused
@@ -491,7 +495,6 @@ class Game:
         return perf_counter() - self.start_time
 
 # --- Execute Lifecycle ---
-
 def main():
     game = Game()
     game.run()
