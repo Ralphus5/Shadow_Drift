@@ -4,7 +4,7 @@ import os, sys, json
 from typing import *
 from os.path import join
 from random import randint, choice, choices, uniform, triangular
-from time import sleep, perf_counter
+from time import perf_counter
 import pygame
 
 # --- VISUALS ---
@@ -39,11 +39,11 @@ ABILITY_SOUND_VOLUME =1
 
 # --- game globals ---
 STATS = {'score': 0, 'record': 0}
-OBSTACLE_SPAWN_TIME = 500#ms
 DEFAULT_PLAYER_SPEED = 250
-PLAYER_ABILITY_COOLDOWN = 10000#ms
-PLAYER_ABILITY_DURATION = 1000#ms
-ABILITY_UNUSED = -10000
+OBSTACLE_SPAWN_TIME = 0.5 # seconds
+PLAYER_ABILITY_COOLDOWN = 10.0 # seconds
+PLAYER_ABILITY_DURATION = 1.0 # seconds
+ABILITY_UNUSED = -10.0
 
 # --- randomizers ---
 def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:

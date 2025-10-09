@@ -39,7 +39,7 @@ class Player(pygame.sprite.Sprite):
 
     def activate_ability(self):
         self.ability_sound.play()
-        self.ability_start_time = self.play_time * 1000
+        self.ability_start_time = self.play_time
         self.ability_ready = False
         self.can_collide = False
 
@@ -60,7 +60,7 @@ class Player(pygame.sprite.Sprite):
 
         # --- ability use ---
         # check cooldown
-        if (self.play_time * 1000) - self.ability_start_time >= self.ability_cooldown:
+        if self.play_time - self.ability_start_time >= self.ability_cooldown:
             self.ability_ready = True
 
         # activate ability
@@ -68,7 +68,7 @@ class Player(pygame.sprite.Sprite):
             self.activate_ability()
 
         # end ability duration
-        if (self.play_time * 1000) - self.ability_start_time >= self.ability_duration:
+        if self.play_time - self.ability_start_time >= self.ability_duration:
             self.can_collide = True
 
     def refresh_appearance(self):

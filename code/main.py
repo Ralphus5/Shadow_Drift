@@ -40,6 +40,8 @@ class Game:
 
             elif self.state == 'game over':
                 self.game_over_screen()
+                self.save_game()
+                self.close_game()
 
             self.present_frame()
 
@@ -81,9 +83,6 @@ class Game:
             self.handle_events()     # allows ESC quit, etc.
             self.present_frame()     # keeps window responsive
             self.clock.tick(FPS)
-
-        self.save_game()
-        self.close_game()
 
 # --- Initialization steps ---
 
@@ -186,11 +185,12 @@ class Game:
         self.record_checked = False
 
         # --- timing system ---
-        self.play_time = 0.0         # seconds
-        self.pause_moment = 0.0
-        self.paused_duration = 0.0
+        self.start_time = perf_counter() # session runtime anchor
+        self.play_time = 0.0         # gamplay time
+        self.play_start = None
+        self.pause_start = 0.0
+        self.total_paused = 0.0
         self.is_paused = False
-        self.start_time = perf_counter()
 
         # --- score text rendering setup ---
         self.prev_stats = None
@@ -218,25 +218,27 @@ class Game:
     def create_custom_events(self):
         # --- obstacle spawning ---
         self.obstacle_event = pygame.event.custom_type()
-        pygame.time.set_timer(self.obstacle_event, OBSTACLE_SPAWN_TIME)
+        pygame.time.set_timer(self.obstacle_event, int(OBSTACLE_SPAWN_TIME * 1000))
 
     def load_save(self):
         try:
             with open(self.SAVE_FILE) as f:
                 save_data = json.load(f)
                 STATS['record'] = save_data.get('record',0)
+                self.previous_runtime = save_data.get('total_runtime', 0.0)
         except:
-            pass
+            self.previous_runtime = 0.0
 
 # --- Main loop ---
 
     def handle_events(self):
 
         print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
-        
+
         for event in pygame.event.get():
             # --- General events ---
             if event.type == pygame.QUIT:
+                self.save_game()
                 self.close_game()
 
             if event.type == pygame.KEYDOWN:
@@ -247,6 +249,7 @@ class Game:
             if self.state == 'start':
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
+                        self.play_start = perf_counter()
                         self.state = 'play'
 
             # --- play state ---
@@ -372,11 +375,23 @@ class Game:
         pygame.display.flip()
 
     def save_game(self):
+
+        # update total_runtime
+        total_runtime = self.previous_runtime + self.runtime
+
+        # update record if needed
         if STATS['score'] > STATS['record']:
-            self.record_sound.play()
-            save_data = {'record': STATS['score']}
-            with open(self.SAVE_FILE, 'w') as f:
-                json.dump(save_data, f, indent=2)
+            STATS['record'] = STATS['score']
+
+        # what to save
+        save_data = {
+            "record": STATS['record'],
+            "total_runtime": round(total_runtime, 3)
+        }
+
+        # dump into file
+        with open(self.SAVE_FILE, "w") as f:
+            json.dump(save_data, f, indent=2)
 
     def close_game(self):
         pygame.quit()
@@ -395,12 +410,18 @@ class Game:
         start_time = perf_counter()
 
         while True:
-            elapsed = perf_counter() - start_time
+            now = perf_counter()
+            elapsed = now - start_time
             progress = min(elapsed / duration, 1.0)
 
+            # --- draw progressive black bars ---
             filled = int(progress * smoothness)
             pygame.draw.rect(self.screen, 'black', (0, 0, int(bar_width * filled), WINDOW_HEIGHT))
             self.present_frame()
+
+            # --- handle window events so runtime keeps running ---
+            self.handle_events()
+            self.clock.tick(FPS)
 
             if progress >= 1.0:
                 break
@@ -444,20 +465,19 @@ class Game:
             self.music_channel.set_volume(self.base_volumes[key])
             self.current_track = key
 
-# --- Time system ---
-
+# --- time system ---
     def update_play_time(self):
-        if not self.is_paused:
-            self.play_time = perf_counter() - self.start_time - self.paused_duration
+        if not self.is_paused and self.play_start is not None:
+            self.play_time = perf_counter() - self.play_start - self.total_paused
 
     def pause_play_time(self):
         if not self.is_paused:
-            self.pause_moment = perf_counter()
+            self.pause_start = perf_counter()
             self.is_paused = True
 
     def resume_play_time(self):
         if self.is_paused:
-            self.paused_duration += perf_counter() - self.pause_moment
+            self.total_paused += perf_counter() - self.pause_start
             self.is_paused = False
 
     @property
