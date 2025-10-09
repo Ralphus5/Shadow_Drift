@@ -73,7 +73,7 @@ class Game:
         self.tracks['game_over_track'].play(-1)
 
         # --- draw "Game Over" message ---
-        game_over_msg = self.font2.render("Game Over!", True, COLOR['game_over_text'])
+        game_over_msg = self.game_over_font.render("Game Over!", True, COLOR['game_over_text'])
         msg_rect = game_over_msg.get_rect(center=(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2))
         self.screen.blit(game_over_msg, msg_rect)
 
@@ -125,8 +125,16 @@ class Game:
 
     def load_graphics(self):
         # --- fonts ---
-        self.font1 = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 35)
-        self.font2 = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 150)
+        self.score_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 35)
+        self.game_over_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), 150)
+
+        # --- draws ---
+        self.player_glows = {
+        "blue": pygame.Surface((80, 80), pygame.SRCALPHA),
+        "red": pygame.Surface((80, 80), pygame.SRCALPHA)
+        }
+        pygame.draw.circle(self.player_glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
+        pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
 
         # --- images ---
         self.backgrounds: dict = {
@@ -137,10 +145,8 @@ class Game:
         self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
 
         self.player_sprite_variants = {
-            (1, 'right'): pygame.image.load(join(self.IMG_DIR, 'player1-right.png')).convert_alpha(),
-            (1, 'left'):  pygame.image.load(join(self.IMG_DIR, 'player1-left.png')).convert_alpha(),
-            (2, 'right'): pygame.image.load(join(self.IMG_DIR, 'player2-right.png')).convert_alpha(),
-            (2, 'left'):  pygame.image.load(join(self.IMG_DIR, 'player2-left.png')).convert_alpha(),
+            1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
+            2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),
         }
 
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
@@ -213,7 +219,7 @@ class Game:
         self.obstacle_sprites = pygame.sprite.Group()
 
         # --- instantiate player sprite ---
-        self.player = Player(self.all_sprites, self.player_sprite_variants, self.ability_sound)
+        self.player = Player(self.all_sprites, self.player_sprite_variants, self.player_glows, self.ability_sound)
 
     def create_custom_events(self):
         # --- obstacle spawning ---
@@ -225,7 +231,7 @@ class Game:
             with open(self.SAVE_FILE) as f:
                 save_data = json.load(f)
                 STATS['record'] = save_data.get('record',0)
-                self.previous_runtime = save_data.get('total_runtime', 0.0)
+                self.previous_runtime = save_data.get('total_runtime[s]', 0.0)
         except:
             self.previous_runtime = 0.0
 
@@ -309,8 +315,7 @@ class Game:
             self.player.health -= 1
             if self.player.health >= 1:
                 self.damage_sound.play()
-                pygame.draw.circle(self.player.glow, COLOR['red_player_glow'], (40, 40), 40, width=5)
-                self.player.speed += 70
+                self.player.glow = self.player.glows['red']
             else:
                 self.explosion_sound.play()
                 self.player.kill()
@@ -334,8 +339,8 @@ class Game:
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
         if self.current_stats != self.prev_stats:
             text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
-            self.stats_text = self.font1.render(text, True, COLOR['ui_text'])
-            self.stats_text_shadow = self.font1.render(text, True, COLOR['ui_text_shadow'])
+            self.stats_text = self.score_font.render(text, True, COLOR['ui_text'])
+            self.stats_text_shadow = self.score_font.render(text, True, COLOR['ui_text_shadow'])
             self.prev_stats = self.current_stats
 
     def draw(self):
@@ -386,7 +391,7 @@ class Game:
         # what to save
         save_data = {
             "record": STATS['record'],
-            "total_runtime": round(total_runtime, 3)
+            "total_runtime[s]": round(total_runtime)
         }
 
         # dump into file

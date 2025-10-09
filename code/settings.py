@@ -35,7 +35,7 @@ DAMAGE_SOUND_VOLUME = 0.4
 EXPLOSION_SOUND_VOLUME = 0.4
 GAME_OVER_SOUND_VOLUME = 1
 RECORD_SOUND_VOLUME = 0.8
-ABILITY_SOUND_VOLUME =1
+ABILITY_SOUND_VOLUME = 1
 
 # --- game globals ---
 STATS = {'score': 0, 'record': 0}
@@ -43,7 +43,6 @@ DEFAULT_PLAYER_SPEED = 250
 OBSTACLE_SPAWN_TIME = 0.5 # seconds
 PLAYER_ABILITY_COOLDOWN = 10.0 # seconds
 PLAYER_ABILITY_DURATION = 1.0 # seconds
-ABILITY_UNUSED = -10.0
 
 # --- randomizers ---
 def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:
