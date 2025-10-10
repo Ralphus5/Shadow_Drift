@@ -42,11 +42,96 @@ class Game:
 
             self.present_frame()
 
+    def handle_events(self):
+        '''Check for inputs and initiate custome events.'''
+
+        print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
+
+        for event in pygame.event.get():
+            # --- General events ---
+            if event.type == pygame.QUIT:
+                self.save_game()
+                self.close_game()
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F11:
+                        self.toggle_fullscreen()
+
+            # --- start state ---
+            if self.state == 'start':
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    self.title_flash_sound.play()
+                    self.title_clicked = True
+                    self.flash_start = perf_counter()
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.hovered:
+                    self.title_flash_sound.play()
+                    self.title_clicked = True
+                    self.flash_start = perf_counter()
+
+            # --- play state ---
+            elif self.state == 'play':
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.pause_play_time()
+                        self.state = 'stop'
+
+                if event.type == self.obstacle_event:
+                    self.spawn_obstacle()
+
+            # --- pause state ---
+            elif self.state == 'stop':
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.resume_play_time()
+                        self.state = 'play'
+
+            # --- game over state ---
+            elif self.state == 'game over':
+                if event.type == pygame.KEYDOWN:
+                    pass
+
     def start_screen(self, dt):
-            self.screen.fill(COLOR['start_screen_bg'])
-            start_text = self.start_screen_font.render('Shadow Drift', True, COLOR['sart_screen_text'])
-            text_rect = start_text.get_rect(center=WINDOW_CENTER)
-            self.screen.blit(start_text, text_rect)
+        self.screen.fill(COLOR['start_screen_bg'])
+
+        # --- get scaled mouse pos ---
+        scaled_pos = get_scaled_mouse_pos(self.window, BASE_RESOLUTION)
+
+        # --- hover detection ---
+        if self.text_positions['title'].collidepoint(scaled_pos):
+            if not self.hovered:
+                self.hovered = True
+                self.hover_sound_played = False
+            if not self.hover_sound_played:
+                self.menu_hover_sound.play() 
+                self.hover_sound_played = True
+        else:
+            self.hovered = False
+            self.hover_sound_played = False
+
+        # --- flicker alpha ---
+        if not self.title_clicked:
+            flicker = MAX_FLICKER_INT + (MAX_FLICKER_INT - MIN_FLICKER_INT) * sin(perf_counter() * TITLE_FLICKER_SPEED)
+        else:
+            flicker = 255 * abs(sin((perf_counter() - self.flash_start) * 25))
+            if perf_counter() - self.flash_start > 0.4:
+                self.play_start = perf_counter()
+                self.state = 'play'
+                self.title_clicked = False
+                self.fade_to_black()
+
+        # --- scale text if hovered ---
+        base_surface = self.text_messages['title']
+        if self.hovered:
+            scale = 1.1  # 10% larger
+            scaled = pygame.transform.rotozoom(base_surface, 0, scale)
+        else:
+            scaled = base_surface
+
+        scaled.set_alpha(flicker)
+        rect = scaled.get_rect(center=self.text_positions['title'].center)
+        self.screen.blit(scaled, rect)
 
     def play_loop(self, dt):
         # update dt
@@ -69,18 +154,16 @@ class Game:
     def game_over_screen(self, dt):
 
         self.game_over_sound.play()
-        self.fade_to_black()
+        self.fade_to_black(duration=GAME_OVER_SCROLL_SPEED)
         self.tracks['game_over_track'].play(-1)
 
-        # --- draw "Game Over" message ---
-        game_over_text = self.game_over_font.render("Game Over!", True, COLOR['game_over_text'])
-        text_rect = game_over_text.get_rect(center=WINDOW_CENTER)
-        self.screen.blit(game_over_text, text_rect)
+        # --- draw "Game Over" text ---
+        self.screen.blit(self.text_messages['game_over'], self.text_positions['game_over'])
 
         # --- game over time ---
         end_time = perf_counter() + 3
         while perf_counter() < end_time:
-            self.handle_events()     # allows ESC quit, etc.
+            self.handle_events()     # allows input
             self.present_frame()
             self.clock.tick(FPS)
 
@@ -107,7 +190,10 @@ class Game:
         self.SAVE_FILE = join(user_dir, "save.json")
 
     def init_pygame(self):
-        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=512)
+        try:
+            pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
+        except:
+            print("Audio preinit failed, using defaults.")
         pygame.init()
         pygame.mixer.set_num_channels(128)
         self.clock = pygame.time.Clock()
@@ -124,12 +210,23 @@ class Game:
 
     def load_graphics(self):
         # --- fonts ---
-        self.start_screen_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_SCREEN_FONT_SIZE)
+        self.start_screen_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE)
         self.score_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE)
         self.game_over_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE)
 
+        # --- pre-render static texts ---
+        self.text_messages: dict = {
+            'title': self.start_screen_font.render('Shadow Drift', True, COLOR['title_text']),
+            'game_over': self.game_over_font.render("Game Over!", True, COLOR['game_over_text']),
+        }
+
+        self.text_positions: dict = {
+            'title': self.text_messages['title'].get_rect(center=WINDOW_CENTER),
+            'game_over': self.text_messages['game_over'].get_rect(center=WINDOW_CENTER),
+        }
+
         # --- draws ---
-        self.player_glows = {
+        self.player_glows: dict = {
         "blue": pygame.Surface((80, 80), pygame.SRCALPHA),
         "red": pygame.Surface((80, 80), pygame.SRCALPHA)
         }
@@ -144,7 +241,7 @@ class Game:
 
         self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
 
-        self.player_sprite_variants = {
+        self.player_sprite_variants: dict = {
             1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
             2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),
         }
@@ -159,6 +256,9 @@ class Game:
                              'game_track_2': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_2.ogg')),}
 
         # --- sound effects ---
+        self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
+        self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
+        self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
         self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.ogg'))
         self.explosion_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'explosion_sound.ogg'))
         self.game_over_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_sound.ogg'))
@@ -178,6 +278,9 @@ class Game:
             self.base_volumes[name] = track.get_volume()
 
         # --- sound effects ---
+        self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME)
+        self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME)
+        self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME)
         self.damage_sound.set_volume(DAMAGE_SOUND_VOLUME)
         self.explosion_sound.set_volume(EXPLOSION_SOUND_VOLUME)
         self.game_over_sound.set_volume(GAME_OVER_SOUND_VOLUME)
@@ -188,7 +291,6 @@ class Game:
         # --- Game starting conditions ---
         self.fullscreen = True
         self.state = 'start'
-        self.record_checked = False
 
         # --- timing system ---
         self.start_time = perf_counter() # session runtime anchor
@@ -198,12 +300,19 @@ class Game:
         self.total_paused = 0.0
         self.is_paused = False
 
-        # --- score text rendering setup ---
+        # --- animation related setup ---
+        # sounds and visuals
+        self.record_checked = False
+        self.title_clicked = False
+        self.hovered = False
+        self.hover_sound_played = False
+
+        # score text rendering
         self.prev_stats = None
         self.stats_text = None
         self.stats_text_shadow = None
 
-        # --- player death animation setup ---
+        # player death animation
         self.explosion_index = 0
         self.explosion_finished = False
         self.explosion_speed = PLAYER_EXPLOSION_SPEED
@@ -244,49 +353,6 @@ class Game:
             self.previous_runtime = 0.0
 
 # --- Main loop ---
-    def handle_events(self):
-        '''Check for inputs and initiate custome events.'''
-
-        print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
-
-        for event in pygame.event.get():
-            # --- General events ---
-            if event.type == pygame.QUIT:
-                self.save_game()
-                self.close_game()
-
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
-                        self.toggle_fullscreen()
-
-            # --- start state ---
-            if self.state == 'start':
-                if event.type == pygame.KEYDOWN:
-                    if event.key in (pygame.K_ESCAPE, pygame.K_RETURN):
-                        self.play_start = perf_counter()
-                        self.state = 'play'
-
-            # --- play state ---
-            elif self.state == 'play':
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.pause_play_time()
-                        self.state = 'stop'
-
-                if event.type == self.obstacle_event:
-                    self.spawn_obstacle()
-
-            # --- pause state ---
-            elif self.state == 'stop':
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.resume_play_time()
-                        self.state = 'play'
-
-            # --- game over state ---
-            elif self.state == 'game over':
-                if event.type == pygame.KEYDOWN:
-                    pass
 
     def spawn_obstacle(self):
         # --- choose speed of obstacle ---
@@ -312,11 +378,15 @@ class Game:
             self.background.frames = self.backgrounds['bg3']
 
     def check_collisions(self):
+        if not self.player.is_alive:
+            return
+        
         hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
         if hit and self.player.can_collide:
             self.player.health -= 1
             if self.player.health >= 1:
                 self.damage_sound.play()
+                self.player.speed += 50
                 self.player.glow = self.player.glows['red']
             else:
                 self.explosion_sound.play()

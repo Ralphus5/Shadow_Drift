@@ -6,16 +6,20 @@ WINDOW_WIDTH: int = 1280
 WINDOW_HEIGHT: int = 720
 WINDOW_CENTER = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
 BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
-FPS: int = 60
+FPS: Annotated[int, [25-120]] = 60
 
 # --- font sizes ---
-START_SCREEN_FONT_SIZE: int = 140
+TITLE_FONT_SIZE: int = 140
 SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
 
 # --- animations ---
-FADE_TO_BLACK_DURATION: float = 1.6
-FADE_TO_BLACK_SMOOTHNESS: int = 500
+TITLE_FLICKER_SPEED: Annotated[float, 1-6] = 5
+MAX_FLICKER_INT: Annotated[int, 188-255] = 255
+MIN_FLICKER_INT: Annotated[int, 60-160] = 100
+FADE_TO_BLACK_SMOOTHNESS: int = 600
+FADE_TO_BLACK_DURATION: float = 0.6
+GAME_OVER_SCROLL_SPEED: float = 1.6
 BACKGROUND_FRAME_INTERVALL: int = 100
 PLAYER_EXPLOSION_SPEED: float = 1.0
 
@@ -25,23 +29,29 @@ COLOR = {'ui_text': "#000000",
         'blue_player_glow': "#0066FF81",
         'red_player_glow': "#FF000081",
         'game_over_text': "#C90E0E",
-        'start_screen_bg': "#000000",
-        'sart_screen_text': "#2D0BEE"}
+        'start_screen_bg': "#11121F",
+        'title_text': "#2D0BEE"}
 
 # ----- AUDIO -----
 # --- game music ---
-STOP_SCREEN_DIM_FACTOR: float = 0.5
-START_TRACK_VOLUME: float = 0.25
-GAME_OVER_TRACK_VOLUME: float = 0.3
-GAME_TRACK_1_VOLUME: float = 0.6
-GAME_TRACK_2_VOLUME: float = 0.5
+STOP_SCREEN_DIM_FACTOR: float = 0.5 # values???
+START_TRACK_VOLUME: Annotated[float, [0-1]] = 0.25
+GAME_OVER_TRACK_VOLUME: Annotated[float, [0-1]] = 0.3
+GAME_TRACK_1_VOLUME: Annotated[float, [0-1]] = 0.6
+GAME_TRACK_2_VOLUME: Annotated[float, [0-1]] = 0.5
 
 # --- sound effects ---
-DAMAGE_SOUND_VOLUME: float = 0.4
-EXPLOSION_SOUND_VOLUME: float = 0.4
-GAME_OVER_SOUND_VOLUME: float = 1
-RECORD_SOUND_VOLUME: float = 0.8
-ABILITY_SOUND_VOLUME: float = 1
+# menu sound volumes
+MENU_HOVER_SOUND_VOLUME: Annotated[float, [0-1]] = 0.8
+MENU_SELECT_SOUND_VOLUME: Annotated[float, [0-1]] = 1
+TITLE_FLASH_SOUND_VOLUME: Annotated[float, [0-1]] = 0.8
+
+# gameplay sound volumes
+DAMAGE_SOUND_VOLUME: Annotated[float, [0-1]] = 0.4
+EXPLOSION_SOUND_VOLUME: Annotated[float, [0-1]] = 0.4
+GAME_OVER_SOUND_VOLUME: Annotated[float, [0-1]] = 1
+RECORD_SOUND_VOLUME: Annotated[float, [0-1]] = 0.8
+ABILITY_SOUND_VOLUME: Annotated[float, [0-1]] = 1
 
 # ----- GAMEPLAY -----
 STATS = {'score': 0, 'record': 0}

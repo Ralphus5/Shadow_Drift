@@ -3,10 +3,25 @@ import pygame
 import os
 import sys
 import json
+from math import *
 from os.path import join
 from typing import *
 from random import randint, choice, choices, uniform, triangular
 from time import perf_counter
+
+# --- ui ---
+def check_hover(rect: pygame.Rect, mouse_pos: tuple[float, float]) -> bool:
+    """Return True if mouse is hovering over rect."""
+    return rect.collidepoint(mouse_pos)
+
+# --- mouse input ---
+def get_scaled_mouse_pos(window: pygame.Surface, base_resolution: tuple[int, int]) -> tuple[float, float]:
+    """Return mouse position scaled from current window to base resolution."""
+    window_w, window_h = window.get_size()
+    scale_x = base_resolution[0] / window_w
+    scale_y = base_resolution[1] / window_h
+    mx, my = pygame.mouse.get_pos()
+    return mx * scale_x, my * scale_y
 
 # --- randomizers ---
 def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:
