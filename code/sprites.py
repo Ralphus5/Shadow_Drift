@@ -1,26 +1,6 @@
 from settings import *
 from utils import *
 
-class AnimatedBackground(pygame.sprite.Sprite):
-    """Animated background sprite cycling through frames."""
-
-    def __init__(self, groups, layer, frames, interval=BACKGROUND_FRAME_INTERVALL):
-        self._layer = layer
-        super().__init__(groups)
-        self.frames = frames
-        self.index = 0
-        self.timer = 0
-        self.interval = interval  # ms between frame changes
-        self.image = self.frames[self.index]
-        self.rect = self.image.get_rect(topleft=(0, 0))
-
-    def update(self, dt, *_):
-        self.timer += dt * 1000
-        if self.timer >= self.interval:
-            self.timer = 0
-            self.index = (self.index + 1) % len(self.frames)
-            self.image = self.frames[self.index]
-
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
@@ -62,7 +42,7 @@ class Player(pygame.sprite.Sprite):
         self.can_collide = False
 
     def keep_in_window(self):
-        self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 10, WINDOW_HEIGHT + 10))
+        self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 20, WINDOW_HEIGHT + 20))
 
     def handle_input(self, dt, play_time):
         self.play_time = play_time
@@ -120,6 +100,42 @@ class Player(pygame.sprite.Sprite):
         
         self.refresh_appearance()
 
+class AnimatedBackground(pygame.sprite.Sprite):
+    """Animated background sprite cycling through frames."""
+
+    def __init__(self, groups, layer, frames, interval=BACKGROUND_FRAME_INTERVALL):
+        self._layer = layer
+        super().__init__(groups)
+        self.frames = frames
+        self.index = 0
+        self.timer = 0
+        self.interval = interval  # ms between frame changes
+        self.image = self.frames[self.index]
+        self.rect = self.image.get_rect(topleft=(0, 0))
+
+    def update(self, dt, *_):
+        self.timer += dt * 1000
+        if self.timer >= self.interval:
+            self.timer = 0
+            self.index = (self.index + 1) % len(self.frames)
+            self.image = self.frames[self.index]
+
+class Fruit(pygame.sprite.Sprite):
+    def __init__(self, groups, layer, speed, apple_sprite):
+        self._layer = layer
+        super().__init__(groups)
+        self.speed = speed
+        self.image = apple_sprite
+        self.rect = self.image.get_frect(center=(random_of_spectrum(100,WINDOW_WIDTH-200,bias=0.25),-100))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0,1)
+
+    def update(self, dt, play_time):
+        # --- move ---
+        self.rect.center += self.direction * self.speed * dt
+
+        if self.rect.top > WINDOW_HEIGHT:
+            self.kill()
 
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""
@@ -127,8 +143,6 @@ class Obstacle(pygame.sprite.Sprite):
     def __init__(self, groups, layer, speed, sprite_variants):
         self._layer = layer
         super().__init__(groups)
-
-        # --- parameters ---
         self.speed = speed
 
         # --- visual setup ---
@@ -142,7 +156,7 @@ class Obstacle(pygame.sprite.Sprite):
         
     def update(self, dt, play_time):
         # --- move ---
-        self.rect.centerx -= self.speed * dt
+        self.rect.center += self.direction * self.speed * dt
 
         # --- update stats when killed ---
         if self.rect.right < 0:

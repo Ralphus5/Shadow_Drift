@@ -37,11 +37,11 @@ COLOR = {'ui_text': "#000000",
 
 # ----- AUDIO -----
 # --- game music ---
-STOP_SCREEN_DIM_FACTOR: float = 0.5 # values???
-START_TRACK_VOLUME: Annotated[float, [0-1]] = 0.25
-GAME_OVER_TRACK_VOLUME: Annotated[float, [0-1]] = 0.3
+STOP_SCREEN_DIM_FACTOR: Annotated[float, [0-1]] = 0.2
+START_TRACK_VOLUME: Annotated[float, [0-1]] = 0.3
+GAME_OVER_TRACK_VOLUME: Annotated[float, [0-1]] = 0.25
 GAME_TRACK_1_VOLUME: Annotated[float, [0-1]] = 0.6
-GAME_TRACK_2_VOLUME: Annotated[float, [0-1]] = 0.5
+GAME_TRACK_2_VOLUME: Annotated[float, [0-1]] = 0.6
 
 # --- sound effects ---
 # menu sound volumes
@@ -60,5 +60,6 @@ ABILITY_SOUND_VOLUME: Annotated[float, [0-1]] = 1
 STATS = {'score': 0, 'record': 0}
 DEFAULT_PLAYER_SPEED: int = 250
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
+FRUIT_SPAWN_PER_MINUTE: float = 4
 PLAYER_ABILITY_COOLDOWN: float = 10.0 # seconds
 PLAYER_ABILITY_DURATION: float = 1.0 # seconds
