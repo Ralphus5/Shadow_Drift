@@ -45,8 +45,6 @@ class Game:
     def handle_events(self):
         '''Check for inputs and initiate custome events.'''
 
-        print(f"[time] played = {self.play_time:.3f}s   absolute runtime = {self.runtime}") # DEBUG
-
         for event in pygame.event.get():
             # --- General events ---
             if event.type == pygame.QUIT:
@@ -59,16 +57,17 @@ class Game:
 
             # --- start state ---
             if self.state == 'start':
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-                    self.title_flash_sound.play()
-                    self.title_clicked = True
-                    self.flash_start = perf_counter()
+                # check for title click
+                if not self.title_clicked:
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                        self.title_flash_sound.play()
+                        self.title_clicked = True
+                        self.flash_start = perf_counter()
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if self.hovered:
-                    self.title_flash_sound.play()
-                    self.title_clicked = True
-                    self.flash_start = perf_counter()
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hovered:
+                        self.title_flash_sound.play()
+                        self.title_clicked = True
+                        self.flash_start = perf_counter()
 
             # --- play state ---
             elif self.state == 'play':
@@ -83,14 +82,16 @@ class Game:
             # --- pause state ---
             elif self.state == 'stop':
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
+                    if event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
                         self.resume_play_time()
                         self.state = 'play'
 
             # --- game over state ---
             elif self.state == 'game over':
                 if event.type == pygame.KEYDOWN:
-                    pass
+                    if event.key == pygame.K_RETURN:
+                        self.save_game()
+                        self.close_game()
 
     def start_screen(self, dt):
         self.screen.fill(COLOR['start_screen_bg'])
@@ -104,7 +105,7 @@ class Game:
                 self.hovered = True
                 self.hover_sound_played = False
             if not self.hover_sound_played:
-                self.menu_hover_sound.play() 
+                self.menu_hover_sound.play()
                 self.hover_sound_played = True
         else:
             self.hovered = False
@@ -119,12 +120,14 @@ class Game:
                 self.play_start = perf_counter()
                 self.state = 'play'
                 self.title_clicked = False
+                self.hovered = False
+                self.hover_sound_played = False
                 self.fade_to_black()
 
         # --- scale text if hovered ---
         base_surface = self.text_messages['title']
         if self.hovered:
-            scale = 1.1  # 10% larger
+            scale = 1.1
             scaled = pygame.transform.rotozoom(base_surface, 0, scale)
         else:
             scaled = base_surface
@@ -149,7 +152,28 @@ class Game:
         # present frame
 
     def pause_menu(self, dt):
-        pass
+        self.screen.fill(COLOR['stop_screen_bg'])
+
+        self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
+        self.draw_score_text()
+        self.render_score_text(True) # return text to play state
+
+        mouse_pos = get_scaled_mouse_pos(self.window, BASE_RESOLUTION)
+        mouse_click = pygame.mouse.get_pressed()[0]
+
+        for btn in self.ui_buttons:
+            btn.update(mouse_pos, mouse_click)
+            if btn.hover_changed and btn.hovered:
+                self.menu_hover_sound.play()
+            btn.draw(self.screen)
+
+            if btn.clicked:
+                if btn is self.ui_buttons[0]:
+                    self.resume_play_time()
+                    self.state = 'play'
+                elif btn is self.ui_buttons[1]:
+                    self.fade_to_black()
+                    self.close_game()
 
     def game_over_screen(self, dt):
 
@@ -160,9 +184,7 @@ class Game:
         # --- draw "Game Over" text ---
         self.screen.blit(self.text_messages['game_over'], self.text_positions['game_over'])
 
-        # --- game over time ---
-        end_time = perf_counter() + 3
-        while perf_counter() < end_time:
+        while True:
             self.handle_events()     # allows input
             self.present_frame()
             self.clock.tick(FPS)
@@ -234,6 +256,11 @@ class Game:
         pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
 
         # --- images ---
+
+        self.ui_buttons: list = [UIButton(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
+                                 UIButton(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60))]
+        self.ui_buttons[0].base_image = pygame.transform.scale(self.ui_buttons[0].base_image, (60,60)) # scale start button
+
         self.backgrounds: dict = {
             'bg1': [pygame.image.load(join(self.IMG_DIR, 'background1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
             'bg2': [pygame.image.load(join(self.IMG_DIR, 'background2', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
@@ -406,20 +433,20 @@ class Game:
             else:
                 self.explosion_finished = True
 
-    def render_score_text(self):
+    def render_score_text(self, paused=False, main_color=COLOR['ui_text'], text_shadow_color=COLOR['ui_text_shadow']):
         '''Render text surfaces only when stats change.'''
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
-        if self.current_stats != self.prev_stats:
+        if self.current_stats != self.prev_stats or paused:
             text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
-            self.stats_text = self.score_font.render(text, True, COLOR['ui_text'])
-            self.stats_text_shadow = self.score_font.render(text, True, COLOR['ui_text_shadow'])
+            self.stats_text = self.score_font.render(text, True, main_color)
+            self.stats_text_shadow = self.score_font.render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats
 
     def draw_order(self):
         # --- DRAWING ORDER ---
         self.draw_sprites()
         self.draw_effects()
-        self.draw_ui()
+        self.draw_score_text()
 
     def draw_sprites(self):
         self.all_sprites.draw(self.screen)
@@ -433,8 +460,7 @@ class Game:
         if self.player.ability_ready and self.player.health:
             self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
 
-    def draw_ui(self):
-        # score text
+    def draw_score_text(self):
         self.screen.blit(self.stats_text_shadow, (22, 22))
         self.screen.blit(self.stats_text, (20, 20))
 

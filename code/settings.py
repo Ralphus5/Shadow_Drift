@@ -26,10 +26,13 @@ PLAYER_EXPLOSION_SPEED: float = 1.0
 # --- colors ---
 COLOR = {'ui_text': "#000000",
         'ui_text_shadow': "#FFFFFF",
+        'ui_text_stop': "#0015FF",
+        'ui_text_shadow_stop': "#000000",
         'blue_player_glow': "#0066FF81",
         'red_player_glow': "#FF000081",
         'game_over_text': "#C90E0E",
         'start_screen_bg': "#11121F",
+        'stop_screen_bg': "#11121F",
         'title_text': "#2D0BEE"}
 
 # ----- AUDIO -----

@@ -71,14 +71,14 @@ class Player(pygame.sprite.Sprite):
         recent_keys = pygame.key.get_just_pressed()
 
         # --- movement ---
-        self.direction.x = int(keys[pygame.K_RIGHT]) - int(keys[pygame.K_LEFT])
-        self.direction.y = int(keys[pygame.K_DOWN]) - int(keys[pygame.K_UP])
+        self.direction.x = int(keys[pygame.K_d]) - int(keys[pygame.K_a])
+        self.direction.y = int(keys[pygame.K_s]) - int(keys[pygame.K_w])
         self.direction = self.direction.normalize() if self.direction else self.direction
         self.rect.center += dt * self.speed * self.direction
 
         # --- ability use ---
         # check cooldown
-        if self.play_time - self.ability_start_time >= self.ability_cooldown:
+        if not self.ability_ready and self.play_time - self.ability_start_time > self.ability_cooldown:
             self.ability_ready = True
 
         # activate ability
@@ -86,7 +86,7 @@ class Player(pygame.sprite.Sprite):
             self.activate_ability()
 
         # end ability duration
-        if self.play_time - self.ability_start_time >= self.ability_duration:
+        if not self.can_collide and self.play_time - self.ability_start_time > self.ability_duration:
             self.can_collide = True
 
     def refresh_appearance(self):
