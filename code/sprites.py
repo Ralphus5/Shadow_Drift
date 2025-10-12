@@ -1,5 +1,5 @@
 from settings import *
-from utils import *
+
 
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
@@ -126,7 +126,7 @@ class Fruit(pygame.sprite.Sprite):
         super().__init__(groups)
         self.speed = speed
         self.image = apple_sprite
-        self.rect = self.image.get_frect(center=(random_of_spectrum(100,WINDOW_WIDTH-200,bias=0.25),-100))
+        self.rect = self.image.get_frect(center=(random_of_spectrum(60,WINDOW_WIDTH-100,bias=0.6),-100))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0,1)
 

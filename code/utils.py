@@ -1,4 +1,3 @@
-from settings import *
 import pygame
 import os
 import sys
@@ -12,14 +11,6 @@ from random import randint, choice, choices, uniform, triangular
 from time import perf_counter
 from functools import wraps
 
-# --- mouse input ---
-def get_scaled_mouse_pos(window: pygame.Surface, base_resolution: tuple[int, int]) -> tuple[float, float]:
-    """Return mouse position scaled from current window to base resolution."""
-    window_w, window_h = window.get_size()
-    scale_x = base_resolution[0] / window_w
-    scale_y = base_resolution[1] / window_h
-    mx, my = pygame.mouse.get_pos()
-    return mx * scale_x, my * scale_y
 
 # --- randomizers ---
 def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:
@@ -27,6 +18,7 @@ def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: f
     - as_float: True → return float, False → return integer
     - bias: if given (0.0–1.0), biases result toward one end
       e.g. bias=0.2 favors start, bias=0.8 favors end"""
+    
     if bias is not None:
         # triangular gives bias toward "mode"
         value = triangular(start, end, start + (end - start) * bias)
@@ -37,14 +29,16 @@ def random_of_selection(selection: Sequence, weights: Optional[Sequence[float]] 
     """Return random element from a collection.
     - weights: optional list of probabilities (must match len(selection))
     - unique: if True, convert to set before choice (removes duplicates)"""
+
     seq = list(set(selection)) if unique else list(selection)
     if weights:
         return choices(seq, weights=weights, k=1)[0]
     return choice(seq)
 
 # --- debugging and performance check ---
-# check how long a function took to execute
 def get_func_time(func: Callable) -> Callable:
+    '''check how long a function took to execute'''
+
     @wraps(func)
     def wrapper(*args, **kwargs) -> Any:
         start_time: float = perf_counter()
@@ -56,11 +50,12 @@ def get_func_time(func: Callable) -> Callable:
 
     return wrapper
 
-# show playtime and runtime
 def print_game_time(play_time, total_paused, runtime):
-    '''use this at top of the event handler function to mesure times'''
-    print(f"[time] played = {play_time:.3f}s   stopped = {total_paused:.3f}s   absolute runtime = {runtime}") # DEBUG
+    '''DEBUGGING TOOL: Use this at top of the event handler function to measure times.'''
 
+    print(f"[time] played = {play_time:.3f}s   stopped = {total_paused:.3f}s   absolute runtime = {runtime}")
+
+# --- UI elements ---
 class UIButton:
     """Simple hoverable and clickable image button."""
     def __init__(self, image, pos: tuple, anchor: str = "center", hover_scale_factor: float = 1.1):

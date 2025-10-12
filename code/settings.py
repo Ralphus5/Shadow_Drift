@@ -1,19 +1,20 @@
 from utils import *
 
-# ----- VISUALS -----
-# --- display ---
+
+# --- VISUALS ---
+# display
 WINDOW_WIDTH: int = 1280 
 WINDOW_HEIGHT: int = 720
 WINDOW_CENTER = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
 BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FPS: Annotated[int, [25-120]] = 60
 
-# --- font sizes ---
+# font sizes
 TITLE_FONT_SIZE: int = 140
 SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
 
-# --- animations ---
+# animations
 TITLE_FLICKER_SPEED: Annotated[float, 1-6] = 5
 MAX_FLICKER_INT: Annotated[int, 188-255] = 255
 MIN_FLICKER_INT: Annotated[int, 60-160] = 100
@@ -23,7 +24,7 @@ GAME_OVER_SCROLL_SPEED: float = 1.6
 BACKGROUND_FRAME_INTERVALL: int = 100
 PLAYER_EXPLOSION_SPEED: float = 1.0
 
-# --- colors ---
+# colors
 COLOR = {'ui_text': "#000000",
         'ui_text_shadow': "#FFFFFF",
         'ui_text_stop': "#0015FF",
@@ -36,14 +37,13 @@ COLOR = {'ui_text': "#000000",
         'title_text': "#2D0BEE"}
 
 # ----- AUDIO -----
-# --- game music ---
+# game music
 STOP_SCREEN_DIM_FACTOR: Annotated[float, [0-1]] = 0.2
 START_TRACK_VOLUME: Annotated[float, [0-1]] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, [0-1]] = 0.25
 GAME_TRACK_1_VOLUME: Annotated[float, [0-1]] = 0.6
 GAME_TRACK_2_VOLUME: Annotated[float, [0-1]] = 0.6
 
-# --- sound effects ---
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, [0-1]] = 0.8
 MENU_SELECT_SOUND_VOLUME: Annotated[float, [0-1]] = 1

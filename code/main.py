@@ -1,5 +1,3 @@
-from settings import *
-from utils import *
 from sprites import *
 
 
@@ -24,6 +22,7 @@ class Game:
             dt = self.clock.tick(FPS) / 1000
             self.handle_input()
             self.set_game_mode()
+            #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             if self.state == 'start':
                 self.start_screen(dt)
             elif self.state == 'play':
@@ -73,6 +72,7 @@ class Game:
             elif self.state == 'game_over':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
+                        self.save_game()
                         self.requested_state = 'start'
                     elif event.key == pygame.K_ESCAPE:
                         self.save_game()
@@ -91,10 +91,10 @@ class Game:
 
         # --- enter actions ---
         if new == 'start':
-            self.save_game()
-            self.change_track('start_track', 1)
             if old == 'game_over':
-                self.reset_to_start()
+                self.init_game_state()
+                self.init_sprites()
+            self.change_track('start_track', 1)
 
         elif new == 'play':
             if old == 'start':
@@ -120,7 +120,7 @@ class Game:
         self.screen.fill(COLOR['start_screen_bg'])
 
         # --- get scaled mouse pos ---
-        scaled_pos = get_scaled_mouse_pos(self.window, BASE_RESOLUTION)
+        scaled_pos = self.get_scaled_mouse_pos()
 
         # --- hover detection ---
         if self.text_positions['title'].collidepoint(scaled_pos):
@@ -161,11 +161,9 @@ class Game:
         self.all_sprites.update(dt, self.play_time)
         self.check_collisions()
         self.check_record()
-        self.update_death_animation()
         self.render_score_text()
         self.draw_order()
-        if not self.player.is_alive and self.explosion_finished:
-            self.requested_state = 'game_over'
+        self.handle_player_death()
         # present_frame
 
     def pause_menu(self, dt):
@@ -174,7 +172,7 @@ class Game:
         self.draw_score_text()
         self.render_score_text(True) # !!!
 
-        mouse_pos = get_scaled_mouse_pos(self.window, BASE_RESOLUTION)
+        mouse_pos = self.get_scaled_mouse_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
 
         for btn in self.ui_buttons:
@@ -324,36 +322,36 @@ class Game:
 
     def init_game_state(self):
         # --- Game starting conditions ---
-        self.fullscreen = True
+        self.fullscreen = True # !!!
         self.state = None
         self.requested_state = 'start'
+        self.record_checked = False
 
-        # --- timing system ---
-        self.start_time = perf_counter() # session runtime anchor
-        self.play_time = 0.0         # gamplay time
+        # --- time tracking ---
+        self.start_time = perf_counter()
+        self.play_time = 0.0
         self.play_start = None
         self.pause_start = 0.0
         self.total_paused = 0.0
         self.is_paused = False
 
-        # --- animation/UI state
+        # --- UI flags ---
         # buttons
         self.title_clicked = False
         self.hovered = False
         self.hover_sound_played = False
-        # score text
+        # score
         self.prev_stats = None
         self.stats_text = None
         self.stats_text_shadow = None
-        self.record_checked = False
+        STATS['score'] = 0
+
         # player death animation
         self.explosion_index = 0
-        self.explosion_finished = False
-        self.explosion_speed = PLAYER_EXPLOSION_SPEED
+        self.current_explosion_frame = self.explosion_frames[0]
 
-        # --- music system ---
-        self.music_channel = None
-        self.current_track = None
+        # obstacle timing
+        self.next_obstacle_spawn_time = OBSTACLE_SPAWN_TIME
 
     def init_sprites(self):
         # --- sprite groups and layers ---
@@ -391,9 +389,9 @@ class Game:
 
     def spawn_obstacle(self):
         # --- choose speed of obstacle ---
-        if self.play_time < 25000:
+        if self.play_time < 25:
             speed = 260
-        elif 25000 <= self.play_time < 45000:
+        elif 25 <= self.play_time < 45:
             speed = 350
         else:
             speed = 450
@@ -409,7 +407,7 @@ class Game:
             self.next_obstacle_spawn_time = self.play_time + OBSTACLE_SPAWN_TIME
 
     def spawn_fruit(self, dt):
-        speed = random_of_spectrum(50,250,False,bias=0.3)
+        speed = random_of_spectrum(50,270,False,bias=0.3)
         if random.random() < FRUIT_SPAWN_PER_MINUTE/60 * dt:
             Fruit((self.all_sprites, self.fruit_sprites),
                   self.LAYERS['fruits'],
@@ -451,14 +449,6 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
-    def update_death_animation(self):
-        if not self.player.is_alive and not self.explosion_finished:
-            if self.explosion_index < len(self.explosion_frames):
-                self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
-                self.explosion_index += PLAYER_EXPLOSION_SPEED
-            else:
-                self.explosion_finished = True
-
     def render_score_text(self, paused=False, main_color=COLOR['ui_text'], text_shadow_color=COLOR['ui_text_shadow']):
         '''Render text surfaces only when stats change.'''
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
@@ -479,7 +469,7 @@ class Game:
 
     def draw_effects(self):
         # player death explosion
-        if not self.player.is_alive and not self.explosion_finished:
+        if not self.player.is_alive and self.explosion_index < len(self.explosion_frames):
             self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))
 
         # player glow
@@ -489,6 +479,14 @@ class Game:
     def draw_score_text(self):
         self.screen.blit(self.stats_text_shadow, (22, 22))
         self.screen.blit(self.stats_text, (20, 20))
+
+    def handle_player_death(self):
+        if not self.player.is_alive:
+            if self.explosion_index < len(self.explosion_frames):
+                self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
+                self.explosion_index += PLAYER_EXPLOSION_SPEED
+            else:
+                self.requested_state = 'game_over'
 
 # --- Game functionality ---
     def present_frame(self):
@@ -568,39 +566,20 @@ class Game:
 
     def change_track(self, key, fade_ms=1000):
         """Switch to another track while preserving base volume."""
+
+        if hasattr(self, 'music_channel') and self.music_channel and self.music_channel.get_busy():
+            self.music_channel.stop()
+
         track = self.tracks[key]
-        if self.current_track != key:
-            if self.music_channel and self.music_channel.get_busy():
-                self.music_channel.fadeout(fade_ms)
-            self.music_channel = track.play(loops=-1, fade_ms=fade_ms)
-            self.music_channel.set_volume(self.base_volumes[key])
-            self.current_track = key
+        self.music_channel = track.play(loops=-1, fade_ms=fade_ms)
+        self.music_channel.set_volume(self.base_volumes[key])
+        self.current_track = key
 
-    def reset_to_start(self):
-        # scores and flags
-        STATS['score'] = 0
-        self.record_checked = False
-        self.title_clicked = False
-        self.hovered = False
-        self.hover_sound_played = False
-        del self.next_obstacle_spawn_time
-
-        # time + pause state
-        self.play_time = 0.0
-        self.play_start = None
-        self.total_paused = 0.0
-        self.is_paused = False
-
-        # sprites
-        self.obstacle_sprites.empty()
-        self.all_sprites.empty()
-        self.background = AnimatedBackground(self.all_sprites, self.LAYERS['background'], self.backgrounds['bg_1'])
-        self.player = Player(self.all_sprites, self.LAYERS['player'],
-                            self.player_sprite_variants, self.player_glows, self.ability_sound)
-
-        # death anim
-        self.explosion_index = 0
-        self.explosion_finished = False
+    def get_scaled_mouse_pos(self):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        scale_x = BASE_RESOLUTION[0] / self.window.get_width()
+        scale_y = BASE_RESOLUTION[1] / self.window.get_height()
+        return int(mouse_x * scale_x), int(mouse_y * scale_y)
 
 # --- Time system ---
     def update_play_time(self):
