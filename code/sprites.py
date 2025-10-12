@@ -18,6 +18,8 @@ class Player(pygame.sprite.Sprite):
         self.facing_right = True
         self.health = 2
         self.speed = DEFAULT_PLAYER_SPEED
+        self.iframes = False
+        self.iframe_start = 0.0
 
         # --- ability system ---
         self.can_collide = True
@@ -34,6 +36,11 @@ class Player(pygame.sprite.Sprite):
 
         # --- motion setup ---
         self.direction = pygame.Vector2()
+
+    def activate_iframes(self, play_time):
+        if self.can_collide:
+            self.iframes = True
+            self.iframe_start = play_time
 
     def activate_ability(self):
         self.ability_sound.play()
@@ -70,34 +77,44 @@ class Player(pygame.sprite.Sprite):
             self.can_collide = True
 
     def refresh_appearance(self):
-        # --- update sprite variant ---
-        self.base_image = self.sprite_variants[self.health]
-
-        # --- adjust facing ---
+        # --- facing direction ---
         if self.direction.x < 0:
             self.facing_right = False
         elif self.direction.x > 0:
             self.facing_right = True
 
-        if self.facing_right:
-            self.image = self.base_image
-        else:
-            self.image = pygame.transform.flip(self.base_image, True, False)
-
+        # --- base image ---
+        base = self.sprite_variants[max(1, self.health)]
+        if not self.facing_right:
+            base = pygame.transform.flip(base, True, False)
+        self.image = base.copy()
         self.mask = pygame.mask.from_surface(self.image)
         self.rect.size = self.image.get_size()
 
-        # --- blur if ability active ---
-        self.image.set_alpha(100 if not self.can_collide else 255)
+        # --- ability and iframes ---
+        if not self.can_collide:
+            progress = (self.play_time - self.ability_start_time) / self.ability_duration
+            progress = max(0.0, min(progress, 1.0))
+            darkness = 255 - int(255 * min(progress * PLAYER_BLACK_FADE_SPEED, 1))
+            overlay = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+            overlay.fill((darkness, darkness, darkness))
+            self.image.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        elif self.iframes:
+            flicker = 150 + int(105 * abs(sin(self.play_time * 20)))
+            self.image.set_alpha(flicker)
+        else:
+            self.image.set_alpha(255)
 
     def update(self, dt, play_time):
         # --- control flow of player sprite ---
         self.play_time = play_time
 
         self.handle_input(dt, self.play_time)
-
         self.keep_in_window()
-        
+
+        if self.iframes and self.play_time - self.iframe_start > PLAYER_IFRAMES_DURATION:
+            self.iframes = False
+
         self.refresh_appearance()
 
 class AnimatedBackground(pygame.sprite.Sprite):

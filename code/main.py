@@ -22,7 +22,7 @@ class Game:
             dt = self.clock.tick(FPS) / 1000
             self.handle_input()
             self.set_game_mode()
-            #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
+            print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             if self.state == 'start':
                 self.start_screen(dt)
             elif self.state == 'play':
@@ -47,10 +47,10 @@ class Game:
 
             # --- start state ---
             if self.state == 'start':
-                if (not self.title_clicked) and (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hovered):
-                    self.title_flash_sound.play()
-                    self.title_clicked = True
-                    self.flash_start = perf_counter()
+                if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hovered):
+                    self.start_flash()
+                    self.play_start = perf_counter()
+                    self.requested_state = 'play'
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.save_game()
@@ -118,37 +118,38 @@ class Game:
 
     def start_screen(self, dt):
         self.screen.fill(COLOR['start_screen_bg'])
-
-        # --- get scaled mouse pos ---
         scaled_pos = self.get_scaled_mouse_pos()
 
-        # --- hover detection ---
-        if self.text_positions['title'].collidepoint(scaled_pos):
-            if not self.hovered:
-                self.hovered = True
-                self.hover_sound_played = False
-            if not self.hover_sound_played:
-                self.menu_hover_sound.play()
-                self.hover_sound_played = True
-        else:
-            self.hovered = False
+        # --- hover sound ---
+        hovered_now = self.text_positions['title'].collidepoint(scaled_pos)
+        if hovered_now and not self.hover_sound_played:
+            self.menu_hover_sound.play()
+            self.hover_sound_played = True
+        elif not hovered_now:
             self.hover_sound_played = False
+        self.hovered = hovered_now
 
-        # --- flicker alpha ---
-        if not self.title_clicked:
-            flicker = MAX_FLICKER_INT + (MAX_FLICKER_INT - MIN_FLICKER_INT) * sin(perf_counter() * TITLE_FLICKER_SPEED)
-        else:
-            flicker = 255 * abs(sin((perf_counter() - self.flash_start) * 25))
-            if perf_counter() - self.flash_start > 0.4:
-                self.play_start = perf_counter()
-                self.requested_state = 'play'
-
-        # --- draw title ---
+        # --- regular flicker animation ---
+        flicker = MAX_FLICKER_INT + (MAX_FLICKER_INT - MIN_FLICKER_INT) * sin(perf_counter() * TITLE_FLICKER_SPEED)
         base_surface = self.text_messages['title']
         scaled = pygame.transform.rotozoom(base_surface, 0, 1.1) if self.hovered else base_surface
         scaled.set_alpha(flicker)
         rect = scaled.get_rect(center=self.text_positions['title'].center)
         self.screen.blit(scaled, rect)
+
+    def start_flash(self):
+        """Play title flash and transition cleanly to play mode."""
+        self.title_flash_sound.play()
+        start = perf_counter()
+        while perf_counter() - start < 0.4:
+            flicker = 255 * abs(sin((perf_counter() - start) * 25))
+            surf = self.text_messages['title'].copy()
+            surf.set_alpha(flicker)
+            rect = surf.get_rect(center=self.text_positions['title'].center)
+            self.screen.fill(COLOR['start_screen_bg'])
+            self.screen.blit(surf, rect)
+            self.present_frame()
+            self.clock.tick(FPS)
 
     def play_loop(self, dt):
         # update dt
@@ -322,25 +323,26 @@ class Game:
 
     def init_game_state(self):
         # --- Game starting conditions ---
-        self.fullscreen = True # !!!
+        self.fullscreen = True
         self.state = None
         self.requested_state = 'start'
-        self.record_checked = False
 
         # --- time tracking ---
-        self.start_time = perf_counter()
+        if not hasattr(self,'absolute_start_time'):
+            self.absolute_start_time = perf_counter()
         self.play_time = 0.0
         self.play_start = None
         self.pause_start = 0.0
         self.total_paused = 0.0
         self.is_paused = False
 
+        # hover sound
+        if not hasattr(self,'hover_sound_played'):
+            self.hover_sound_played = False
+
         # --- UI flags ---
-        # buttons
-        self.title_clicked = False
-        self.hovered = False
-        self.hover_sound_played = False
         # score
+        self.record_checked = False
         self.prev_stats = None
         self.stats_text = None
         self.stats_text_shadow = None
@@ -360,9 +362,9 @@ class Game:
         self.fruit_sprites = pygame.sprite.Group()
 
         self.LAYERS = {'background': 0,
-                       'player': 1, 
-                       'fruits': 2,
-                       'obstacles': 3,}
+                       'fruits': 1,
+                       'obstacles': 2,
+                       'player': 3,}
 
         # --- instantiate background ---
         self.background = AnimatedBackground(self.all_sprites,
@@ -389,11 +391,11 @@ class Game:
 
     def spawn_obstacle(self):
         # --- choose speed of obstacle ---
-        if self.play_time < 25:
+        if STATS['score'] < FIRST_PHASE_END:
             speed = 260
-        elif 25 <= self.play_time < 45:
+        elif FIRST_PHASE_END <= STATS['score'] < THIRD_PHASE_END:
             speed = 350
-        else:
+        elif THIRD_PHASE_END <= STATS['score']:
             speed = 450
 
         # --- spawn obstacle ---
@@ -415,26 +417,26 @@ class Game:
                   self.apple_sprite)
 
     def change_background(self):
-        if self.play_time < 20000:
+        if STATS['score'] == FIRST_PHASE_END:
             self.background.frames = self.backgrounds['bg_1']
-        elif self.play_time < 40000:
+        elif STATS['score'] == SECOND_PHASE_END:
             self.background.frames = self.backgrounds['bg_2']
-        else:
+        elif STATS['score'] == THIRD_PHASE_END:
             self.background.frames = self.backgrounds['bg_3']
 
     def check_collisions(self):
         if not self.player.is_alive:
             return
         
-        hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
-        if hit: 
-            STATS['score'] += 1
-            if self.player.can_collide:
+        if not self.player.iframes and self.player.can_collide:
+            hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
+            if hit:
                 self.player.health -= 1
                 if self.player.health >= 1:
                     self.damage_sound.play()
                     self.player.speed += 50
                     self.player.glow = self.player.glows['red']
+                    self.player.activate_iframes(self.play_time)
                 else:
                     self.explosion_sound.play()
                     self.player.kill()
@@ -599,7 +601,7 @@ class Game:
     @property
     def runtime(self):
         """Total runtime since the program started (seconds)."""
-        return perf_counter() - self.start_time
+        return perf_counter() - self.absolute_start_time
 
 # --- Execute Lifecycle ---
 def main():
