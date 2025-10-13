@@ -19,13 +19,15 @@ COLOR = {'ui_text': "#000000",
         'game_over_hint': "#C90E0E",
         'start_screen_bg': "#11121F",
         'stop_screen_bg': "#11121F",
-        'title_text': "#2D0BEE"}
+        'title_text': "#2D0BEE",
+        'start_hint': '#2D0BEE'}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
 SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
-GAME_OVER_HINT_FONT_SIZE: int = 25
+GAME_OVER_HINT_FONT_SIZE: int = 23
+START_HINT_FONT_SITZE: int = 23
 
 # animations
 TITLE_FLICKER_SPEED: Annotated[float, (1-6)] = 5
@@ -52,10 +54,11 @@ MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 
 # gameplay sound volumes
+EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 # ----- GAMEPLAY -----

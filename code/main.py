@@ -22,7 +22,7 @@ class Game:
             dt = self.clock.tick(FPS) / 1000
             self.handle_input()
             self.set_game_mode()
-            print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
+            #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             if self.state == 'start':
                 self.start_screen(dt)
             elif self.state == 'play':
@@ -55,9 +55,13 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         self.save_game()
                         self.close_game()
-                    elif event.key == pygame.K_s:
-                        if hasattr(self, 'show_start_player'): del self.show_start_player
+                    elif event.key == pygame.K_1:
+                        if getattr(self, 'show_start_player', False):
+                            delattr(self, 'show_start_player')
                         else: self.show_start_player = True
+                        delattr(self, 'show_dead_player') if hasattr(self, 'show_dead_player') else setattr(self,'show_dead_player',True)
+                    else:
+                        self.show_start_hint = True
 
             # --- play state ---
             elif self.state == 'play':
@@ -80,10 +84,11 @@ class Game:
                     elif event.key == pygame.K_ESCAPE:
                         self.save_game()
                         self.close_game()
-                    elif event.key == pygame.K_s:
-                        if hasattr(self, 'show_dead_player'): del self.show_dead_player
+                    elif event.key == pygame.K_1:
+                        if getattr(self, 'show_dead_player', False):
+                            delattr(self, 'show_dead_player')
                         else: self.show_dead_player = True
-                    elif event.key == pygame.K_a:
+                    elif event.key == pygame.K_2:
                         self.show_apple = True
                     else:
                         self.show_game_over_hint = True
@@ -148,8 +153,8 @@ class Game:
         scaled.set_alpha(flicker)
         rect = scaled.get_rect(center=self.text_rects['title'].center)
         self.screen.blit(scaled, rect)
-
         self.start_secrets(dt)
+
 
     def start_flash(self):
         """Play title flash and transition cleanly to play mode."""
@@ -166,6 +171,8 @@ class Game:
             self.clock.tick(FPS)
 
     def start_secrets(self, dt):
+        if getattr(self, 'show_start_hint', False):
+            self.screen.blit(self.text_surfaces['start_hint'], self.text_rects['start_hint'])
         if getattr(self, 'show_start_player', False):
             # --- initialize ---
             if not hasattr(self, 'start_player_pos'):
@@ -177,7 +184,9 @@ class Game:
             self.start_player_pos += self.start_player_vel * dt
 
             # --- handle bounces and flip when direction changes ---
-            rect = pygame.Rect(0, 0, 64, 64)
+            if not hasattr(self, 'start_player_rect'):
+                w, h = self.player_sprite_variants[2].get_size()
+                rect = pygame.Rect(0, 0, w, h)
             rect.center = self.start_player_pos
 
             if rect.left <= 0 or rect.right >= WINDOW_WIDTH:
@@ -193,7 +202,6 @@ class Game:
                 img = pygame.transform.flip(img, True, False)
             rect = img.get_rect(center=self.start_player_pos)
             self.screen.blit(img, rect)
-            
 
     def play_loop(self, dt):
         # update dt
@@ -239,21 +247,31 @@ class Game:
         self.game_over_secrets(dt)
         
     def game_over_secrets(self, dt):
-        if hasattr(self,'show_dead_player') and self.show_dead_player:   
-            rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
-            rect = rotated.get_rect(center=self.player.rect.center)
-            self.screen.blit(rotated, rect)
-        if hasattr(self, 'show_game_over_hint') and self.show_game_over_hint:
+        if getattr(self, 'show_game_over_hint', False):
             self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint'])
-        if hasattr(self, 'show_apple'):
-            if self.show_apple:
-                Fruit((self.all_sprites, self.fruit_sprites),
-                self.LAYERS['fruits'],
-                500,
-                self.apple_sprite)
-                self.show_apple = False
-            self.fruit_sprites.update(dt, self.play_time)
-            self.fruit_sprites.draw(self.screen)
+        if getattr(self,'show_dead_player', False):  
+            self.dead_player_rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
+            self.dead_player_rect = self.dead_player_rotated.get_rect(center=self.player.rect.center)
+            self.dead_player_mask = pygame.mask.from_surface(self.dead_player_rotated)
+            self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
+        if getattr(self, 'show_apple', False):
+            if not hasattr(self, 'secret_fruits'):
+                self.secret_fruits = pygame.sprite.Group()
+            Fruit((self.all_sprites, self.secret_fruits),
+            self.LAYERS['fruits'],
+            random_of_spectrum(300,700),
+            self.apple_sprite)
+            self.show_apple = False
+            
+        if hasattr(self, 'secret_fruits'):
+            self.secret_fruits.update(dt, self.play_time)
+            self.secret_fruits.draw(self.screen)
+            if hasattr(self, 'dead_player_rect') and hasattr(self, 'show_dead_player'):
+                for fruit in self.secret_fruits.sprites():
+                    offset = (fruit.rect.x - self.dead_player_rect.x, fruit.rect.y - self.dead_player_rect.y)
+                    if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
+                        fruit.kill()
+                        self.eat_fruit_sound.play()
 
 # --- Initialization steps ---
     def init_paths(self):
@@ -281,7 +299,7 @@ class Game:
         try:
             pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
         except:
-            print("Audio preinit failed, using defaults.")
+            print("Audio preinit failed. Using defaults.")
         pygame.init()
         pygame.mixer.set_num_channels(128)
         self.clock = pygame.time.Clock()
@@ -301,17 +319,20 @@ class Game:
         self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
                             'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
                             'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
-                            'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),}
+                            'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
+                            'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE)}
 
         # --- pre-render static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
-                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),}
+                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
+                                    'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),}
 
         # --- define text positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
                                  'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
-                                 'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),}
+                                 'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
+                                 'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15))}
 
         # --- draws ---
         self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
@@ -352,11 +373,12 @@ class Game:
         self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
         self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
         self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
+        self.eat_fruit_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'eat_fruit_instant_tight.wav'))
         self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.ogg'))
         self.explosion_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'explosion_sound.ogg'))
         self.game_over_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_sound.ogg'))
         self.record_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'new_record_sound.ogg'))
-        self.ability_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'ability_sound.ogg'))
+        self.ability_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'ability_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -374,6 +396,7 @@ class Game:
         self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME)
         self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME)
         self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME)
+        self.eat_fruit_sound.set_volume(EAT_FRUIT_SOUND_VOLUME)
         self.damage_sound.set_volume(DAMAGE_SOUND_VOLUME)
         self.explosion_sound.set_volume(EXPLOSION_SOUND_VOLUME)
         self.game_over_sound.set_volume(GAME_OVER_SOUND_VOLUME)
@@ -396,8 +419,7 @@ class Game:
         self.is_paused = False
 
         # hover sound
-        if not hasattr(self,'hover_sound_played'):
-            self.hover_sound_played = False
+        self.hover_sound_played = getattr(self,'hover_sound_played',False)
 
         # --- UI flags ---
         # score
@@ -414,9 +436,12 @@ class Game:
         # obstacle timing
         self.next_obstacle_spawn_time = OBSTACLE_SPAWN_TIME
 
-        # game over secrets
-        if hasattr(self,'show_game_over_hint'): del self.show_game_over_hint
-        if hasattr(self,'show_apple'): del self.show_apple
+        for attr in (# reset start secrets
+                     'show_start_hint','show_start_player','start_player_pos','start_player_vel','start_player_rect','start_player_facing_right',
+                     # reset game over secrets
+                     'show_game_over_hint','show_apple','secret_fruits','dead_player_rect','dead_player_mask',):
+            if hasattr(self, attr):
+                delattr(self, attr)
 
     def init_sprites(self):
         # --- sprite groups and layers ---
@@ -507,6 +532,7 @@ class Game:
 
         eat = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
         if eat:
+            self.eat_fruit_sound.play()
             STATS['score'] += 10
 
     def check_record(self):
@@ -670,6 +696,9 @@ class Game:
 def main():
     game = Game()
     atexit.register(lambda: game.save_runtime())
+    atexit.register(pygame.display.quit)
+    atexit.register(pygame.font.quit)
+    atexit.register(pygame.mixer.quit)
     atexit.register(pygame.quit)
     game.run()
 
