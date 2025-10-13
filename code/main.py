@@ -34,7 +34,7 @@ class Game:
             self.present_frame()
 
     def handle_input(self):
-        '''Check for user input respecting game mode.'''
+        '''Check for system input regarding game mode.'''
 
         for event in pygame.event.get():
             # --- General events ---
@@ -55,6 +55,9 @@ class Game:
                     if event.key == pygame.K_ESCAPE:
                         self.save_game()
                         self.close_game()
+                    elif event.key == pygame.K_s:
+                        if hasattr(self, 'show_start_player'): del self.show_start_player
+                        else: self.show_start_player = True
 
             # --- play state ---
             elif self.state == 'play':
@@ -77,6 +80,13 @@ class Game:
                     elif event.key == pygame.K_ESCAPE:
                         self.save_game()
                         self.close_game()
+                    elif event.key == pygame.K_s:
+                        if hasattr(self, 'show_dead_player'): del self.show_dead_player
+                        else: self.show_dead_player = True
+                    elif event.key == pygame.K_a:
+                        self.show_apple = True
+                    else:
+                        self.show_game_over_hint = True
 
     def set_game_mode(self):
         '''Switches game mode and handles necessary changes.'''
@@ -92,6 +102,7 @@ class Game:
         # --- enter actions ---
         if new == 'start':
             if old == 'game_over':
+                self.all_sprites.empty()
                 self.init_game_state()
                 self.init_sprites()
             self.change_track('start_track', 1)
@@ -111,6 +122,7 @@ class Game:
                 self.music_channel.set_volume(self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR)
             
         elif new == 'game_over':
+            self.all_sprites.empty()
             if self.music_channel: self.music_channel.stop()
             self.game_over_sound.play()
             self.fade_to_black(duration=GAME_OVER_SCROLL_SPEED)
@@ -121,7 +133,7 @@ class Game:
         scaled_pos = self.get_scaled_mouse_pos()
 
         # --- hover sound ---
-        hovered_now = self.text_positions['title'].collidepoint(scaled_pos)
+        hovered_now = self.text_rects['title'].collidepoint(scaled_pos)
         if hovered_now and not self.hover_sound_played:
             self.menu_hover_sound.play()
             self.hover_sound_played = True
@@ -131,11 +143,13 @@ class Game:
 
         # --- regular flicker animation ---
         flicker = MAX_FLICKER_INT + (MAX_FLICKER_INT - MIN_FLICKER_INT) * sin(perf_counter() * TITLE_FLICKER_SPEED)
-        base_surface = self.text_messages['title']
+        base_surface = self.text_surfaces['title']
         scaled = pygame.transform.rotozoom(base_surface, 0, 1.1) if self.hovered else base_surface
         scaled.set_alpha(flicker)
-        rect = scaled.get_rect(center=self.text_positions['title'].center)
+        rect = scaled.get_rect(center=self.text_rects['title'].center)
         self.screen.blit(scaled, rect)
+
+        self.start_secrets(dt)
 
     def start_flash(self):
         """Play title flash and transition cleanly to play mode."""
@@ -143,13 +157,43 @@ class Game:
         start = perf_counter()
         while perf_counter() - start < 0.4:
             flicker = 255 * abs(sin((perf_counter() - start) * 25))
-            surf = self.text_messages['title'].copy()
+            surf = self.text_surfaces['title'].copy()
             surf.set_alpha(flicker)
-            rect = surf.get_rect(center=self.text_positions['title'].center)
+            rect = surf.get_rect(center=self.text_rects['title'].center)
             self.screen.fill(COLOR['start_screen_bg'])
             self.screen.blit(surf, rect)
             self.present_frame()
             self.clock.tick(FPS)
+
+    def start_secrets(self, dt):
+        if getattr(self, 'show_start_player', False):
+            # --- initialize ---
+            if not hasattr(self, 'start_player_pos'):
+                self.start_player_pos = pygame.Vector2(100, 100)
+                self.start_player_vel = pygame.Vector2(230, -230)
+                self.start_player_facing_right = True
+
+            # --- move ---
+            self.start_player_pos += self.start_player_vel * dt
+
+            # --- handle bounces and flip when direction changes ---
+            rect = pygame.Rect(0, 0, 64, 64)
+            rect.center = self.start_player_pos
+
+            if rect.left <= 0 or rect.right >= WINDOW_WIDTH:
+                self.start_player_vel.x *= -1
+                self.start_player_facing_right = not self.start_player_facing_right
+
+            if rect.top <= 0 or rect.bottom >= WINDOW_HEIGHT:
+                self.start_player_vel.y *= -1
+
+            # --- draw with correct facing ---
+            img = self.player_sprite_variants[2]
+            if not self.start_player_facing_right:
+                img = pygame.transform.flip(img, True, False)
+            rect = img.get_rect(center=self.start_player_pos)
+            self.screen.blit(img, rect)
+            
 
     def play_loop(self, dt):
         # update dt
@@ -191,7 +235,25 @@ class Game:
 
     def game_over_screen(self, dt):
         self.screen.fill('black')
-        self.screen.blit(self.text_messages['game_over'], self.text_positions['game_over'])
+        self.screen.blit(self.text_surfaces['game_over'], self.text_rects['game_over'])
+        self.game_over_secrets(dt)
+        
+    def game_over_secrets(self, dt):
+        if hasattr(self,'show_dead_player') and self.show_dead_player:   
+            rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
+            rect = rotated.get_rect(center=self.player.rect.center)
+            self.screen.blit(rotated, rect)
+        if hasattr(self, 'show_game_over_hint') and self.show_game_over_hint:
+            self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint'])
+        if hasattr(self, 'show_apple'):
+            if self.show_apple:
+                Fruit((self.all_sprites, self.fruit_sprites),
+                self.LAYERS['fruits'],
+                500,
+                self.apple_sprite)
+                self.show_apple = False
+            self.fruit_sprites.update(dt, self.play_time)
+            self.fruit_sprites.draw(self.screen)
 
 # --- Initialization steps ---
     def init_paths(self):
@@ -236,31 +298,28 @@ class Game:
 
     def load_graphics(self):
         # --- fonts ---
-        self.start_screen_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE)
-        self.score_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE)
-        self.game_over_font = pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE)
+        self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
+                            'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
+                            'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
+                            'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),}
 
         # --- pre-render static texts ---
-        self.text_messages: dict = {
-            'title': self.start_screen_font.render('Shadow Drift', True, COLOR['title_text']),
-            'game_over': self.game_over_font.render("Game Over!", True, COLOR['game_over_text']),
-        }
+        self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
+                                    'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
+                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),}
 
-        self.text_positions: dict = {
-            'title': self.text_messages['title'].get_rect(center=WINDOW_CENTER),
-            'game_over': self.text_messages['game_over'].get_rect(center=WINDOW_CENTER),
-        }
+        # --- define text positions ---
+        self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
+                                 'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
+                                 'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),}
 
         # --- draws ---
-        self.player_glows: dict = {
-        "blue": pygame.Surface((80, 80), pygame.SRCALPHA),
-        "red": pygame.Surface((80, 80), pygame.SRCALPHA)
-        }
+        self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
+                                   "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
         pygame.draw.circle(self.player_glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
         pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
 
         # --- images ---
-
         self.ui_buttons: list = [UIButton(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
                                  UIButton(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60))]
         self.ui_buttons[0].base_image = pygame.transform.scale(self.ui_buttons[0].base_image, (60,60)) # scale resume button
@@ -280,7 +339,7 @@ class Game:
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
         self.apple_sprite = pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha()
-        self.apple_sprite = pygame.transform.scale_by(self.apple_sprite, 1.5)
+        self.apple_sprite = pygame.transform.scale_by(self.apple_sprite, 1.4)
         
     def load_sounds(self):
         # --- game music ---
@@ -354,6 +413,10 @@ class Game:
 
         # obstacle timing
         self.next_obstacle_spawn_time = OBSTACLE_SPAWN_TIME
+
+        # game over secrets
+        if hasattr(self,'show_game_over_hint'): del self.show_game_over_hint
+        if hasattr(self,'show_apple'): del self.show_apple
 
     def init_sprites(self):
         # --- sprite groups and layers ---
@@ -451,13 +514,13 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
-    def render_score_text(self, paused=False, main_color=COLOR['ui_text'], text_shadow_color=COLOR['ui_text_shadow']):
+    def render_score_text(self, paused=False, text_color=COLOR['ui_text'], text_shadow_color=COLOR['ui_text_shadow']):
         '''Render text surfaces only when stats change.'''
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
         if self.current_stats != self.prev_stats or paused:
             text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
-            self.stats_text = self.score_font.render(text, True, main_color)
-            self.stats_text_shadow = self.score_font.render(text, True, text_shadow_color)
+            self.stats_text = self.fonts['stats'].render(text, True, text_color)
+            self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats
 
     def draw_order(self):

@@ -1,6 +1,5 @@
 from utils import *
 
-
 # --- VISUALS ---
 # display
 WINDOW_WIDTH: int = 1280 
@@ -17,6 +16,7 @@ COLOR = {'ui_text': "#000000",
         'blue_player_glow': "#0066FF81",
         'red_player_glow': "#FF000081",
         'game_over_text': "#C90E0E",
+        'game_over_hint': "#C90E0E",
         'start_screen_bg': "#11121F",
         'stop_screen_bg': "#11121F",
         'title_text': "#2D0BEE"}
@@ -25,6 +25,7 @@ COLOR = {'ui_text': "#000000",
 TITLE_FONT_SIZE: int = 140
 SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
+GAME_OVER_HINT_FONT_SIZE: int = 25
 
 # animations
 TITLE_FLICKER_SPEED: Annotated[float, (1-6)] = 5
