@@ -138,6 +138,8 @@ class AnimatedBackground(pygame.sprite.Sprite):
             self.image = self.frames[self.index]
 
 class Fruit(pygame.sprite.Sprite):
+    """Collectable items that give benefits"""
+
     def __init__(self, groups, layer, speed, apple_sprite):
         self._layer = layer
         super().__init__(groups)
@@ -147,12 +149,16 @@ class Fruit(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0,1)
 
+    def destroy(self):
+        if self.rect.top > WINDOW_HEIGHT:
+            self.kill()
+
     def update(self, dt, play_time):
         # --- move ---
         self.rect.center += self.direction * self.speed * dt
 
-        if self.rect.top > WINDOW_HEIGHT:
-            self.kill()
+        self.destroy()
+
 
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""
@@ -170,12 +176,15 @@ class Obstacle(pygame.sprite.Sprite):
 
         # --- motion setup ---
         self.direction = pygame.Vector2(-1, 0)
+
+    def destroy(self):
+        if self.rect.right < 0:
+            self.kill()
+        # update stats when killed
+            STATS['score'] += 1
         
     def update(self, dt, play_time):
         # --- move ---
         self.rect.center += self.direction * self.speed * dt
+        self.destroy()
 
-        # --- update stats when killed ---
-        if self.rect.right < 0:
-            self.kill()
-            STATS['score'] += 1

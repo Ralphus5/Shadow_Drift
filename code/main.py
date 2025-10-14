@@ -59,7 +59,6 @@ class Game:
                         if getattr(self, 'show_start_player', False):
                             delattr(self, 'show_start_player')
                         else: self.show_start_player = True
-                        delattr(self, 'show_dead_player') if hasattr(self, 'show_dead_player') else setattr(self,'show_dead_player',True)
                     else:
                         self.show_start_hint = True
 
@@ -118,13 +117,15 @@ class Game:
                 self.fade_to_black()
                 self.change_track('game_track_1')
             elif old == 'stop':
-                self.music_channel.set_volume(self.base_volumes[self.current_track])
                 self.resume_play_time()
+                if self.music_channel and self.current_track:
+                    self.music_channel.set_volume(self.base_volumes[self.current_track])
 
         elif new == 'stop':
             self.pause_play_time()
             if self.music_channel and self.music_channel.get_busy() and self.current_track:
-                self.music_channel.set_volume(self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR)
+                self.paused_volume = self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR
+                self.music_channel.set_volume(self.paused_volume)
             
         elif new == 'game_over':
             self.all_sprites.empty()
@@ -173,28 +174,30 @@ class Game:
     def start_secrets(self, dt):
         if getattr(self, 'show_start_hint', False):
             self.screen.blit(self.text_surfaces['start_hint'], self.text_rects['start_hint'])
+
         if getattr(self, 'show_start_player', False):
             # --- initialize ---
             if not hasattr(self, 'start_player_pos'):
-                self.start_player_pos = pygame.Vector2(100, 100)
+                self.start_player_pos = pygame.Vector2(random_of_spectrum(100,WINDOW_WIDTH-100),random_of_spectrum(100,WINDOW_HEIGHT-100))
                 self.start_player_vel = pygame.Vector2(230, -230)
                 self.start_player_facing_right = True
 
             # --- move ---
             self.start_player_pos += self.start_player_vel * dt
 
-            # --- handle bounces and flip when direction changes ---
-            if not hasattr(self, 'start_player_rect'):
-                w, h = self.player_sprite_variants[2].get_size()
-                rect = pygame.Rect(0, 0, w, h)
+            # --- get rect from current position ---
+            w, h = self.player_sprite_variants[2].get_size()
+            rect = pygame.Rect(0, 0, w, h)
             rect.center = self.start_player_pos
 
+            # --- bounce and clamp horizontally ---
             if rect.left <= 0 or rect.right >= WINDOW_WIDTH:
                 self.start_player_vel.x *= -1
                 self.start_player_facing_right = not self.start_player_facing_right
-
             if rect.top <= 0 or rect.bottom >= WINDOW_HEIGHT:
                 self.start_player_vel.y *= -1
+
+            rect.clamp_ip(pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
 
             # --- draw with correct facing ---
             img = self.player_sprite_variants[2]
@@ -373,7 +376,7 @@ class Game:
         self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
         self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
         self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
-        self.eat_fruit_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'eat_fruit_instant_tight.wav'))
+        self.eat_fruit_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'eat_fruit_sound.wav'))
         self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.ogg'))
         self.explosion_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'explosion_sound.ogg'))
         self.game_over_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_sound.ogg'))
@@ -437,7 +440,7 @@ class Game:
         self.next_obstacle_spawn_time = OBSTACLE_SPAWN_TIME
 
         for attr in (# reset start secrets
-                     'show_start_hint','show_start_player','start_player_pos','start_player_vel','start_player_rect','start_player_facing_right',
+                     'show_start_hint','show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
                      # reset game over secrets
                      'show_game_over_hint','show_apple','secret_fruits','dead_player_rect','dead_player_mask',):
             if hasattr(self, attr):
@@ -446,6 +449,7 @@ class Game:
     def init_sprites(self):
         # --- sprite groups and layers ---
         self.all_sprites = pygame.sprite.LayeredUpdates()
+        self.player_group = pygame.sprite.GroupSingle()
         self.obstacle_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
 
@@ -460,11 +464,12 @@ class Game:
                                              self.backgrounds['bg_1'],)
 
         # --- instantiate player sprite ---
-        self.player = Player(self.all_sprites,
-                             self.LAYERS['player'],
-                             self.player_sprite_variants,
-                             self.player_glows,
-                             self.ability_sound)
+        Player((self.all_sprites, self.player_group),
+                self.LAYERS['player'],
+                self.player_sprite_variants,
+                self.player_glows,
+                self.ability_sound)
+        self.player = self.player_group.sprite
 
     def load_save(self):
         try:

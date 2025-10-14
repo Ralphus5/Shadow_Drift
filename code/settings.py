@@ -42,16 +42,16 @@ PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 
 # ----- AUDIO -----
 # game music volumes
-STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.2
+STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.3
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
-GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.6
-GAME_TRACK_2_VOLUME: Annotated[float, (0-1)] = 0.6
+GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
+GAME_TRACK_2_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
-MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
-MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
+MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 
 # gameplay sound volumes
 EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 1
