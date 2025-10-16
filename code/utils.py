@@ -56,7 +56,7 @@ def print_game_time(play_time, total_paused, runtime):
     print(f"[time] played = {play_time:.3f}s   stopped = {total_paused:.3f}s   absolute runtime = {runtime}")
 
 # --- UI elements ---
-class UIButton:
+class ClickableIcon:
     """Simple hoverable and clickable image button."""
     def __init__(self, image, pos: tuple, anchor: str = "center", hover_scale_factor: float = 1.1):
         self.base_image = image
@@ -79,3 +79,41 @@ class UIButton:
         surf = pygame.transform.rotozoom(self.base_image, 0, scale)
         rect = surf.get_rect(center=self.rect.center)
         screen.blit(surf, rect)
+
+class ClickableText:
+    """Simple hoverable and clickable text button."""
+    def __init__(self, text, font, pos, color, hover_color, click_sound=None, hover_sound=None, anchor="center"):
+        self.font = font
+        self.text = text
+        self.color = color
+        self.hover_color = hover_color
+        self.pos = pos
+        self.anchor = anchor
+        self.click_sound = click_sound
+        self.hover_sound = hover_sound
+
+        self.surface = self.font.render(self.text, True, self.color)
+        self.rect = self.surface.get_rect()
+        setattr(self.rect, self.anchor, self.pos)
+
+        self.hovered = False
+        self.hover_changed = False
+        self.clicked = False
+
+    def update(self, mouse_pos, mouse_click):
+        prev_hover = self.hovered
+        self.hovered = self.rect.collidepoint(mouse_pos)
+        self.hover_changed = (self.hovered != prev_hover)
+
+        if self.hover_changed and self.hovered and self.hover_sound:
+            self.hover_sound.play()
+
+        color = self.hover_color if self.hovered else self.color
+        self.surface = self.font.render(self.text, True, color)
+
+        self.clicked = mouse_click and self.hovered
+        if self.clicked and self.click_sound:
+            self.click_sound.play()
+
+    def draw(self, screen):
+        screen.blit(self.surface, self.rect)

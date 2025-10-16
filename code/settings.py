@@ -20,7 +20,10 @@ COLOR = {'ui_text': "#000000",
         'start_screen_bg': "#11121F",
         'stop_screen_bg': "#11121F",
         'title_text': "#2D0BEE",
-        'start_hint': '#2D0BEE'}
+        'start_hint': '#2D0BEE',
+        'settings_text_buttons': "#A5A9AC",
+        'settings_text_buttons_hovered': '#2D0BEE',
+        'settings_tab_headers': "#02B3FE"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -49,17 +52,18 @@ GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
 GAME_TRACK_2_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
-MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
-MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
-TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
+MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
+MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
+TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 
 # gameplay sound volumes
-EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
-EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
+EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.3
+EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 # ----- GAMEPLAY -----
 STATS = {'score': 0, 'record': 0}
@@ -69,6 +73,25 @@ THIRD_PHASE_END: int = 120
 DEFAULT_PLAYER_SPEED: int = 250
 PLAYER_ABILITY_DURATION: float = 1.6 # seconds
 PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
+DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
+DASH_SPEED: float = 1600
+DASH_COOLDOWN: float = 0.5 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWN_PER_MINUTE: float = 4
+
+# --- DEFAULT KEY BINDINGS ---
+KEY_BINDINGS = {
+    # gameplay movement
+    "move_left": pygame.K_a,
+    "move_right": pygame.K_d,
+    "move_up": pygame.K_w,
+    "move_down": pygame.K_s,
+
+    # abilities and actions
+    "ability": pygame.K_SPACE,
+    "dash": pygame.K_RETURN,
+
+    # system and meta
+    "pause": pygame.K_ESCAPE,
+    "fullscreen": pygame.K_F11,}

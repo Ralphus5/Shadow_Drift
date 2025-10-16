@@ -4,7 +4,7 @@ from settings import *
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
-    def __init__(self, groups, layer, sprite_variants, glows, ability_sound):
+    def __init__(self, groups, layer, sprite_variants, glows, ability_sound, dash_sound):
         self._layer = layer
         super().__init__(groups)
 
@@ -12,6 +12,7 @@ class Player(pygame.sprite.Sprite):
         self.sprite_variants = sprite_variants
         self.glows = glows
         self.ability_sound = ability_sound
+        self.dash_sound = dash_sound
         
         # --- gameplay attributes ---
         self.is_alive = True
@@ -28,6 +29,13 @@ class Player(pygame.sprite.Sprite):
         self.ability_cooldown = PLAYER_ABILITY_COOLDOWN
         self.ability_duration = PLAYER_ABILITY_DURATION
 
+        # s--- dash system ---
+        self.dashing = False
+        self.dash_ready = True
+        self.dash_start_time = 0.0
+        self.dash_cooldown = DASH_COOLDOWN
+        self.dash_duration = DASH_DURATION
+
         # --- rendering ---
         self.image = self.sprite_variants[self.health]
         self.mask = pygame.mask.from_surface(self.image)
@@ -36,6 +44,7 @@ class Player(pygame.sprite.Sprite):
 
         # --- motion setup ---
         self.direction = pygame.Vector2()
+        self.dash_direction = pygame.Vector2()
 
     def activate_iframes(self, play_time):
         if self.can_collide:
@@ -48,20 +57,54 @@ class Player(pygame.sprite.Sprite):
         self.ability_ready = False
         self.can_collide = False
 
+    def dash(self):
+        if self.direction.length_squared() != 0:
+            self.dash_sound.play()
+            self.dashing = True
+            self.dash_start_time = self.play_time
+            self.dash_ready = False
+
+            # restrict to cardinal directions
+            if abs(self.direction.x) >= abs(self.direction.y):
+                        self.dash_direction = pygame.Vector2(1 if self.direction.x > 0 else -1, 0)
+            elif abs(self.direction.y) > abs(self.direction.x):
+                self.dash_direction = pygame.Vector2(0, 1 if self.direction.y > 0 else -1)
+
     def keep_in_window(self):
         self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 20, WINDOW_HEIGHT + 20))
 
     def handle_input(self, dt, play_time):
         self.play_time = play_time
-        # --- check user input ---
         keys = pygame.key.get_pressed()
         recent_keys = pygame.key.get_just_pressed()
 
         # --- movement ---
-        self.direction.x = int(keys[pygame.K_d]) - int(keys[pygame.K_a])
-        self.direction.y = int(keys[pygame.K_s]) - int(keys[pygame.K_w])
-        self.direction = self.direction.normalize() if self.direction else self.direction
-        self.rect.center += dt * self.speed * self.direction
+        self.direction.x = int(keys[KEY_BINDINGS["move_right"]]) - int(keys[KEY_BINDINGS["move_left"]])
+        self.direction.y = int(keys[KEY_BINDINGS["move_down"]]) - int(keys[KEY_BINDINGS["move_up"]])
+
+
+        # --- dash use ---
+        # cooldown
+        if not self.dash_ready and self.play_time - self.dash_start_time > self.dash_cooldown:
+            self.dash_ready = True  
+
+        # activate dash
+        if self.dash_ready and recent_keys[KEY_BINDINGS["dash"]] and (keys[KEY_BINDINGS["move_left"]] or keys[KEY_BINDINGS["move_right"]] or keys[KEY_BINDINGS["move_up"]] or keys[KEY_BINDINGS["move_down"]]):
+            self.dash()
+
+        # end dash
+        if self.play_time - self.dash_start_time > self.dash_duration:
+            self.dashing = False
+
+        # dash movement
+        if self.dashing:
+            self.rect.center += dt * DASH_SPEED * self.dash_direction
+
+        # --- regular movement ---
+        else:
+            if not self.dashing and self.direction.length_squared() > 0:
+                self.direction = self.direction.normalize()
+            self.rect.center += dt * self.speed * self.direction
 
         # --- ability use ---
         # check cooldown
@@ -69,14 +112,15 @@ class Player(pygame.sprite.Sprite):
             self.ability_ready = True
 
         # activate ability
-        if self.ability_ready and recent_keys[pygame.K_SPACE]:
+        if self.ability_ready and recent_keys[KEY_BINDINGS["ability"]]:
             self.activate_ability()
 
         # end ability duration
         if not self.can_collide and self.play_time - self.ability_start_time > self.ability_duration:
             self.can_collide = True
 
-    def refresh_appearance(self):
+    def refresh_appearance(self, play_time):
+        self.play_time = play_time
         # --- facing direction ---
         if self.direction.x < 0:
             self.facing_right = False
@@ -92,7 +136,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.size = self.image.get_size()
 
         # --- ability and iframes ---
-        if not self.can_collide:
+        if not self.can_collide or (self.play_time - self.dash_start_time < self.dash_duration and self.play_time > 1):
             progress = (self.play_time - self.ability_start_time) / self.ability_duration
             progress = max(0.0, min(progress, 1.0))
             darkness = 255 - int(255 * min(progress * PLAYER_BLACK_FADE_SPEED, 1))
@@ -115,7 +159,7 @@ class Player(pygame.sprite.Sprite):
         if self.iframes and self.play_time - self.iframe_start > PLAYER_IFRAMES_DURATION:
             self.iframes = False
 
-        self.refresh_appearance()
+        self.refresh_appearance(self.play_time)
 
 class AnimatedBackground(pygame.sprite.Sprite):
     """Animated background sprite cycling through frames."""
@@ -158,7 +202,6 @@ class Fruit(pygame.sprite.Sprite):
         self.rect.center += self.direction * self.speed * dt
 
         self.destroy()
-
 
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""

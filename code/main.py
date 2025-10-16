@@ -10,9 +10,9 @@ class Game:
         self.init_paths()
         self.init_pygame()
         self.init_window()
-        self.load_graphics()
         self.load_sounds()
         self.set_all_volumes()
+        self.load_graphics()
         self.init_game_state()
         self.init_sprites()
         self.load_save()
@@ -23,6 +23,7 @@ class Game:
             self.handle_input()
             self.set_game_mode()
             #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
+            #print("Track:", self.current_track,"Sound volume:", self.tracks[self.current_track].get_volume(),"Channel volume:", self.music_channel.get_volume()) # DEBUGGING
             if self.state == 'start':
                 self.start_screen(dt)
             elif self.state == 'play':
@@ -52,6 +53,7 @@ class Game:
                 if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hovered):
                     self.start_flash()
                     self.play_start = perf_counter()
+                    self.fade_to_black()
                     self.requested_state = 'play'
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -98,7 +100,11 @@ class Game:
             elif self.state == 'settings':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
-                        self.requested_state = self.prev_state
+                        # if inside a submenu, go back to main settings menu
+                        if getattr(self, "active_settings_tab", None):
+                            self.active_settings_tab = None
+                        else:
+                            self.requested_state = self.prev_state
 
     def set_game_mode(self):
         '''Switches game mode and handles necessary changes.'''
@@ -111,6 +117,11 @@ class Game:
         # --- switch ---
         self.state = new
 
+        # --- reset input ---
+        pygame.event.clear()
+        pygame.key.get_pressed()
+        pygame.mouse.get_pressed()
+
         # --- enter actions ---
         if new == 'start':
             if old == 'game_over':
@@ -122,19 +133,24 @@ class Game:
         elif new == 'play':
             if old == 'start':
                 self.play_start = perf_counter()
-                self.fade_to_black()
-                self.change_track('game_track_1')
-            elif old == 'stop':
-                self.resume_play_time()
-                if self.music_channel and self.current_track:
-                    self.music_channel.set_volume(self.base_volumes[self.current_track])
+                self.change_track('game_track_1', fade_ms=1)
+                pygame.key.get_pressed()   # resets held keys
+            if old == 'stop':
+                    self.resume_play_time()
+                    if self.music_channel and self.current_track:
+                        base = self.base_volumes[self.current_track]
+                        self.tracks[self.current_track].set_volume(base)
+                        self.music_channel.set_volume(1.0)
+                        self.music_dimmed = False
 
         elif new == 'stop':
             if old != 'settings':
                 self.pause_play_time()
                 if self.music_channel and self.music_channel.get_busy() and self.current_track:
-                    self.paused_volume = self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR
-                    self.music_channel.set_volume(self.paused_volume)
+                    if not getattr(self, 'music_dimmed', False):
+                        self.paused_volume = self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR
+                        self.music_channel.set_volume(self.paused_volume)
+                        self.music_dimmed = True
             
         elif new == 'game_over':
             self.all_sprites.empty()
@@ -242,19 +258,22 @@ class Game:
         mouse_pos = self.get_scaled_mouse_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
 
-        for btn in self.ui_buttons:
+        for btn in self.clickable_icons:
             btn.update(mouse_pos, mouse_click)
             if btn.hover_changed and btn.hovered:
                 self.menu_hover_sound.play()
             btn.draw(self.screen)
 
             if btn.clicked:
-                if btn is self.ui_buttons[0]:
+                if btn is self.clickable_icons[0]:
+                    self.menu_select_sound.play()
                     self.fade_to_black()
                     self.close_game()
-                elif btn is self.ui_buttons[1]:
+                elif btn is self.clickable_icons[1]:
+                    self.menu_select_sound.play()
                     self.requested_state = 'play'
-                elif btn is self.ui_buttons[2]:
+                elif btn is self.clickable_icons[2]:
+                    self.menu_select_sound.play()
                     self.requested_state = 'settings'
 
     def game_over_screen(self, dt):
@@ -290,7 +309,84 @@ class Game:
                         self.eat_fruit_sound.play()
 
     def settings_menu(self, dt):
-        self.screen.fill('grey')
+            self.screen.fill(COLOR['stop_screen_bg'])
+            mouse_pos = self.get_scaled_mouse_pos()
+            mouse_click = pygame.mouse.get_just_pressed()[0]
+
+            # --- if no tab active, show main menu ---
+            if not self.active_settings_tab:
+                for text_btn in self.ui_text_buttons:
+                    text_btn.update(mouse_pos, mouse_click)
+                    text_btn.draw(self.screen)
+
+                # check clicks
+                if self.ui_text_buttons[0].clicked:
+                    self.active_settings_tab = "audio"
+                    pygame.event.clear()
+                    return
+                elif self.ui_text_buttons[1].clicked:
+                    self.active_settings_tab = "controls"
+                    pygame.event.clear()
+                    return
+                elif self.ui_text_buttons[2].clicked:
+                    self.requested_state = self.prev_state
+                    pygame.event.clear()
+                    return
+
+            elif self.active_settings_tab:
+                # back button at bottom
+                back_btn = self.ui_text_buttons[2]
+                original_pos = back_btn.pos  # save original position
+                back_btn.pos = (WINDOW_CENTER[0], WINDOW_HEIGHT - 100)  # move down
+                back_btn.rect.center = back_btn.pos
+
+                back_btn.update(mouse_pos, mouse_click)
+                back_btn.draw(self.screen)
+
+                if back_btn.clicked:
+                    self.active_settings_tab = None
+                    pygame.event.clear()
+
+                # restore original position for when we return to main settings
+                back_btn.pos = original_pos
+                back_btn.rect.center = back_btn.pos
+
+            # --- controls submenu ---
+            if self.active_settings_tab == "controls":
+                self.screen.blit(self.text_surfaces['controls'], self.text_rects['controls'])
+
+                for btn in self.control_texts:
+                    btn.update(mouse_pos, mouse_click)
+                    btn.draw(self.screen)
+
+                    if self.control_texts[0].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[1].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[2].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[3].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[4].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[5].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[6].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+                    if self.control_texts[7].clicked:
+                        self.screen.fill('black')
+                        pygame.event.clear()
+
+            # --- audio submenu ---
+            elif self.active_settings_tab == "audio":
+                self.screen.blit(self.text_surfaces['audio'], self.text_rects['audio'])
 
 # --- Initialization steps ---
     def init_paths(self):
@@ -332,56 +428,6 @@ class Game:
         # --- set icon ---
         icon = pygame.image.load(join(self.IMG_DIR, 'icon.png')).convert_alpha()
         pygame.display.set_icon(icon)
-
-    def load_graphics(self):
-        # --- fonts ---
-        self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
-                            'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
-                            'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
-                            'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
-                            'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE)}
-
-        # --- pre-render static texts ---
-        self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
-                                    'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
-                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
-                                    'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),}
-
-        # --- define text positions ---
-        self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
-                                 'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
-                                 'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
-                                 'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15))}
-
-        # --- draws ---
-        self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
-                                   "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
-        pygame.draw.circle(self.player_glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
-        pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
-
-        # --- images ---
-        self.ui_buttons: list = [UIButton(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60)),
-                                 UIButton(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
-                                 UIButton(pygame.image.load(join(self.IMG_DIR, "settings_cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 60))]
-        self.ui_buttons[1].base_image = pygame.transform.scale(self.ui_buttons[1].base_image, (60,60)) # scale resume button
-        self.ui_buttons[2].base_image = pygame.transform.scale(self.ui_buttons[2].base_image, (60,60)) # scale settings button
-
-        self.backgrounds: dict = {
-            'bg_1': [pygame.image.load(join(self.IMG_DIR, 'background_1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
-            'bg_2': [pygame.image.load(join(self.IMG_DIR, 'background_2', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
-            'bg_3': [pygame.image.load(join(self.IMG_DIR, 'background_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
-
-        self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
-
-        self.player_sprite_variants: dict = {
-            1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
-            2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),
-        }
-
-        self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
-
-        self.apple_sprite = pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha()
-        self.apple_sprite = pygame.transform.scale_by(self.apple_sprite, 1.4)
         
     def load_sounds(self):
         # --- game music ---
@@ -400,6 +446,7 @@ class Game:
         self.game_over_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_sound.ogg'))
         self.record_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'new_record_sound.ogg'))
         self.ability_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'ability_sound.wav'))
+        self.dash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'dash_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -423,12 +470,89 @@ class Game:
         self.game_over_sound.set_volume(GAME_OVER_SOUND_VOLUME)
         self.record_sound.set_volume(RECORD_SOUND_VOLUME)
         self.ability_sound.set_volume(ABILITY_SOUND_VOLUME)
+        self.dash_sound.set_volume(DASH_SOUND_VOLUME)
+
+    def load_graphics(self):
+        # --- fonts ---
+        self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
+                            'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
+                            'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
+                            'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
+                            'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),}
+
+        # --- pre-render static texts ---
+        self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
+                                    'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
+                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
+                                    'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
+                                    'controls': self.fonts['stats'].render("Controls", True, COLOR['settings_tab_headers']),
+                                    'audio': self.fonts['stats'].render("Audio", True, COLOR['settings_tab_headers'])}
+
+        # --- define text positions ---
+        self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
+                                 'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
+                                 'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
+                                 'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
+                                 'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 160)),
+                                 'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 160))}
+
+        # --- draws ---
+        self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
+                                   "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
+        pygame.draw.circle(self.player_glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
+        pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
+
+        # --- images ---
+        self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60)),
+                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
+                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "settings_cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 60))]
+        self.clickable_icons[1].base_image = pygame.transform.scale(self.clickable_icons[1].base_image, (60,60)) # scale resume button
+        self.clickable_icons[2].base_image = pygame.transform.scale(self.clickable_icons[2].base_image, (60,60)) # scale settings button
+
+        self.ui_text_buttons: list = [ClickableText("Audio", self.fonts['stats'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Controls", self.fonts['stats'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Back", self.fonts['stats'], (WINDOW_CENTER[0], 460), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
+        
+        # Keybinding clickable texts
+        if not hasattr(self, "control_texts"):
+            self.control_texts = []
+            y = 220
+            for action, key in KEY_BINDINGS.items():
+                label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
+                btn = ClickableText(
+                    label,
+                    self.fonts['stats'],
+                    (WINDOW_CENTER[0], y),
+                    COLOR['settings_text_buttons'],
+                    COLOR['settings_text_buttons_hovered'],
+                    self.menu_select_sound,
+                    self.menu_hover_sound)
+                self.control_texts.append(btn)
+                y += 40
+
+        self.backgrounds: dict = {
+            'bg_1': [pygame.image.load(join(self.IMG_DIR, 'background_1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
+            'bg_2': [pygame.image.load(join(self.IMG_DIR, 'background_2', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
+            'bg_3': [pygame.image.load(join(self.IMG_DIR, 'background_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
+
+        self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
+
+        self.player_sprite_variants: dict = {
+            1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
+            2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),
+        }
+
+        self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
+
+        self.apple_sprite = pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha()
+        self.apple_sprite = pygame.transform.scale_by(self.apple_sprite, 1.4)
 
     def init_game_state(self):
         # --- Game starting conditions ---
         self.fullscreen = True
         self.state = None
         self.requested_state = 'start'
+        self.active_settings_tab = None
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -486,7 +610,8 @@ class Game:
                 self.LAYERS['player'],
                 self.player_sprite_variants,
                 self.player_glows,
-                self.ability_sound)
+                self.ability_sound,
+                self.dash_sound)
         self.player = self.player_group.sprite
 
     def load_save(self):
@@ -539,7 +664,7 @@ class Game:
         if not self.player.is_alive:
             return
         
-        if not self.player.iframes and self.player.can_collide:
+        if not self.player.iframes and self.player.can_collide and not self.player.dashing:
             hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
             if hit:
                 self.player.health -= 1
@@ -674,8 +799,11 @@ class Game:
             filled = int(progress * smoothness)
             pygame.draw.rect(self.screen, 'black', (0, 0, int(bar_width * filled), WINDOW_HEIGHT))
             self.present_frame()
-            self.clock.tick(FPS)
+
             if progress >= 1.0:
+                pygame.event.clear()
+                pygame.key.get_pressed()
+                pygame.mouse.get_pressed()
                 break
 
     def change_track(self, key, fade_ms=1000):
