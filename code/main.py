@@ -9,6 +9,7 @@ class Game:
         # --- initialization and preloading ---
         self.init_paths()
         self.init_pygame()
+        self.load_settings()
         self.init_window()
         self.load_sounds()
         self.set_all_volumes()
@@ -45,7 +46,7 @@ class Game:
                 self.close_game()
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_F11:
+                if event.key == KEY_BINDINGS['fullscreen'] and not self.waiting_for_key:
                         self.toggle_fullscreen()
 
             # --- start state ---
@@ -64,7 +65,8 @@ class Game:
                             delattr(self, 'show_start_player')
                         else: self.show_start_player = True
                     else:
-                        self.show_start_hint = True
+                        if event.key != KEY_BINDINGS['fullscreen']:
+                            self.show_start_hint = True
 
             # --- play state ---
             elif self.state == 'play':
@@ -94,17 +96,49 @@ class Game:
                     elif event.key == pygame.K_2:
                         self.show_apple = True
                     else:
-                        self.show_game_over_hint = True
+                        if event.key != KEY_BINDINGS['fullscreen']:
+                            self.show_game_over_hint = True
 
             # --- settings state ---
             elif self.state == 'settings':
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
+                    if event.key == pygame.K_ESCAPE and not self.waiting_for_key:
                         # if inside a submenu, go back to main settings menu
-                        if getattr(self, "active_settings_tab", None):
+                        if self.active_settings_tab:
                             self.active_settings_tab = None
                         else:
                             self.requested_state = self.prev_state
+                            self.save_settings()
+
+                    if self.waiting_for_key:
+                        # assign new key to the selected action
+                        KEY_BINDINGS[self.waiting_for_key] = event.key
+                        self.waiting_for_key = None
+                        pygame.event.clear()
+                        # rebuild control texts
+                        self.control_texts.clear()
+
+                        # re-add reset button first
+                        self.control_texts.append(ClickableText("Reset to Defaults",
+                                                                self.fonts["settings_texts"],
+                                                                (WINDOW_CENTER[0], 110),
+                                                                COLOR["settings_text_buttons"],
+                                                                COLOR["settings_text_buttons_hovered"],
+                                                                self.menu_select_sound,
+                                                                self.menu_hover_sound))
+
+                        # rebuild keybind buttons below it
+                        y = 220
+                        for action, key in KEY_BINDINGS.items():
+                            label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
+                            self.control_texts.append(ClickableText(label,
+                                                                    self.fonts['settings_texts'],
+                                                                    (WINDOW_CENTER[0], y),
+                                                                    COLOR['settings_text_buttons'],
+                                                                    COLOR['settings_text_buttons_hovered'],
+                                                                    self.menu_select_sound,
+                                                                    self.menu_hover_sound))
+                            y += 40
 
     def set_game_mode(self):
         '''Switches game mode and handles necessary changes.'''
@@ -315,41 +349,39 @@ class Game:
 
             # --- if no tab active, show main menu ---
             if not self.active_settings_tab:
-                for text_btn in self.ui_text_buttons:
+                self.screen.blit(self.text_surfaces['settings'], self.text_rects['settings'])
+                for text_btn in self.main_settings_buttons:
                     text_btn.update(mouse_pos, mouse_click)
                     text_btn.draw(self.screen)
 
                 # check clicks
-                if self.ui_text_buttons[0].clicked:
+                if self.main_settings_buttons[0].clicked:
                     self.active_settings_tab = "audio"
                     pygame.event.clear()
                     return
-                elif self.ui_text_buttons[1].clicked:
+                elif self.main_settings_buttons[1].clicked:
                     self.active_settings_tab = "controls"
                     pygame.event.clear()
                     return
-                elif self.ui_text_buttons[2].clicked:
+                elif self.main_settings_buttons[2].clicked:
+                    self.save_settings()
                     self.requested_state = self.prev_state
                     pygame.event.clear()
                     return
 
             elif self.active_settings_tab:
                 # back button at bottom
-                back_btn = self.ui_text_buttons[2]
-                original_pos = back_btn.pos  # save original position
-                back_btn.pos = (WINDOW_CENTER[0], WINDOW_HEIGHT - 100)  # move down
-                back_btn.rect.center = back_btn.pos
+                back_btn = self.main_settings_buttons[2]
 
-                back_btn.update(mouse_pos, mouse_click)
-                back_btn.draw(self.screen)
+                # only draw back button if not waiting for key
+                if not self.waiting_for_key:
+                    back_btn.update(mouse_pos, mouse_click)
+                    back_btn.draw(self.screen)
 
+                # check back button click
                 if back_btn.clicked:
                     self.active_settings_tab = None
                     pygame.event.clear()
-
-                # restore original position for when we return to main settings
-                back_btn.pos = original_pos
-                back_btn.rect.center = back_btn.pos
 
             # --- controls submenu ---
             if self.active_settings_tab == "controls":
@@ -359,34 +391,95 @@ class Game:
                     btn.update(mouse_pos, mouse_click)
                     btn.draw(self.screen)
 
-                    if self.control_texts[0].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[1].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[2].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[3].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[4].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[5].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[6].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
-                    if self.control_texts[7].clicked:
-                        self.screen.fill('black')
-                        pygame.event.clear()
+                    # handle clicks
+                    if btn.clicked and self.waiting_for_key is None:
+                        if btn.text == "Reset to Defaults":
+                            # restore defaults
+                            KEY_BINDINGS.clear()
+                            KEY_BINDINGS.update({"move_left": pygame.K_a,
+                                                         "move_right": pygame.K_d,
+                                                         "move_up": pygame.K_w,
+                                                         "move_down": pygame.K_s,
+                                                         "ability": pygame.K_SPACE,
+                                                         "dash": pygame.K_RETURN,
+                                                         "fullscreen": pygame.K_F11,})
+
+                            # rebuild control texts
+                            self.control_texts.clear()
+                            self.control_texts.append(ClickableText("Reset to Defaults",
+                                                      self.fonts["settings_texts"],
+                                                      (WINDOW_CENTER[0], 110),
+                                                      COLOR["settings_text_buttons"],
+                                                      COLOR["settings_text_buttons_hovered"],
+                                                      self.menu_select_sound,
+                                                      self.menu_hover_sound))
+                            y = 220
+                            for action, key in KEY_BINDINGS.items():
+                                label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
+                                self.control_texts.append(ClickableText(label,
+                                                          self.fonts["settings_texts"],
+                                                          (WINDOW_CENTER[0], y),
+                                                          COLOR["settings_text_buttons"],
+                                                          COLOR["settings_text_buttons_hovered"],
+                                                          self.menu_select_sound,
+                                                          self.menu_hover_sound))
+                                y += 40
+                            pygame.event.clear()
+                        else:
+                            # clicked a keybinding line
+                            for action, key in KEY_BINDINGS.items():
+                                label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
+                                if btn.text == label:
+                                    self.waiting_for_key = action
+                                    pygame.event.clear()
+
+                if self.waiting_for_key:
+                    # highlight selected button
+                    for btn in self.control_texts:
+                        if btn.text.startswith(self.waiting_for_key.replace('_', ' ').title()):
+                            btn.color = COLOR['key_binding_prompt']; btn.hover_color = COLOR['key_binding_prompt']; btn.hovered = True
+                    prompt = self.fonts['settings_texts'].render("Press new key...", True, COLOR['key_binding_prompt'])
+                    rect = prompt.get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 60))
+                    self.screen.blit(prompt, rect)
 
             # --- audio submenu ---
             elif self.active_settings_tab == "audio":
-                self.screen.blit(self.text_surfaces['audio'], self.text_rects['audio'])
+                    self.screen.blit(self.text_surfaces["audio"], self.text_rects["audio"])
+                    mouse_pos = self.get_scaled_mouse_pos()
+                    mouse_click = pygame.mouse.get_just_pressed()[0]
+
+                    global MASTER_VOLUME, MUSIC_VOLUME, SFX_VOLUME
+                    volumes = {"Master": MASTER_VOLUME, "Music": MUSIC_VOLUME, "SFX": SFX_VOLUME}
+
+                    for entry in self.audio_texts:
+                        label = entry["label"]
+
+                        # draw label
+                        self.screen.blit(entry["text"], entry["rect"])
+
+                        # draw percentage text
+                        percent = int(volumes[label] * 100)
+                        percent_surface = self.fonts["settings_texts"].render(f"{percent}%", True, COLOR["settings_text_buttons"])
+                        percent_rect = percent_surface.get_rect(center=(WINDOW_CENTER[0], entry["rect"].centery))
+                        self.screen.blit(percent_surface, percent_rect)
+
+                        # update and draw buttons
+                        entry["minus"].update(mouse_pos, mouse_click)
+                        entry["plus"].update(mouse_pos, mouse_click)
+                        entry["minus"].draw(self.screen)
+                        entry["plus"].draw(self.screen)
+
+                        if entry["minus"].clicked:
+                            volumes[label] = round(max(0.0, volumes[label] - 0.05), 2)
+                            self.apply_audio_settings()
+                            self.save_settings()
+                        elif entry["plus"].clicked:
+                            volumes[label] = round(min(1.0, volumes[label] + 0.05), 2)
+                            self.apply_audio_settings()
+                            self.save_settings()
+
+                    # reassign updated globals
+                    MASTER_VOLUME, MUSIC_VOLUME, SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
 
 # --- Initialization steps ---
     def init_paths(self):
@@ -409,6 +502,7 @@ class Game:
         self.DATA_DIR = join(base_dir, "data")
         self.FONT_DIR = join(base_dir, "fonts")
         self.SAVE_FILE = join(user_dir, "save.json")
+        self.SETTINGS_FILE = join(user_dir, "settings.json")
 
     def init_pygame(self):
         try:
@@ -441,8 +535,8 @@ class Game:
         self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
         self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
         self.eat_fruit_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'eat_fruit_sound.wav'))
-        self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.ogg'))
-        self.explosion_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'explosion_sound.ogg'))
+        self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.wav'))
+        self.explosion_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'explosion_sound.wav'))
         self.game_over_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_sound.ogg'))
         self.record_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'new_record_sound.ogg'))
         self.ability_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'ability_sound.wav'))
@@ -450,27 +544,25 @@ class Game:
 
     def set_all_volumes(self):
         # --- game music ---
-        self.tracks['start_track'].set_volume(START_TRACK_VOLUME)
-        self.tracks['game_over_track'].set_volume(GAME_OVER_TRACK_VOLUME)
-        self.tracks['game_track_1'].set_volume(GAME_TRACK_1_VOLUME)
-        self.tracks['game_track_2'].set_volume(GAME_TRACK_2_VOLUME)
+        self.tracks['start_track'].set_volume(START_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
+        self.tracks['game_over_track'].set_volume(GAME_OVER_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
+        self.tracks['game_track_1'].set_volume(GAME_TRACK_1_VOLUME * MUSIC_VOLUME * MASTER_VOLUME) 
+        self.tracks['game_track_2'].set_volume(GAME_TRACK_2_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
 
-        # set base volumes to restore after dimming by pause menu
-        self.base_volumes = {}
-        for name, track in self.tracks.items():
-            self.base_volumes[name] = track.get_volume()
+        # --- store base volumes ---
+        self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items()}
 
         # --- sound effects ---
-        self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME)
-        self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME)
-        self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME)
-        self.eat_fruit_sound.set_volume(EAT_FRUIT_SOUND_VOLUME)
-        self.damage_sound.set_volume(DAMAGE_SOUND_VOLUME)
-        self.explosion_sound.set_volume(EXPLOSION_SOUND_VOLUME)
-        self.game_over_sound.set_volume(GAME_OVER_SOUND_VOLUME)
-        self.record_sound.set_volume(RECORD_SOUND_VOLUME)
-        self.ability_sound.set_volume(ABILITY_SOUND_VOLUME)
-        self.dash_sound.set_volume(DASH_SOUND_VOLUME)
+        self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.eat_fruit_sound.set_volume(EAT_FRUIT_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.damage_sound.set_volume(DAMAGE_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.explosion_sound.set_volume(EXPLOSION_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.game_over_sound.set_volume(GAME_OVER_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.record_sound.set_volume(RECORD_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.ability_sound.set_volume(ABILITY_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.dash_sound.set_volume(DASH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -478,23 +570,27 @@ class Game:
                             'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
                             'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
                             'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
-                            'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),}
+                            'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),
+                            'settings_headers': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_HEADERS_FONT_SIZE),
+                            'settings_texts': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_TEXTS_FONT_SIZE),}
 
         # --- pre-render static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
                                     'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
-                                    'controls': self.fonts['stats'].render("Controls", True, COLOR['settings_tab_headers']),
-                                    'audio': self.fonts['stats'].render("Audio", True, COLOR['settings_tab_headers'])}
+                                    'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
+                                    'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
+                                    'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),}
 
         # --- define text positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
                                  'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
                                  'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
                                  'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
-                                 'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 160)),
-                                 'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 160))}
+                                 'settings': self.text_surfaces['settings'].get_rect(center=(WINDOW_CENTER[0], 50)),
+                                 'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 50)),
+                                 'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50))}
 
         # --- draws ---
         self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
@@ -509,19 +605,19 @@ class Game:
         self.clickable_icons[1].base_image = pygame.transform.scale(self.clickable_icons[1].base_image, (60,60)) # scale resume button
         self.clickable_icons[2].base_image = pygame.transform.scale(self.clickable_icons[2].base_image, (60,60)) # scale settings button
 
-        self.ui_text_buttons: list = [ClickableText("Audio", self.fonts['stats'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
-                                      ClickableText("Controls", self.fonts['stats'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
-                                      ClickableText("Back", self.fonts['stats'], (WINDOW_CENTER[0], 460), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
+        self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Back", self.fonts['settings_texts'], (WINDOW_CENTER[0], WINDOW_HEIGHT - 60), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
         
         # Keybinding clickable texts
         if not hasattr(self, "control_texts"):
-            self.control_texts = []
+            self.control_texts = [ClickableText('Reset to Defaults', self.fonts['settings_texts'], (WINDOW_CENTER[0], 110), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound)]
             y = 220
             for action, key in KEY_BINDINGS.items():
                 label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
                 btn = ClickableText(
                     label,
-                    self.fonts['stats'],
+                    self.fonts['settings_texts'],
                     (WINDOW_CENTER[0], y),
                     COLOR['settings_text_buttons'],
                     COLOR['settings_text_buttons_hovered'],
@@ -529,6 +625,25 @@ class Game:
                     self.menu_hover_sound)
                 self.control_texts.append(btn)
                 y += 40
+
+        # Audio clickable texts
+        self.audio_texts = []
+        labels = [("Master", 300), ("Music", 360), ("SFX", 420)]
+        for label, y in labels:
+            text_surface = self.fonts["settings_texts"].render(label, True, COLOR["settings_text_buttons"])
+            text_rect = text_surface.get_rect(midleft=(WINDOW_CENTER[0] - 250, y))
+
+            minus_btn = ClickableText("-", self.fonts["settings_texts"],
+                                    (WINDOW_CENTER[0] + 90, y),
+                                    COLOR["settings_text_buttons"], COLOR["settings_text_buttons_hovered"],
+                                    self.menu_select_sound, self.menu_hover_sound)
+            plus_btn = ClickableText("+", self.fonts["settings_texts"],
+                                    (WINDOW_CENTER[0] + 140, y),
+                                    COLOR["settings_text_buttons"], COLOR["settings_text_buttons_hovered"],
+                                    self.menu_select_sound, self.menu_hover_sound)
+
+            self.audio_texts.append({"label": label, "text": text_surface, "rect": text_rect,
+                                        "minus": minus_btn, "plus": plus_btn})
 
         self.backgrounds: dict = {
             'bg_1': [pygame.image.load(join(self.IMG_DIR, 'background_1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
@@ -553,6 +668,7 @@ class Game:
         self.state = None
         self.requested_state = 'start'
         self.active_settings_tab = None
+        self.waiting_for_key = None
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -622,6 +738,28 @@ class Game:
                 self.previous_runtime = save_data.get('total_runtime[s]', 0.0)
         except:
             self.previous_runtime = 0.0
+
+    def load_settings(self):
+        try:
+            with open(self.SETTINGS_FILE) as f:
+                settings_data = json.load(f)
+
+                # controls
+                loaded_bindings: dict = settings_data.get('key_bindings', {}) 
+                for action, key_name in loaded_bindings.items():
+                    try:
+                        KEY_BINDINGS[action] = pygame.key.key_code(key_name)
+                    except:
+                        pass
+
+                # audio volumes
+                audio = settings_data.get("audio", {})
+                global MASTER_VOLUME, MUSIC_VOLUME, SFX_VOLUME
+                MASTER_VOLUME = audio.get("master", 1.0)
+                MUSIC_VOLUME = audio.get("music", 1.0)
+                SFX_VOLUME = audio.get("sfx", 1.0)
+        except:
+            pass
 
 # --- Main loop ---
 
@@ -774,6 +912,26 @@ class Game:
         with open(self.SAVE_FILE, "w") as f:
             json.dump(save_data, f, indent=2)
 
+    def save_settings(self):
+        save_data = {}
+
+        try:
+            with open(self.SETTINGS_FILE) as f:
+                save_data = json.load(f)
+        except:
+            pass
+
+        # controls
+        save_data['key_bindings'] = {action: pygame.key.name(key) for action, key in KEY_BINDINGS.items()}
+        # audio
+        save_data['audio'] = {'master': MASTER_VOLUME,
+                              'music': MUSIC_VOLUME,
+                              'sfx': SFX_VOLUME,}
+
+        # dump into file
+        with open(self.SETTINGS_FILE, "w") as f:
+            json.dump(save_data, f, indent=2)
+
     def close_game(self):
         pygame.quit()
         sys.exit()
@@ -822,6 +980,12 @@ class Game:
         scale_x = BASE_RESOLUTION[0] / self.window.get_width()
         scale_y = BASE_RESOLUTION[1] / self.window.get_height()
         return int(mouse_x * scale_x), int(mouse_y * scale_y)
+
+    def apply_audio_settings(self):
+        self.set_all_volumes()
+        if self.music_channel and self.current_track:
+            base = self.base_volumes[self.current_track]
+            self.music_channel.set_volume(base)
 
 # --- Time system ---
     def update_play_time(self):

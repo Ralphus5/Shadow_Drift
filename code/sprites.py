@@ -230,4 +230,3 @@ class Obstacle(pygame.sprite.Sprite):
         # --- move ---
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
-

@@ -1,5 +1,6 @@
 from utils import *
 
+
 # --- VISUALS ---
 # display
 WINDOW_WIDTH: int = 1280 
@@ -11,7 +12,7 @@ FPS: Annotated[int, (25-120)] = 60
 # colors
 COLOR = {'ui_text': "#000000",
         'ui_text_shadow': "#FFFFFF",
-        'ui_text_stop': "#0015FF",
+        'ui_text_stop': "#70C1FF",
         'ui_text_shadow_stop': "#000000",
         'blue_player_glow': "#0066FF81",
         'red_player_glow': "#FF000081",
@@ -21,9 +22,10 @@ COLOR = {'ui_text': "#000000",
         'stop_screen_bg': "#11121F",
         'title_text': "#2D0BEE",
         'start_hint': '#2D0BEE',
-        'settings_text_buttons': "#A5A9AC",
+        'settings_text_buttons': "#FFFFFF",
         'settings_text_buttons_hovered': '#2D0BEE',
-        'settings_tab_headers': "#02B3FE"}
+        'settings_headers': "#70C1FF",
+        'key_binding_prompt': "#BB08DB",}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -31,6 +33,9 @@ SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
 GAME_OVER_HINT_FONT_SIZE: int = 23
 START_HINT_FONT_SITZE: int = 23
+SETTINGS_HEADERS_FONT_SIZE: int = 50
+SETTINGS_TEXTS_FONT_SIZE: int = 35
+
 
 # animations
 TITLE_FLICKER_SPEED: Annotated[float, (1-6)] = 5
@@ -40,10 +45,16 @@ FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
 GAME_OVER_SCROLL_SPEED: float = 1.6
 BACKGROUND_FRAME_INTERVALL: int = 100
-PLAYER_EXPLOSION_SPEED: float = 1.0
+PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 
+
 # ----- AUDIO -----
+# user volume settings
+MASTER_VOLUME: Annotated[float, (0-1)] = 1
+MUSIC_VOLUME: Annotated[float, (0-1)] = 1
+SFX_VOLUME: Annotated[float, (0-1)] = 1
+
 # game music volumes
 STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.3
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
@@ -57,13 +68,14 @@ MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 
 # gameplay sound volumes
-EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
-DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.3
-EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.3
+EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
+DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+
 
 # ----- GAMEPLAY -----
 STATS = {'score': 0, 'record': 0}
@@ -80,6 +92,7 @@ PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWN_PER_MINUTE: float = 4
 
+
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS = {
     # gameplay movement
@@ -93,5 +106,4 @@ KEY_BINDINGS = {
     "dash": pygame.K_RETURN,
 
     # system and meta
-    "pause": pygame.K_ESCAPE,
     "fullscreen": pygame.K_F11,}

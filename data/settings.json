@@ -1,0 +1,16 @@
+{
+  "key_bindings": {
+    "move_left": "a",
+    "move_right": "d",
+    "move_up": "w",
+    "move_down": "s",
+    "ability": "space",
+    "dash": "return",
+    "fullscreen": "f11"
+  },
+  "audio": {
+    "master": 1.0,
+    "music": 1.0,
+    "sfx": 1.0
+  }
+}
