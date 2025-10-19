@@ -11,21 +11,21 @@ FPS: Annotated[int, (25-120)] = 60
 
 # colors
 COLOR = {'ui_text': "#000000",
-        'ui_text_shadow': "#FFFFFF",
-        'ui_text_stop': "#70C1FF",
-        'ui_text_shadow_stop': "#000000",
-        'blue_player_glow': "#0066FF81",
-        'red_player_glow': "#FF000081",
-        'game_over_text': "#C90E0E",
-        'game_over_hint': "#C90E0E",
-        'start_screen_bg': "#11121F",
-        'stop_screen_bg': "#11121F",
-        'title_text': "#2D0BEE",
-        'start_hint': '#2D0BEE',
-        'settings_text_buttons': "#FFFFFF",
-        'settings_text_buttons_hovered': '#2D0BEE',
-        'settings_headers': "#70C1FF",
-        'key_binding_prompt': "#BB08DB",}
+         'ui_text_shadow': "#FFFFFF",
+         'ui_text_stop': "#70C1FF",
+         'ui_text_shadow_stop': "#000000",
+         'blue_player_glow': "#0066FF81",
+         'red_player_glow': "#FF000081",
+         'game_over_text': "#C90E0E",
+         'game_over_hint': "#C90E0E",
+         'start_screen_bg': "#11121F",
+         'stop_screen_bg': "#11121F",
+         'title_text': "#2D0BEE",
+         'start_hint': '#2D0BEE',
+         'settings_text_buttons': "#FFFFFF",
+         'settings_text_buttons_hovered': '#2D0BEE',
+         'settings_headers': "#70C1FF",
+         'key_binding_prompt': "#BB08DB",}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -83,14 +83,16 @@ FIRST_PHASE_END: int = 40
 SECOND_PHASE_END: int = 80
 THIRD_PHASE_END: int = 120
 DEFAULT_PLAYER_SPEED: int = 250
+ONE_LIFE_PLAYER_SPEED: int = 300
 PLAYER_ABILITY_DURATION: float = 1.6 # seconds
 PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
-DASH_COOLDOWN: float = 0.5 # seconds
+DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
-FRUIT_SPAWN_PER_MINUTE: float = 4
+FRUIT_SPAWNS_PER_MINUTE: float = 4
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .5, 'blueberry': .5}
 
 
 # --- DEFAULT KEY BINDINGS ---

@@ -323,20 +323,20 @@ class Game:
             self.dead_player_rect = self.dead_player_rotated.get_rect(center=self.player.rect.center)
             self.dead_player_mask = pygame.mask.from_surface(self.dead_player_rotated)
             self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
+        if not hasattr(self, 'secret_apples'):
+            self.secret_apples = pygame.sprite.Group()
         if getattr(self, 'show_apple', False):
-            if not hasattr(self, 'secret_fruits'):
-                self.secret_fruits = pygame.sprite.Group()
-            Fruit((self.all_sprites, self.secret_fruits),
-            self.LAYERS['fruits'],
-            random_of_spectrum(300,700),
-            self.apple_sprite)
+            Apple((self.all_sprites, self.secret_apples),
+                self.LAYERS['fruits'],
+                random_of_spectrum(300,700),
+                self.fruit_sprite_variants[Apple])
             self.show_apple = False
             
-        if hasattr(self, 'secret_fruits'):
-            self.secret_fruits.update(dt, self.play_time)
-            self.secret_fruits.draw(self.screen)
+        if hasattr(self, 'secret_apples'):
+            self.secret_apples.update(dt, self.play_time)
+            self.secret_apples.draw(self.screen)
             if hasattr(self, 'dead_player_rect') and hasattr(self, 'show_dead_player'):
-                for fruit in self.secret_fruits.sprites():
+                for fruit in self.secret_apples.sprites():
                     offset = (fruit.rect.x - self.dead_player_rect.x, fruit.rect.y - self.dead_player_rect.y)
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
                         fruit.kill()
@@ -592,12 +592,6 @@ class Game:
                                  'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50))}
 
-        # --- draws ---
-        self.player_glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
-                                   "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
-        pygame.draw.circle(self.player_glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
-        pygame.draw.circle(self.player_glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
-
         # --- images ---
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
@@ -659,8 +653,10 @@ class Game:
 
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
-        self.apple_sprite = pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha()
-        self.apple_sprite = pygame.transform.scale_by(self.apple_sprite, 1.4)
+        self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
+                                      Blueberry: pygame.image.load(join(self.IMG_DIR, 'settings_cog_wheel.png')).convert_alpha(),
+                                      }
+        self.fruit_sprite_variants[Apple] = pygame.transform.scale_by(self.fruit_sprite_variants[Apple], 1.4)
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -700,7 +696,7 @@ class Game:
         for attr in (# reset start secrets
                      'show_start_hint','show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
                      # reset game over secrets
-                     'show_game_over_hint','show_apple','secret_fruits','dead_player_rect','dead_player_mask',):
+                     'show_game_over_hint','show_apple','secret_apples','dead_player_rect','dead_player_mask',):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -725,7 +721,6 @@ class Game:
         Player((self.all_sprites, self.player_group),
                 self.LAYERS['player'],
                 self.player_sprite_variants,
-                self.player_glows,
                 self.ability_sound,
                 self.dash_sound)
         self.player = self.player_group.sprite
@@ -783,12 +778,13 @@ class Game:
             self.next_obstacle_spawn_time = self.play_time + OBSTACLE_SPAWN_TIME
 
     def spawn_fruit(self, dt):
-        speed = random_of_spectrum(50,270,False,bias=0.3)
-        if random.random() < FRUIT_SPAWN_PER_MINUTE/60 * dt:
-            Fruit((self.all_sprites, self.fruit_sprites),
-                  self.LAYERS['fruits'],
-                  speed,
-                  self.apple_sprite)
+        if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
+            speed = random_of_spectrum(50,270,False,bias=0.4)
+            new_fruit = random_of_selection((Apple,Blueberry),FRUITS_SPAWN_PROBABILITIES.values())
+            new_fruit((self.all_sprites, self.fruit_sprites),
+                    self.LAYERS['fruits'],
+                    speed,
+                    self.fruit_sprite_variants[new_fruit])
 
     def change_background(self):
         if STATS['score'] == FIRST_PHASE_END:
@@ -808,8 +804,6 @@ class Game:
                 self.player.health -= 1
                 if self.player.health >= 1:
                     self.damage_sound.play()
-                    self.player.speed += 50
-                    self.player.glow = self.player.glows['red']
                     self.player.activate_iframes(self.play_time)
                 else:
                     self.explosion_sound.play()
@@ -818,8 +812,9 @@ class Game:
 
         eat = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
         if eat:
-            self.eat_fruit_sound.play()
-            STATS['score'] += 10
+            for fruit in eat:
+                fruit.apply_effect(self.player)
+                self.eat_fruit_sound.play()
 
     def check_record(self):
         if STATS['score'] > STATS['record'] and not self.record_checked:

@@ -4,15 +4,20 @@ from settings import *
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
-    def __init__(self, groups, layer, sprite_variants, glows, ability_sound, dash_sound):
+    def __init__(self, groups, layer, sprite_variants, ability_sound, dash_sound):
         self._layer = layer
         super().__init__(groups)
 
         # --- parameters ---
         self.sprite_variants = sprite_variants
-        self.glows = glows
         self.ability_sound = ability_sound
         self.dash_sound = dash_sound
+
+        # --- glow effect ---
+        self.glows: dict = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
+                            "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
+        pygame.draw.circle(self.glows["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
+        pygame.draw.circle(self.glows["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
         
         # --- gameplay attributes ---
         self.is_alive = True
@@ -40,6 +45,7 @@ class Player(pygame.sprite.Sprite):
         self.image = self.sprite_variants[self.health]
         self.mask = pygame.mask.from_surface(self.image)
         self.rect = self.image.get_frect(center=WINDOW_CENTER)
+        self.glows
         self.glow = self.glows['blue']
 
         # --- motion setup ---
@@ -153,6 +159,9 @@ class Player(pygame.sprite.Sprite):
         # --- control flow of player sprite ---
         self.play_time = play_time
 
+        self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
+        self.glow = self.glows['red'] if self.health == 1 else self.glows['blue']
+
         self.handle_input(dt, self.play_time)
         self.keep_in_window()
 
@@ -184,11 +193,11 @@ class AnimatedBackground(pygame.sprite.Sprite):
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""
 
-    def __init__(self, groups, layer, speed, apple_sprite):
+    def __init__(self, groups, layer, speed, fruit_sprites):
         self._layer = layer
         super().__init__(groups)
         self.speed = speed
-        self.image = apple_sprite
+        self.image = fruit_sprites
         self.rect = self.image.get_frect(center=(random_of_spectrum(60,WINDOW_WIDTH-100,bias=0.6),-100))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0,1)
@@ -202,6 +211,27 @@ class Fruit(pygame.sprite.Sprite):
         self.rect.center += self.direction * self.speed * dt
 
         self.destroy()
+
+class Apple(Fruit):
+    """Apple collectable: gives 10 points."""
+
+    def __init__(self, groups, layer, speed, fruit_sprites):
+        super().__init__(groups, layer, speed, fruit_sprites)
+
+    def apply_effect(self, player):
+        STATS['score'] += 10
+        self.kill()
+
+class Blueberry(Fruit):
+    """Blueberry collectable: restore 2nd life."""
+
+    def __init__(self, groups, layer, speed, fruit_sprites):
+        super().__init__(groups, layer, speed, fruit_sprites)
+
+    def apply_effect(self, player):
+        if player.health < 2:
+            player.health += 1
+        self.kill()
 
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""
