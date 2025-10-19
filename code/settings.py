@@ -92,7 +92,7 @@ DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWNS_PER_MINUTE: float = 4
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .5, 'blueberry': .5}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .1}
 
 
 # --- DEFAULT KEY BINDINGS ---

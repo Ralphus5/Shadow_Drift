@@ -207,9 +207,7 @@ class Fruit(pygame.sprite.Sprite):
             self.kill()
 
     def update(self, dt, play_time):
-        # --- move ---
         self.rect.center += self.direction * self.speed * dt
-
         self.destroy()
 
 class Apple(Fruit):

@@ -95,6 +95,8 @@ class Game:
                         else: self.show_dead_player = True
                     elif event.key == pygame.K_2:
                         self.show_apple = True
+                    elif event.key == pygame.K_3:
+                        self.show_blueberry = True
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_game_over_hint = True
@@ -323,20 +325,26 @@ class Game:
             self.dead_player_rect = self.dead_player_rotated.get_rect(center=self.player.rect.center)
             self.dead_player_mask = pygame.mask.from_surface(self.dead_player_rotated)
             self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
-        if not hasattr(self, 'secret_apples'):
-            self.secret_apples = pygame.sprite.Group()
+            
         if getattr(self, 'show_apple', False):
-            Apple((self.all_sprites, self.secret_apples),
+            Apple((self.all_sprites, self.secret_fruits),
                 self.LAYERS['fruits'],
                 random_of_spectrum(300,700),
                 self.fruit_sprite_variants[Apple])
             self.show_apple = False
+        if getattr(self, 'show_blueberry', False):
+            Blueberry((self.all_sprites, self.secret_fruits),
+                self.LAYERS['fruits'],
+                random_of_spectrum(300,700),
+                self.fruit_sprite_variants[Blueberry])
+            self.show_blueberry = False
+        
             
-        if hasattr(self, 'secret_apples'):
-            self.secret_apples.update(dt, self.play_time)
-            self.secret_apples.draw(self.screen)
+        if hasattr(self, 'secret_fruits'):
+            self.secret_fruits.update(dt, self.play_time)
+            self.secret_fruits.draw(self.screen)
             if hasattr(self, 'dead_player_rect') and hasattr(self, 'show_dead_player'):
-                for fruit in self.secret_apples.sprites():
+                for fruit in self.secret_fruits.sprites():
                     offset = (fruit.rect.x - self.dead_player_rect.x, fruit.rect.y - self.dead_player_rect.y)
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
                         fruit.kill()
@@ -595,7 +603,7 @@ class Game:
         # --- images ---
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
-                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "settings_cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 60))]
+                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 60))]
         self.clickable_icons[1].base_image = pygame.transform.scale(self.clickable_icons[1].base_image, (60,60)) # scale resume button
         self.clickable_icons[2].base_image = pygame.transform.scale(self.clickable_icons[2].base_image, (60,60)) # scale settings button
 
@@ -654,9 +662,7 @@ class Game:
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
-                                      Blueberry: pygame.image.load(join(self.IMG_DIR, 'settings_cog_wheel.png')).convert_alpha(),
-                                      }
-        self.fruit_sprite_variants[Apple] = pygame.transform.scale_by(self.fruit_sprite_variants[Apple], 1.4)
+                                      Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -706,6 +712,7 @@ class Game:
         self.player_group = pygame.sprite.GroupSingle()
         self.obstacle_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
+        self.secret_fruits = pygame.sprite.Group()
 
         self.LAYERS = {'background': 0,
                        'fruits': 1,
@@ -779,7 +786,7 @@ class Game:
 
     def spawn_fruit(self, dt):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
-            speed = random_of_spectrum(50,270,False,bias=0.4)
+            speed = random_of_spectrum(50,270,False,bias=0.3)
             new_fruit = random_of_selection((Apple,Blueberry),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit((self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
