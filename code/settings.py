@@ -91,7 +91,7 @@ DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
-FRUIT_SPAWNS_PER_MINUTE: float = 4
+FRUIT_SPAWNS_PER_MINUTE: float = 3.50
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .1}
 
 

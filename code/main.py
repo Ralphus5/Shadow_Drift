@@ -64,6 +64,8 @@ class Game:
                         if getattr(self, 'show_start_player', False):
                             delattr(self, 'show_start_player')
                         else: self.show_start_player = True
+                    elif event.key == pygame.K_2:
+                        self.show_blueberry = True
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_start_hint = True
@@ -95,8 +97,6 @@ class Game:
                         else: self.show_dead_player = True
                     elif event.key == pygame.K_2:
                         self.show_apple = True
-                    elif event.key == pygame.K_3:
-                        self.show_blueberry = True
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_game_over_hint = True
@@ -149,6 +149,9 @@ class Game:
             return
         old, new = self.state, self.requested_state
         self.requested_state = None
+
+        # --- clear secrets ---
+        self.secret_fruits.empty()
 
         # --- switch ---
         self.state = new
@@ -261,6 +264,7 @@ class Game:
                 self.start_player_vel.y *= -1
 
             rect.clamp_ip(pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
+            self.start_player_pos = pygame.Vector2(rect.center)
 
             # --- draw with correct facing ---
             img = self.player_sprite_variants[2]
@@ -268,6 +272,23 @@ class Game:
                 img = pygame.transform.flip(img, True, False)
             rect = img.get_rect(center=self.start_player_pos)
             self.screen.blit(img, rect)
+
+        if getattr(self, 'show_blueberry', False):
+            Blueberry((self.secret_fruits),
+                self.LAYERS['fruits'],
+                random_of_spectrum(300,700),
+                self.fruit_sprite_variants[Blueberry])
+            self.show_blueberry = False
+
+        if hasattr(self, 'secret_fruits') and self.secret_fruits:
+            self.secret_fruits.update(dt, self.play_time)
+            self.secret_fruits.draw(self.screen)
+            if hasattr(self, 'show_start_player') and self.show_start_player:
+                for fruit in self.secret_fruits.sprites():
+                    offset = (fruit.rect.x - rect.x, fruit.rect.y - rect.y)
+                    if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(fruit.image), offset):
+                        fruit.kill()
+                        self.eat_fruit_sound.play()
 
     def play_loop(self, dt):
         # update dt
@@ -327,20 +348,13 @@ class Game:
             self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
             
         if getattr(self, 'show_apple', False):
-            Apple((self.all_sprites, self.secret_fruits),
+            Apple((self.secret_fruits),
                 self.LAYERS['fruits'],
                 random_of_spectrum(300,700),
                 self.fruit_sprite_variants[Apple])
             self.show_apple = False
-        if getattr(self, 'show_blueberry', False):
-            Blueberry((self.all_sprites, self.secret_fruits),
-                self.LAYERS['fruits'],
-                random_of_spectrum(300,700),
-                self.fruit_sprite_variants[Blueberry])
-            self.show_blueberry = False
-        
             
-        if hasattr(self, 'secret_fruits'):
+        if hasattr(self, 'secret_fruits') and self.secret_fruits:
             self.secret_fruits.update(dt, self.play_time)
             self.secret_fruits.draw(self.screen)
             if hasattr(self, 'dead_player_rect') and hasattr(self, 'show_dead_player'):
@@ -700,7 +714,7 @@ class Game:
         self.next_obstacle_spawn_time = OBSTACLE_SPAWN_TIME
 
         for attr in (# reset start secrets
-                     'show_start_hint','show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
+                     'show_start_hint', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
                      # reset game over secrets
                      'show_game_over_hint','show_apple','secret_apples','dead_player_rect','dead_player_mask',):
             if hasattr(self, attr):
