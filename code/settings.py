@@ -56,7 +56,7 @@ MUSIC_VOLUME: Annotated[float, (0-1)] = 1
 SFX_VOLUME: Annotated[float, (0-1)] = 1
 
 # game music volumes
-STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.3
+STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.4
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -92,7 +92,10 @@ DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWNS_PER_MINUTE: float = 3.50
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .1}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .8, 'blueberry': .2, 'banana': .4}
+APPLE_POINTS: int = 10
+BANANA_SPEED_BOOST: int = 150
+BANANA_BOOST_DURATION: float = 12.0
 
 
 # --- DEFAULT KEY BINDINGS ---

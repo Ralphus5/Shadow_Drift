@@ -26,6 +26,8 @@ class Player(pygame.sprite.Sprite):
         self.speed = DEFAULT_PLAYER_SPEED
         self.iframes = False
         self.iframe_start = 0.0
+        self.banana_boosted = False
+        self.banana_boost_start = 0.0
 
         # --- ability system ---
         self.can_collide = True
@@ -159,7 +161,14 @@ class Player(pygame.sprite.Sprite):
         # --- control flow of player sprite ---
         self.play_time = play_time
 
-        self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
+        if self.banana_boosted and self.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
+            self.banana_boosted = False
+
+        if self.banana_boosted:
+            self.speed = DEFAULT_PLAYER_SPEED + BANANA_SPEED_BOOST if self.health > 1 else ONE_LIFE_PLAYER_SPEED + BANANA_SPEED_BOOST
+        else: 
+            self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
+
         self.glow = self.glows['red'] if self.health == 1 else self.glows['blue']
 
         self.handle_input(dt, self.play_time)
@@ -217,7 +226,7 @@ class Apple(Fruit):
         super().__init__(groups, layer, speed, fruit_sprites)
 
     def apply_effect(self, player):
-        STATS['score'] += 10
+        STATS['score'] += APPLE_POINTS
         self.kill()
 
 class Blueberry(Fruit):
@@ -229,6 +238,17 @@ class Blueberry(Fruit):
     def apply_effect(self, player):
         if player.health < 2:
             player.health += 1
+        self.kill()
+
+class Banana(Fruit):
+    """Banana collectable: temporary speed boost."""
+
+    def __init__(self, groups, layer, speed, fruit_sprites):
+        super().__init__(groups, layer, speed, fruit_sprites)
+
+    def apply_effect(self, player):
+        player.banana_boosted = True
+        player.banana_boost_start = player.play_time
         self.kill()
 
 class Obstacle(pygame.sprite.Sprite):

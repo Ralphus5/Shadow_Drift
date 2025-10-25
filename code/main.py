@@ -23,8 +23,9 @@ class Game:
             dt = self.clock.tick(FPS) / 1000
             self.handle_input()
             self.set_game_mode()
-            #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
+            print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             #print("Track:", self.current_track,"Sound volume:", self.tracks[self.current_track].get_volume(),"Channel volume:", self.music_channel.get_volume()) # DEBUGGING
+            #print(self.player.speed) # DEBUGGING
             if self.state == 'start':
                 self.start_screen(dt)
             elif self.state == 'play':
@@ -307,7 +308,12 @@ class Game:
         # present_frame
 
     def pause_menu(self, dt):
-        self.screen.fill(COLOR['stop_screen_bg'])
+        self.draw_order()
+        # --- silhouette / dim effect ---
+        dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
+        dim.fill((0, 0, 0, 140))
+        self.screen.blit(dim, (0, 0))
+
         self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
         self.draw_score_text()
         self.render_score_text(True)
@@ -615,11 +621,9 @@ class Game:
                                  'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50))}
 
         # --- images ---
-        self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 60)),
-                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 60)),
-                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 60))]
-        self.clickable_icons[1].base_image = pygame.transform.scale(self.clickable_icons[1].base_image, (60,60)) # scale resume button
-        self.clickable_icons[2].base_image = pygame.transform.scale(self.clickable_icons[2].base_image, (60,60)) # scale settings button
+        self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
+                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 70)),
+                                      ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 70))]
 
         self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
                                       ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
@@ -676,7 +680,8 @@ class Game:
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
-                                      Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),}
+                                      Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
+                                      Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -801,7 +806,7 @@ class Game:
     def spawn_fruit(self, dt):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
             speed = random_of_spectrum(50,270,False,bias=0.3)
-            new_fruit = random_of_selection((Apple,Blueberry),FRUITS_SPAWN_PROBABILITIES.values())
+            new_fruit = random_of_selection((Apple,Blueberry,Banana),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit((self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
                     speed,
