@@ -880,9 +880,13 @@ class Game:
 
     def handle_player_death(self):
         if not self.player.is_alive:
+            
             if self.explosion_index < len(self.explosion_frames):
                 self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
-                self.explosion_index += PLAYER_EXPLOSION_SPEED
+                if not self.player.facing_right:
+                    self.current_explosion_frame = pygame.transform.flip(self.current_explosion_frame, True, False)
+                self.explosion_index += PLAYER_EXPLOSION_SPEED  
+
             else:
                 self.requested_state = 'game_over'
 
