@@ -25,7 +25,12 @@ COLOR = {'ui_text': "#000000",
          'settings_text_buttons': "#FFFFFF",
          'settings_text_buttons_hovered': '#2D0BEE',
          'settings_headers': "#70C1FF",
-         'key_binding_prompt': "#BB08DB",}
+         'key_binding_prompt': "#BB08DB",
+         'quit_prompt_rect': "#000000",
+         'quit_prompt_rect_outline': "#FFFFFF",
+         'quit_prompt_heading': "#70C1FF",
+         'quit_prompt_options': "#FFFFFF",
+         'quit_prompt_options_hovered': "#2D0BEE"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -35,7 +40,14 @@ GAME_OVER_HINT_FONT_SIZE: int = 23
 START_HINT_FONT_SITZE: int = 23
 SETTINGS_HEADERS_FONT_SIZE: int = 50
 SETTINGS_TEXTS_FONT_SIZE: int = 35
+QUIT_PROMPT_HEADING_FONT_SIZE: int = 40
+QUIT_PROMPT_OPTIONS_FONT_SIZE: int = 45
 
+# quit prompt window
+QUIT_RECT_WIDTH: int = 850
+QUIT_RECT_HEIGHT: int = 330
+QUIT_RECT_ROUNDING: int = 12
+QUIT_RECT_OUTLINE_THICKNESS: int = 4
 
 # animations
 TITLE_FLICKER_SPEED: Annotated[float, (1-6)] = 5
@@ -92,7 +104,7 @@ DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWNS_PER_MINUTE: float = 3.50
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .8, 'blueberry': .2, 'banana': .4}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .2, 'banana': .4}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0
@@ -100,15 +112,10 @@ BANANA_BOOST_DURATION: float = 12.0
 
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS = {
-    # gameplay movement
     "move_left": pygame.K_a,
     "move_right": pygame.K_d,
     "move_up": pygame.K_w,
     "move_down": pygame.K_s,
-
-    # abilities and actions
     "ability": pygame.K_SPACE,
     "dash": pygame.K_RETURN,
-
-    # system and meta
     "fullscreen": pygame.K_F11,}

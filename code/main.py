@@ -23,7 +23,7 @@ class Game:
             dt = self.clock.tick(FPS) / 1000
             self.handle_input()
             self.set_game_mode()
-            print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
+            #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             #print("Track:", self.current_track,"Sound volume:", self.tracks[self.current_track].get_volume(),"Channel volume:", self.music_channel.get_volume()) # DEBUGGING
             #print(self.player.speed) # DEBUGGING
             if self.state == 'start':
@@ -81,7 +81,8 @@ class Game:
             elif self.state == 'stop':
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
-                        self.requested_state = 'play'
+                        if self.quit_prompt: self.quit_prompt = False
+                        else: self.requested_state = 'play'
 
             # --- game over state ---
             elif self.state == 'game_over':
@@ -308,36 +309,50 @@ class Game:
         # present_frame
 
     def pause_menu(self, dt):
-        self.draw_order()
-        # --- silhouette / dim effect ---
+        mouse_pos = self.get_scaled_mouse_pos()
+        mouse_click = pygame.mouse.get_pressed()[0]
+        self.draw_sprites()
+        self.draw_effects()
+
+        # --- dim effect ---
         dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
         dim.fill((0, 0, 0, 140))
         self.screen.blit(dim, (0, 0))
+        
 
-        self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
-        self.draw_score_text()
-        self.render_score_text(True)
+        if not self.quit_prompt:
+            self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
+            self.draw_score_text()
+            self.render_score_text(True)
+            for btn in self.clickable_icons:
+                btn.update(mouse_pos, mouse_click)
+                if btn.hover_changed and btn.hovered:
+                    self.menu_hover_sound.play()
+                btn.draw(self.screen)
 
-        mouse_pos = self.get_scaled_mouse_pos()
-        mouse_click = pygame.mouse.get_pressed()[0]
+                if btn.clicked:
+                    if btn is self.clickable_icons[0]:
+                        self.menu_select_sound.play()
+                        self.quit_prompt = True
+                    elif btn is self.clickable_icons[1]:
+                        self.menu_select_sound.play()
+                        self.requested_state = 'play'
+                    elif btn is self.clickable_icons[2]:
+                        self.menu_select_sound.play()
+                        self.requested_state = 'settings'
+        else:
+            self.screen.blit(self.quit_prompt_surface, self.quit_prompt_rect)
+            self.quit_prompt_surface.blit(self.text_surfaces['quit_prompt_heading'], self.text_rects['quit_prompt_heading'])
 
-        for btn in self.clickable_icons:
-            btn.update(mouse_pos, mouse_click)
-            if btn.hover_changed and btn.hovered:
-                self.menu_hover_sound.play()
-            btn.draw(self.screen)
+            for btn in (self.yes_btn, self.no_btn):
+                btn.update(mouse_pos, mouse_click)
+                btn.draw(self.screen)
 
-            if btn.clicked:
-                if btn is self.clickable_icons[0]:
-                    self.menu_select_sound.play()
-                    self.fade_to_black()
-                    self.close_game()
-                elif btn is self.clickable_icons[1]:
-                    self.menu_select_sound.play()
-                    self.requested_state = 'play'
-                elif btn is self.clickable_icons[2]:
-                    self.menu_select_sound.play()
-                    self.requested_state = 'settings'
+            if self.yes_btn.clicked:   
+                self.fade_to_black()
+                self.close_game()
+            elif self.no_btn.clicked:
+                self.quit_prompt = False
 
     def game_over_screen(self, dt):
         self.screen.fill('black')
@@ -600,16 +615,20 @@ class Game:
                             'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
                             'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),
                             'settings_headers': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_HEADERS_FONT_SIZE),
-                            'settings_texts': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_TEXTS_FONT_SIZE),}
+                            'settings_texts': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_TEXTS_FONT_SIZE),
+                            'quit_prompt_heading': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_HEADING_FONT_SIZE),
+                            'quit_prompt_options': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_OPTIONS_FONT_SIZE),}
+                            #!!!
 
-        # --- pre-render static texts ---
+        # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
                                     'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
-                                    'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),}
+                                    'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),
+                                    'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),}
 
         # --- define text positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
@@ -618,7 +637,8 @@ class Game:
                                  'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
                                  'settings': self.text_surfaces['settings'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 50)),
-                                 'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50))}
+                                 'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50)),
+                                 'quit_prompt_heading': self.text_surfaces['quit_prompt_heading'].get_rect(center=(QUIT_RECT_WIDTH/2, QUIT_RECT_HEIGHT/8)),}
 
         # --- images ---
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
@@ -628,6 +648,26 @@ class Game:
         self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
                                       ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
                                       ClickableText("Back", self.fonts['settings_texts'], (WINDOW_CENTER[0], WINDOW_HEIGHT - 60), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
+        
+        # quit prompt surface
+        self.quit_prompt_surface = pygame.Surface((QUIT_RECT_WIDTH + 2*QUIT_RECT_OUTLINE_THICKNESS, QUIT_RECT_HEIGHT + 2*QUIT_RECT_OUTLINE_THICKNESS), pygame.SRCALPHA)
+        # quit prompt rect outline
+        pygame.draw.rect(self.quit_prompt_surface, COLOR['quit_prompt_rect_outline'], pygame.Rect(0,0,QUIT_RECT_WIDTH + 2*QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_HEIGHT + 2*QUIT_RECT_OUTLINE_THICKNESS), border_radius=QUIT_RECT_ROUNDING + QUIT_RECT_OUTLINE_THICKNESS)
+        # quit prompt rect
+        pygame.draw.rect(self.quit_prompt_surface, COLOR['quit_prompt_rect'], pygame.Rect(QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_WIDTH,QUIT_RECT_HEIGHT),border_radius=QUIT_RECT_ROUNDING)
+        self.quit_prompt_rect = self.quit_prompt_surface.get_rect(center=WINDOW_CENTER)
+
+        # quit prompt clickable texts
+        cx, cy = self.quit_prompt_rect.center
+        y = cy + 15
+        self.yes_btn = ClickableText("Yes", self.fonts["quit_prompt_options"],
+                                (cx - 120, y),
+                                COLOR['quit_prompt_options'], COLOR['quit_prompt_options_hovered'],
+                                self.menu_select_sound, self.menu_hover_sound)
+        self.no_btn = ClickableText("No", self.fonts["quit_prompt_options"],
+                                (cx + 120, y),
+                                COLOR['quit_prompt_options'], COLOR['quit_prompt_options_hovered'],
+                                self.menu_select_sound, self.menu_hover_sound)
         
         # Keybinding clickable texts
         if not hasattr(self, "control_texts"):
@@ -672,10 +712,8 @@ class Game:
 
         self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
 
-        self.player_sprite_variants: dict = {
-            1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
-            2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),
-        }
+        self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
+                                             2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
 
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
@@ -690,6 +728,7 @@ class Game:
         self.requested_state = 'start'
         self.active_settings_tab = None
         self.waiting_for_key = None
+        self.quit_prompt = False
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
