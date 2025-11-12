@@ -143,6 +143,44 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect.size = self.image.get_size()
 
+        # banana trail: spawn faint yellow mask sprites that remain in world space and fade out
+        if not hasattr(self, "_last_trail_spawn"):
+            self._last_trail_spawn = 0.0
+
+        if not hasattr(self, "_TrailClass"):
+            class _TrailSprite(pygame.sprite.Sprite):
+                def __init__(self, groups, layer, image, pos, lifetime=0.6):
+                    self._layer = layer
+                    super().__init__(groups)
+                    self.image = image.copy()
+                    self.rect = self.image.get_rect(center=pos)
+                    self._spawn = perf_counter()
+                    self._lifetime = lifetime
+                    self.is_trail = True
+
+                def update(self, dt, *_):
+                    t = (perf_counter() - self._spawn) / max(self._lifetime, 1e-6)
+                    alpha = max(0, int(120 * (1.0 - t)))
+                    self.image.set_alpha(alpha)
+                    if t >= 1.0:
+                        self.kill()
+
+            self._TrailClass = _TrailSprite
+
+        # only produce trail while banana boost is active and player is moving
+        if self.banana_boosted and self.direction.length_squared() > 0:
+            # throttle spawn rate
+            if self.play_time - self._last_trail_spawn > BANANA_TRAIL_DRAW_INTERVALL:  # shadows per frame
+                self._last_trail_spawn = self.play_time
+
+                # build a tinted surface
+                w, h = self.image.get_size()
+                shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
+                pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=16)
+                shadow.set_alpha(100)
+
+                self._TrailClass(self.groups(), self._layer - 0.1, shadow, self.rect.center)                
+
         # --- ability and iframes ---
         if not self.can_collide or (self.play_time - self.dash_start_time < self.dash_duration and self.play_time > 1):
             progress = (self.play_time - self.ability_start_time) / self.ability_duration
@@ -278,6 +316,7 @@ class EffectText(pygame.sprite.Sprite):
         self.spawn = perf_counter()
         self.lifetime = lifetime
         self.rise = rise
+        self.is_effect_text = True
 
     def update(self, dt, *_):
         self.rect.y -= int(self.rise * dt)

@@ -884,6 +884,10 @@ class Game:
                     self.player.kill()
                     self.player.is_alive = False
 
+                    for sprite in list(self.all_sprites):
+                        if getattr(sprite, "is_trail", False) or getattr(sprite, "is_effect_text", False):
+                            sprite.kill()
+
         eat = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
         if eat:
             for fruit in eat:

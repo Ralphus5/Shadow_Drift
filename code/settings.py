@@ -32,9 +32,11 @@ COLOR = {'ui_text': "#000000",
          'quit_prompt_options': "#FFFFFF",
          'quit_prompt_options_hovered': "#2D0BEE",
          'fruit_pickup_shadow': "#FFFFFF",
-         'apple_pickup': "#FF0000A9",
-         'blueberry_pickup': "#000DFFA9",
-         'banana_pickup': "#FFFB00A9",}
+         'apple_pickup': "#FF0000FF",
+         'blueberry_pickup': "#000DFFFF",
+         'banana_pickup': "#FFFB00FF",
+         'blue_banana_trail': "#1E3AC860",
+         'red_banana_trail': "#CA09095D",}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -65,7 +67,8 @@ BACKGROUND_FRAME_INTERVALL: int = 100
 PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 FRUIT_PICKUP_MESSAGES_DURATION: float = 1.0
-FRUIT_PICKUP_RISE_SPEED: float = 60.0 # pixels / second
+FRUIT_PICKUP_RISE_SPEED: float = 100.0 # pixels / second
+BANANA_TRAIL_DRAW_INTERVALL: float = 0.005  # shadows per frame
 
 
 # ----- AUDIO -----
@@ -110,7 +113,7 @@ DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
-FRUIT_SPAWNS_PER_MINUTE: float = 3.50
+FRUIT_SPAWNS_PER_MINUTE: float = 30.50
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .15, 'banana': .4}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
