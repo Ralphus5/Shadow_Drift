@@ -215,9 +215,21 @@ class Fruit(pygame.sprite.Sprite):
         if self.rect.top > WINDOW_HEIGHT:
             self.kill()
 
+    def display_pickup_message(self, game, font, messages):
+        key = self.__class__
+        if key in messages:
+            text, color_key = messages[key]
+            EffectText((game.all_sprites, game.effect_sprites),
+                       game.LAYERS['effects'],
+                       text,
+                       font,
+                       COLOR[color_key],
+                       self.rect.center)
+
     def update(self, dt, play_time):
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
+
 
 class Apple(Fruit):
     """Apple collectable: gives 10 points."""
@@ -250,6 +262,29 @@ class Banana(Fruit):
         player.banana_boosted = True
         player.banana_boost_start = player.play_time
         self.kill()
+
+class EffectText(pygame.sprite.Sprite):
+    """Text that pops up after collecting a fruit, indicating the its effect"""
+
+    def __init__(self, groups, layer, text, font, color, pos, lifetime=FRUIT_PICKUP_MESSAGES_DURATION, rise=FRUIT_PICKUP_RISE_SPEED):
+        self._layer = layer
+        super().__init__(groups)
+        base = font.render(text, True, color)
+        shadow = font.render(text, True, (COLOR['fruit_pickup_shadow']))
+        self.image = pygame.Surface(base.get_size(), pygame.SRCALPHA)
+        self.image.blit(shadow, (2, 2))
+        self.image.blit(base, (0, 0))
+        self.rect = self.image.get_rect(center=pos)
+        self.spawn = perf_counter()
+        self.lifetime = lifetime
+        self.rise = rise
+
+    def update(self, dt, *_):
+        self.rect.y -= int(self.rise * dt)
+        t = (perf_counter() - self.spawn) / max(self.lifetime, 1e-6)
+        self.image.set_alpha(max(0, 255 - int(255 * t)))
+        if t >= 1.0:
+            self.kill()
 
 class Obstacle(pygame.sprite.Sprite):
     """Obstacle sprite: moves across the screen and updates score on exit."""

@@ -617,8 +617,8 @@ class Game:
                             'settings_headers': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_HEADERS_FONT_SIZE),
                             'settings_texts': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_TEXTS_FONT_SIZE),
                             'quit_prompt_heading': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_HEADING_FONT_SIZE),
-                            'quit_prompt_options': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_OPTIONS_FONT_SIZE),}
-                            #!!!
+                            'quit_prompt_options': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_OPTIONS_FONT_SIZE),
+                            'fruit_pickup_messages': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), FRUIT_PICKUP_MESSAGES_FONT_SIZE),}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
@@ -629,6 +629,13 @@ class Game:
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
                                     'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),
                                     'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),}
+        
+        
+        # texts
+        self.FRUIT_PICKUP_TEXTS = {Apple: ("+10 points", 'apple_pickup'),
+                                   Banana: ("+speed", 'banana_pickup'),
+                                   Blueberry: ("health restored", 'blueberry_pickup'),}
+            
 
         # --- define text positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
@@ -771,11 +778,13 @@ class Game:
         self.obstacle_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
+        self.effect_sprites = pygame.sprite.Group()
 
         self.LAYERS = {'background': 0,
                        'fruits': 1,
                        'obstacles': 2,
-                       'player': 3,}
+                       'player': 3,
+                       'effects': 4,}
 
         # --- instantiate background ---
         self.background = AnimatedBackground(self.all_sprites,
@@ -879,6 +888,7 @@ class Game:
         if eat:
             for fruit in eat:
                 fruit.apply_effect(self.player)
+                fruit.display_pickup_message(self, self.fonts['fruit_pickup_messages'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
     def check_record(self):
@@ -912,6 +922,8 @@ class Game:
         # player glow
         if self.player.ability_ready and self.player.health:
             self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
+
+        self.effect_sprites.draw(self.screen)
 
     def draw_score_text(self):
         self.screen.blit(self.stats_text_shadow, (22, 22))

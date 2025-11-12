@@ -26,11 +26,15 @@ COLOR = {'ui_text': "#000000",
          'settings_text_buttons_hovered': '#2D0BEE',
          'settings_headers': "#70C1FF",
          'key_binding_prompt': "#BB08DB",
-         'quit_prompt_rect': "#000000",
-         'quit_prompt_rect_outline': "#FFFFFF",
+         'quit_prompt_rect': "#11121F",
+         'quit_prompt_rect_outline': "#000000",
          'quit_prompt_heading': "#70C1FF",
          'quit_prompt_options': "#FFFFFF",
-         'quit_prompt_options_hovered': "#2D0BEE"}
+         'quit_prompt_options_hovered': "#2D0BEE",
+         'fruit_pickup_shadow': "#FFFFFF",
+         'apple_pickup': "#FF0000A9",
+         'blueberry_pickup': "#000DFFA9",
+         'banana_pickup': "#FFFB00A9",}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -42,11 +46,12 @@ SETTINGS_HEADERS_FONT_SIZE: int = 50
 SETTINGS_TEXTS_FONT_SIZE: int = 35
 QUIT_PROMPT_HEADING_FONT_SIZE: int = 40
 QUIT_PROMPT_OPTIONS_FONT_SIZE: int = 45
+FRUIT_PICKUP_MESSAGES_FONT_SIZE: int = 35
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
 QUIT_RECT_HEIGHT: int = 330
-QUIT_RECT_ROUNDING: int = 12
+QUIT_RECT_ROUNDING: int = 8
 QUIT_RECT_OUTLINE_THICKNESS: int = 4
 
 # animations
@@ -59,6 +64,8 @@ GAME_OVER_SCROLL_SPEED: float = 1.6
 BACKGROUND_FRAME_INTERVALL: int = 100
 PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
+FRUIT_PICKUP_MESSAGES_DURATION: float = 1.0
+FRUIT_PICKUP_RISE_SPEED: float = 60.0 # pixels / second
 
 
 # ----- AUDIO -----
@@ -104,7 +111,7 @@ DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
 FRUIT_SPAWNS_PER_MINUTE: float = 3.50
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .2, 'banana': .4}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .15, 'banana': .4}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0
