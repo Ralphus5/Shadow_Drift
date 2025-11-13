@@ -109,9 +109,8 @@ DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 # ----- GAMEPLAY -----
 STATS = {'score': 0, 'record': 0}
-FIRST_PHASE_END: int = 40
-SECOND_PHASE_END: int = 80
-THIRD_PHASE_END: int = 120
+
+# player
 DEFAULT_PLAYER_SPEED: int = 250
 ONE_LIFE_PLAYER_SPEED: int = 300
 PLAYER_ABILITY_DURATION: float = 1.6 # seconds
@@ -120,12 +119,26 @@ DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
-OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
+
+# fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 3.50
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .15, 'banana': .4}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.2, 'banana': 0.5}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0
+
+# phase probabilities
+START_PHASES: tuple[str] = ('rectangle', 'icicle')
+PHASE_PROBABILITIES: dict[str:float] = {'rectangle': .9, 'icicle': .9}
+
+# rectangle phase
+RECTANGLE_SPAWN_TIME: float = 0.5 # seconds
+FIRST_RECTANGLE_PHASE_END: int = 40
+SECOND_RECTANGLE_PHASE_END: int = 80
+THIRD_RECTANGLE_PHASE_END: int = 120
+RECTANGLE_PHASE_END: int = 160
+
+# icicle phase
 
 
 # --- DEFAULT KEY BINDINGS ---

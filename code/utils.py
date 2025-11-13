@@ -130,7 +130,7 @@ class CreditsText:
         setattr(self.rect, 'center', self.pos)
 
     def update(self, dt):
-        self.rect.centery -= 60 * dt
+        self.rect.bottom -= 60 * dt
         self.surface = self.font.render(self.text, True, self.color)
 
     def draw(self, screen):

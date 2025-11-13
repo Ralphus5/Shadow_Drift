@@ -268,7 +268,6 @@ class Fruit(pygame.sprite.Sprite):
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
 
-
 class Apple(Fruit):
     """Apple collectable: gives 10 points."""
 
@@ -325,8 +324,8 @@ class EffectText(pygame.sprite.Sprite):
         if t >= 1.0:
             self.kill()
 
-class Obstacle(pygame.sprite.Sprite):
-    """Obstacle sprite: moves across the screen and updates score on exit."""
+class Rectangle(pygame.sprite.Sprite):
+    """Rectangle sprite: moves across the screen and updates score on exit."""
 
     def __init__(self, groups, layer, speed, sprite_variants):
         self._layer = layer
