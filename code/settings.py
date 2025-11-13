@@ -19,24 +19,26 @@ COLOR = {'ui_text': "#000000",
          'game_over_text': "#C90E0E",
          'game_over_hint': "#C90E0E",
          'start_screen_bg': "#11121F",
-         'stop_screen_bg': "#11121F",
+         'settings_bg': "#11121F",
+         'credits_bg': "#11121F",
          'title_text': "#2D0BEE",
          'start_hint': '#2D0BEE',
-         'settings_text_buttons': "#FFFFFF",
-         'settings_text_buttons_hovered': '#2D0BEE',
+         'credits_hint': "#FFFFFF",
+         'clickable_text_buttons': "#FFFFFF",
+         'clickable_text_buttons_hovered': '#2D0BEE',
          'settings_headers': "#70C1FF",
          'key_binding_prompt': "#BB08DB",
          'quit_prompt_rect': "#11121F",
          'quit_prompt_rect_outline': "#000000",
          'quit_prompt_heading': "#70C1FF",
-         'quit_prompt_options': "#FFFFFF",
-         'quit_prompt_options_hovered': "#2D0BEE",
          'fruit_pickup_shadow': "#FFFFFF",
          'apple_pickup': "#FF0000FF",
          'blueberry_pickup': "#000DFFFF",
          'banana_pickup': "#FFFB00FF",
-         'blue_banana_trail': "#1E3AC860",
-         'red_banana_trail': "#CA09095D",}
+         'blue_banana_trail': "#1E3AC8B1",
+         'red_banana_trail': "#CA0909B1",
+         'credits_header': "#70C1FF",
+         'credits_name': "#FFFFFF"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -44,11 +46,15 @@ SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
 GAME_OVER_HINT_FONT_SIZE: int = 23
 START_HINT_FONT_SITZE: int = 23
+CREDITS_HINT_FONT_SITZE: int = 23
 SETTINGS_HEADERS_FONT_SIZE: int = 50
 SETTINGS_TEXTS_FONT_SIZE: int = 35
 QUIT_PROMPT_HEADING_FONT_SIZE: int = 40
 QUIT_PROMPT_OPTIONS_FONT_SIZE: int = 45
+CREDITS_BUTTON_FONT_SIZE: int = 30
 FRUIT_PICKUP_MESSAGES_FONT_SIZE: int = 35
+CREDITS_HEADER_FONT_SIZE: int = 70
+CREDITS_NAME_FONT_SIZE: int = 45
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
@@ -69,6 +75,7 @@ PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 FRUIT_PICKUP_MESSAGES_DURATION: float = 1.0
 FRUIT_PICKUP_RISE_SPEED: float = 100.0 # pixels / second
 BANANA_TRAIL_DRAW_INTERVALL: float = 0.005  # shadows per frame
+BANANA_TRAIL_LIFETIME: float = 0.4
 
 
 # ----- AUDIO -----
@@ -81,6 +88,7 @@ SFX_VOLUME: Annotated[float, (0-1)] = 1
 STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.4
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
+CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
 GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
 GAME_TRACK_2_VOLUME: Annotated[float, (0-1)] = 0.4
 
@@ -113,7 +121,7 @@ DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 OBSTACLE_SPAWN_TIME: float = 0.5 # seconds
-FRUIT_SPAWNS_PER_MINUTE: float = 30.50
+FRUIT_SPAWNS_PER_MINUTE: float = 3.50
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': .9, 'blueberry': .15, 'banana': .4}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150

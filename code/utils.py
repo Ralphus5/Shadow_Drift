@@ -117,3 +117,21 @@ class ClickableText:
 
     def draw(self, screen):
         screen.blit(self.surface, self.rect)
+
+class CreditsText:
+    def __init__(self, text, font, pos, color):
+        self.text = text
+        self.font = font
+        self.pos = pos
+        self.color = color
+
+        self.surface = self.font.render(self.text, True, self.color)
+        self.rect = self.surface.get_rect()
+        setattr(self.rect, 'center', self.pos)
+
+    def update(self, dt):
+        self.rect.centery -= 60 * dt
+        self.surface = self.font.render(self.text, True, self.color)
+
+    def draw(self, screen):
+        screen.blit(self.surface, self.rect)

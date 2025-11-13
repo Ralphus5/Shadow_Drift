@@ -17,6 +17,7 @@ class Game:
         self.init_game_state()
         self.init_sprites()
         self.load_save()
+        self.create_custome_events()
 
     def run(self):
         while True:
@@ -81,8 +82,33 @@ class Game:
             elif self.state == 'stop':
                 if event.type == pygame.KEYDOWN:
                     if event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
-                        if self.quit_prompt: self.quit_prompt = False
+                        if getattr(self, 'show_credits',False): 
+                            self.show_credits = False
+                            self.credits_title_rect.center = WINDOW_CENTER
+                            for attr in ('header_counter', 'credits_instances', 'last_created'):
+                                if hasattr(self, attr): delattr(self, attr)
+                        elif self.quit_prompt: self.quit_prompt = False
                         else: self.requested_state = 'play'
+
+                if event.type == self.credits_event and getattr(self, 'show_credits', False):
+                    if not getattr(self, 'header_counter', False): self.header_counter = 1
+                    else: self.header_counter += 1
+                    if self.header_counter <= len(self.credits_texts):
+                        self.credits_instances.append(CreditsText(self.credits_texts[self.header_counter],
+                                    self.fonts['credits_header'],
+                                    (WINDOW_CENTER[0], WINDOW_HEIGHT),
+                                    COLOR['credits_header'],))
+                        self.credits_instances.append(CreditsText("Raphael Glueck",
+                                    self.fonts['credits_name'],
+                                    (WINDOW_CENTER[0], WINDOW_HEIGHT + 50),
+                                    COLOR['credits_name'],))
+                    else: 
+                        if not getattr(self, 'last_created', False): 
+                            self.credits_instances.append(CreditsText("Thanks for playing!",
+                                        self.fonts['credits_header'],
+                                        (WINDOW_CENTER[0], WINDOW_HEIGHT),
+                                        COLOR['title_text'],))
+                            self.last_created = True
 
             # --- game over state ---
             elif self.state == 'game_over':
@@ -126,8 +152,8 @@ class Game:
                         self.control_texts.append(ClickableText("Reset to Defaults",
                                                                 self.fonts["settings_texts"],
                                                                 (WINDOW_CENTER[0], 110),
-                                                                COLOR["settings_text_buttons"],
-                                                                COLOR["settings_text_buttons_hovered"],
+                                                                COLOR['clickable_text_buttons'],
+                                                                COLOR['clickable_text_buttons_hovered'],
                                                                 self.menu_select_sound,
                                                                 self.menu_hover_sound))
 
@@ -138,8 +164,8 @@ class Game:
                             self.control_texts.append(ClickableText(label,
                                                                     self.fonts['settings_texts'],
                                                                     (WINDOW_CENTER[0], y),
-                                                                    COLOR['settings_text_buttons'],
-                                                                    COLOR['settings_text_buttons_hovered'],
+                                                                    COLOR['clickable_text_buttons'],
+                                                                    COLOR['clickable_text_buttons_hovered'],
                                                                     self.menu_select_sound,
                                                                     self.menu_hover_sound))
                             y += 40
@@ -148,7 +174,17 @@ class Game:
         '''Switches game mode and handles necessary changes.'''
         # check for state change request
         if not self.requested_state or self.requested_state == self.state:
+            if getattr(self, 'show_credits', False) and self.current_track != 'credits_track':
+                self.pre_credits_track = self.current_track
+                self.change_track('credits_track', 0, loop=False)
+                self.music_channel.set_volume(self.base_volumes[self.current_track])
+                self.music_dimmed = False
+            elif not getattr(self, 'show_credits', False) and self.current_track == 'credits_track':
+                self.change_track(self.pre_credits_track, 0)
+                self.music_channel.set_volume(self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR)
+                self.music_dimmed = True
             return
+        
         old, new = self.state, self.requested_state
         self.requested_state = None
 
@@ -169,12 +205,12 @@ class Game:
                 self.all_sprites.empty()
                 self.init_game_state()
                 self.init_sprites()
-            self.change_track('start_track', 1)
+            self.change_track('start_track', fade_ms=1)
 
         elif new == 'play':
             if old == 'start':
                 self.play_start = perf_counter()
-                self.change_track('game_track_1', fade_ms=1)
+                self.change_track('game_track_1', fade_ms=1000)
                 pygame.key.get_pressed()   # resets held keys
             if old == 'stop':
                     self.resume_play_time()
@@ -198,7 +234,7 @@ class Game:
             if self.music_channel: self.music_channel.stop()
             self.game_over_sound.play()
             self.fade_to_black(duration=GAME_OVER_SCROLL_SPEED)
-            self.change_track('game_over_track')
+            self.change_track('game_over_track', fade_ms=300)
 
         elif new == 'settings':
             self.prev_state = old
@@ -309,50 +345,74 @@ class Game:
         # present_frame
 
     def pause_menu(self, dt):
-        mouse_pos = self.get_scaled_mouse_pos()
-        mouse_click = pygame.mouse.get_pressed()[0]
-        self.draw_sprites()
-        self.draw_effects()
+        if not getattr(self, 'show_credits', False):
+            mouse_pos = self.get_scaled_mouse_pos()
+            mouse_click = pygame.mouse.get_pressed()[0]
+            self.draw_sprites()
+            self.draw_effects()
 
-        # --- dim effect ---
-        dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
-        dim.fill((0, 0, 0, 140))
-        self.screen.blit(dim, (0, 0))
+            # --- dim effect ---
+            dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
+            dim.fill((0, 0, 0, 140))
+            self.screen.blit(dim, (0, 0))
+            
+
+            if not self.quit_prompt:
+                # --- display main pause menu ---
+                self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
+                self.draw_score_text()
+                self.render_score_text(True)
+                self.credits_btn.update(mouse_pos, mouse_click)
+                self.credits_btn.draw(self.screen)
+                if self.credits_btn.clicked:
+                    self.show_credits = True
+                for btn in self.clickable_icons:
+                    btn.update(mouse_pos, mouse_click)
+                    if btn.hover_changed and btn.hovered:
+                        self.menu_hover_sound.play()
+                    btn.draw(self.screen)
+
+                    if btn.clicked:
+                        if btn is self.clickable_icons[0]:
+                            self.menu_select_sound.play()
+                            self.quit_prompt = True
+                        elif btn is self.clickable_icons[1]:
+                            self.menu_select_sound.play()
+                            self.requested_state = 'play'
+                        elif btn is self.clickable_icons[2]:
+                            self.menu_select_sound.play()
+                            self.requested_state = 'settings'
+            else:
+                # --- display quit prompt ---
+                self.screen.blit(self.quit_prompt_surface, self.quit_prompt_rect)
+                self.quit_prompt_surface.blit(self.text_surfaces['quit_prompt_heading'], self.text_rects['quit_prompt_heading'])
+
+                for btn in (self.yes_btn, self.no_btn):
+                    btn.update(mouse_pos, mouse_click)
+                    btn.draw(self.screen)
+
+                if self.yes_btn.clicked:   
+                    self.fade_to_black()
+                    self.close_game()
+                elif self.no_btn.clicked:
+                    self.quit_prompt = False
         
-
-        if not self.quit_prompt:
-            self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
-            self.draw_score_text()
-            self.render_score_text(True)
-            for btn in self.clickable_icons:
-                btn.update(mouse_pos, mouse_click)
-                if btn.hover_changed and btn.hovered:
-                    self.menu_hover_sound.play()
-                btn.draw(self.screen)
-
-                if btn.clicked:
-                    if btn is self.clickable_icons[0]:
-                        self.menu_select_sound.play()
-                        self.quit_prompt = True
-                    elif btn is self.clickable_icons[1]:
-                        self.menu_select_sound.play()
-                        self.requested_state = 'play'
-                    elif btn is self.clickable_icons[2]:
-                        self.menu_select_sound.play()
-                        self.requested_state = 'settings'
         else:
-            self.screen.blit(self.quit_prompt_surface, self.quit_prompt_rect)
-            self.quit_prompt_surface.blit(self.text_surfaces['quit_prompt_heading'], self.text_rects['quit_prompt_heading'])
+            # --- display credits ---
+            if not hasattr(self, 'credits_instances'): self.credits_instances = []
+            self.screen.fill(COLOR['credits_bg'])
+            if self.credits_title_rect.centery > 0:
+                self.screen.blit(self.credits_title_surf, self.credits_title_rect)
+                self.credits_title_rect.centery -= 10 * dt
 
-            for btn in (self.yes_btn, self.no_btn):
-                btn.update(mouse_pos, mouse_click)
-                btn.draw(self.screen)
-
-            if self.yes_btn.clicked:   
-                self.fade_to_black()
-                self.close_game()
-            elif self.no_btn.clicked:
-                self.quit_prompt = False
+            for instance in self.credits_instances:
+                if instance.rect.centery >= 0:
+                    if instance.text == "Thanks for playing!" and instance.rect.centery <= WINDOW_CENTER[1]:
+                        instance.rect.center = WINDOW_CENTER
+                        self.screen.blit(self.text_surfaces['credits_hint'], self.text_rects['credits_hint'])
+                    else:
+                        instance.update(dt)
+                    instance.draw(self.screen)
 
     def game_over_screen(self, dt):
         self.screen.fill('black')
@@ -386,7 +446,7 @@ class Game:
                         self.eat_fruit_sound.play()
 
     def settings_menu(self, dt):
-            self.screen.fill(COLOR['stop_screen_bg'])
+            self.screen.fill(COLOR['settings_bg'])
             mouse_pos = self.get_scaled_mouse_pos()
             mouse_click = pygame.mouse.get_just_pressed()[0]
 
@@ -452,8 +512,8 @@ class Game:
                             self.control_texts.append(ClickableText("Reset to Defaults",
                                                       self.fonts["settings_texts"],
                                                       (WINDOW_CENTER[0], 110),
-                                                      COLOR["settings_text_buttons"],
-                                                      COLOR["settings_text_buttons_hovered"],
+                                                      COLOR["clickable_text_buttons"],
+                                                      COLOR["clickable_text_buttons_hovered"],
                                                       self.menu_select_sound,
                                                       self.menu_hover_sound))
                             y = 220
@@ -462,8 +522,8 @@ class Game:
                                 self.control_texts.append(ClickableText(label,
                                                           self.fonts["settings_texts"],
                                                           (WINDOW_CENTER[0], y),
-                                                          COLOR["settings_text_buttons"],
-                                                          COLOR["settings_text_buttons_hovered"],
+                                                          COLOR["clickable_text_buttons"],
+                                                          COLOR["clickable_text_buttons_hovered"],
                                                           self.menu_select_sound,
                                                           self.menu_hover_sound))
                                 y += 40
@@ -502,7 +562,7 @@ class Game:
 
                         # draw percentage text
                         percent = int(volumes[label] * 100)
-                        percent_surface = self.fonts["settings_texts"].render(f"{percent}%", True, COLOR["settings_text_buttons"])
+                        percent_surface = self.fonts['settings_texts'].render(f"{percent}%", True, COLOR['clickable_text_buttons'])
                         percent_rect = percent_surface.get_rect(center=(WINDOW_CENTER[0], entry["rect"].centery))
                         self.screen.blit(percent_surface, percent_rect)
 
@@ -570,6 +630,7 @@ class Game:
         # --- game music ---
         self.tracks: dict = {'start_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'start_track.ogg')),
                              'game_over_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
+                             'credits_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'credits_track.ogg')),
                              'game_track_1': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_1.ogg')),
                              'game_track_2': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_2.ogg')),}
 
@@ -589,6 +650,7 @@ class Game:
         # --- game music ---
         self.tracks['start_track'].set_volume(START_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
         self.tracks['game_over_track'].set_volume(GAME_OVER_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
+        self.tracks['credits_track'].set_volume(CREDITS_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
         self.tracks['game_track_1'].set_volume(GAME_TRACK_1_VOLUME * MUSIC_VOLUME * MASTER_VOLUME) 
         self.tracks['game_track_2'].set_volume(GAME_TRACK_2_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
 
@@ -614,71 +676,107 @@ class Game:
                             'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
                             'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
                             'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),
+                            'credits_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_HINT_FONT_SITZE),
                             'settings_headers': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_HEADERS_FONT_SIZE),
                             'settings_texts': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SETTINGS_TEXTS_FONT_SIZE),
                             'quit_prompt_heading': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_HEADING_FONT_SIZE),
                             'quit_prompt_options': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), QUIT_PROMPT_OPTIONS_FONT_SIZE),
-                            'fruit_pickup_messages': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), FRUIT_PICKUP_MESSAGES_FONT_SIZE),}
+                            'credits_button': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_BUTTON_FONT_SIZE),
+                            'fruit_pickup_messages': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), FRUIT_PICKUP_MESSAGES_FONT_SIZE),
+                            'credits_header': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_HEADER_FONT_SIZE),
+                            'credits_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_NAME_FONT_SIZE),}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
                                     'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
+                                    'credits_hint': self.fonts['credits_hint'].render("Press ESC or RETURN", True, COLOR['credits_hint']),
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
                                     'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),
                                     'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),}
         
-        
-        # texts
-        self.FRUIT_PICKUP_TEXTS = {Apple: ("+10 points", 'apple_pickup'),
-                                   Banana: ("+speed", 'banana_pickup'),
-                                   Blueberry: ("health restored", 'blueberry_pickup'),}
-            
+        # credits title
+        self.credits_title_surf = self.text_surfaces['title'].copy()
 
-        # --- define text positions ---
+        # --- define non-clickable texts positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
                                  'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
                                  'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
                                  'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
+                                 'credits_hint': self.text_surfaces['credits_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
                                  'settings': self.text_surfaces['settings'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'quit_prompt_heading': self.text_surfaces['quit_prompt_heading'].get_rect(center=(QUIT_RECT_WIDTH/2, QUIT_RECT_HEIGHT/8)),}
-
+        
+        # credits title
+        self.credits_title_rect = self.text_rects['title'].copy()
+        
+        # --- define fruit-collect messages ---
+        self.FRUIT_PICKUP_TEXTS = {Apple: ("+10 points", 'apple_pickup'),
+                                   Banana: ("+speed", 'banana_pickup'),
+                                   Blueberry: ("health restored", 'blueberry_pickup'),}
+        
+        # --- define credits texts ---
+        self.credits_texts = {1:"Director",
+                              2:"Producer",
+                              3:"Designer",
+                              4:"Pixel Artist",
+                              5:"Concept Artist",
+                              6:"Music Supervisor",
+                              7:"Music Composer",
+                              8:"SFX Artist",
+                              9:"Programmer",
+                              10:"2D Animator",
+                              11:"Project Manager",
+                              12:"Production Coordinator",
+                              13:"Creative Director",
+                              14:"Writer",
+                              15:"Editor",
+                              16:"Playtester",}                            
+        
         # --- images ---
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 70))]
 
-        self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
-                                      ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
-                                      ClickableText("Back", self.fonts['settings_texts'], (WINDOW_CENTER[0], WINDOW_HEIGHT - 60), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
+        self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+                                      ClickableText("Back", self.fonts['settings_texts'], (WINDOW_CENTER[0], WINDOW_HEIGHT - 60), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
         
-        # quit prompt surface
+        # --- quit prompt ---
+        # surface
         self.quit_prompt_surface = pygame.Surface((QUIT_RECT_WIDTH + 2*QUIT_RECT_OUTLINE_THICKNESS, QUIT_RECT_HEIGHT + 2*QUIT_RECT_OUTLINE_THICKNESS), pygame.SRCALPHA)
-        # quit prompt rect outline
+        # rect outline
         pygame.draw.rect(self.quit_prompt_surface, COLOR['quit_prompt_rect_outline'], pygame.Rect(0,0,QUIT_RECT_WIDTH + 2*QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_HEIGHT + 2*QUIT_RECT_OUTLINE_THICKNESS), border_radius=QUIT_RECT_ROUNDING + QUIT_RECT_OUTLINE_THICKNESS)
-        # quit prompt rect
+        # rect
         pygame.draw.rect(self.quit_prompt_surface, COLOR['quit_prompt_rect'], pygame.Rect(QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_OUTLINE_THICKNESS,QUIT_RECT_WIDTH,QUIT_RECT_HEIGHT),border_radius=QUIT_RECT_ROUNDING)
         self.quit_prompt_rect = self.quit_prompt_surface.get_rect(center=WINDOW_CENTER)
-
-        # quit prompt clickable texts
+        # clickable texts (yes/no)
         cx, cy = self.quit_prompt_rect.center
         y = cy + 15
-        self.yes_btn = ClickableText("Yes", self.fonts["quit_prompt_options"],
-                                (cx - 120, y),
-                                COLOR['quit_prompt_options'], COLOR['quit_prompt_options_hovered'],
-                                self.menu_select_sound, self.menu_hover_sound)
+        self.yes_btn = ClickableText("Yes", 
+                                     self.fonts['quit_prompt_options'],
+                                     (cx - 120, y),
+                                     COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
+                                     self.menu_select_sound, self.menu_hover_sound)
         self.no_btn = ClickableText("No", self.fonts["quit_prompt_options"],
-                                (cx + 120, y),
-                                COLOR['quit_prompt_options'], COLOR['quit_prompt_options_hovered'],
-                                self.menu_select_sound, self.menu_hover_sound)
+                                    (cx + 120, y),
+                                    COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
+                                    self.menu_select_sound, self.menu_hover_sound)
         
-        # Keybinding clickable texts
+        # --- credits clickable text ---
+        self.credits_btn = ClickableText("Credits", 
+                                         self.fonts['credits_button'],
+                                         (80, WINDOW_HEIGHT - 30),
+                                         COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
+                                         self.menu_select_sound, self.menu_hover_sound)
+        
+        # --- keybinding clickable texts ---
         if not hasattr(self, "control_texts"):
-            self.control_texts = [ClickableText('Reset to Defaults', self.fonts['settings_texts'], (WINDOW_CENTER[0], 110), COLOR['settings_text_buttons'], COLOR['settings_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound)]
+            self.control_texts = [ClickableText('Reset to Defaults', self.fonts['settings_texts'], (WINDOW_CENTER[0], 110), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound)]
             y = 220
             for action, key in KEY_BINDINGS.items():
                 label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
@@ -686,42 +784,45 @@ class Game:
                     label,
                     self.fonts['settings_texts'],
                     (WINDOW_CENTER[0], y),
-                    COLOR['settings_text_buttons'],
-                    COLOR['settings_text_buttons_hovered'],
+                    COLOR['clickable_text_buttons'],
+                    COLOR['clickable_text_buttons_hovered'],
                     self.menu_select_sound,
                     self.menu_hover_sound)
                 self.control_texts.append(btn)
                 y += 40
 
-        # Audio clickable texts
+        # --- audio clickable texts ---
         self.audio_texts = []
         labels = [("Master", 300), ("Music", 360), ("SFX", 420)]
         for label, y in labels:
-            text_surface = self.fonts["settings_texts"].render(label, True, COLOR["settings_text_buttons"])
+            text_surface = self.fonts["settings_texts"].render(label, True, COLOR['clickable_text_buttons'])
             text_rect = text_surface.get_rect(midleft=(WINDOW_CENTER[0] - 250, y))
 
             minus_btn = ClickableText("-", self.fonts["settings_texts"],
                                     (WINDOW_CENTER[0] + 90, y),
-                                    COLOR["settings_text_buttons"], COLOR["settings_text_buttons_hovered"],
+                                    COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
                                     self.menu_select_sound, self.menu_hover_sound)
             plus_btn = ClickableText("+", self.fonts["settings_texts"],
                                     (WINDOW_CENTER[0] + 140, y),
-                                    COLOR["settings_text_buttons"], COLOR["settings_text_buttons_hovered"],
+                                    COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
                                     self.menu_select_sound, self.menu_hover_sound)
 
             self.audio_texts.append({"label": label, "text": text_surface, "rect": text_rect,
                                         "minus": minus_btn, "plus": plus_btn})
 
+        # --- animated backgrounds ---
         self.backgrounds: dict = {
             'bg_1': [pygame.image.load(join(self.IMG_DIR, 'background_1', f'bg1_{i}.png')).convert_alpha() for i in range(11)],
             'bg_2': [pygame.image.load(join(self.IMG_DIR, 'background_2', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
             'bg_3': [pygame.image.load(join(self.IMG_DIR, 'background_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
 
+        # --- player images ---
         self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
 
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
                                              2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
 
+        # --- other entities ---
         self.obstacle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
@@ -829,6 +930,10 @@ class Game:
                 SFX_VOLUME = audio.get("sfx", 1.0)
         except:
             pass
+
+    def create_custome_events(self):
+        self.credits_event = pygame.event.custom_type()
+        pygame.time.set_timer(self.credits_event, 5000)
 
 # --- Main loop ---
 
@@ -1044,14 +1149,14 @@ class Game:
                 pygame.mouse.get_pressed()
                 break
 
-    def change_track(self, key, fade_ms=1000):
+    def change_track(self, key, fade_ms=1000, loop=True):
         """Switch to another track while preserving base volume."""
 
         if hasattr(self, 'music_channel') and self.music_channel and self.music_channel.get_busy():
             self.music_channel.stop()
 
         track = self.tracks[key]
-        self.music_channel = track.play(loops=-1, fade_ms=fade_ms)
+        self.music_channel = track.play(loops=-1 if loop else 0, fade_ms=fade_ms)
         self.music_channel.set_volume(self.base_volumes[key])
         self.current_track = key
 

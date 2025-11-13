@@ -143,13 +143,13 @@ class Player(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.rect.size = self.image.get_size()
 
-        # banana trail: spawn faint yellow mask sprites that remain in world space and fade out
+        # --- banana trail ---
         if not hasattr(self, "_last_trail_spawn"):
             self._last_trail_spawn = 0.0
 
         if not hasattr(self, "_TrailClass"):
             class _TrailSprite(pygame.sprite.Sprite):
-                def __init__(self, groups, layer, image, pos, lifetime=0.6):
+                def __init__(self, groups, layer, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
                     self._layer = layer
                     super().__init__(groups)
                     self.image = image.copy()
@@ -176,7 +176,7 @@ class Player(pygame.sprite.Sprite):
                 # build a tinted surface
                 w, h = self.image.get_size()
                 shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
-                pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=16)
+                pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
                 shadow.set_alpha(100)
 
                 self._TrailClass(self.groups(), self._layer - 0.1, shadow, self.rect.center)                
