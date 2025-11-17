@@ -332,7 +332,7 @@ class Game:
         # update dt
         # handle_events
         # set_game_mode
-        self.phase_initiation(dt)
+        self.set_phase(dt)
         self.update_play_time()
         self.all_sprites.update(dt, self.play_time)
         self.check_collisions()
@@ -823,6 +823,8 @@ class Game:
         # --- other entities ---
         self.rectangle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
 
+        self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
+
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),}
@@ -835,9 +837,11 @@ class Game:
         self.active_settings_tab = None
         self.waiting_for_key = None
         self.quit_prompt = False
+        self.score_of_last_phase = 0
 
         # --- starting phase ---
         self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
+        self.prev_phase = self.current_phase
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -879,7 +883,9 @@ class Game:
         # --- sprite groups and layers ---
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.player_group = pygame.sprite.GroupSingle()
+        self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
+        self.icicle_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
         self.effect_sprites = pygame.sprite.Group()
@@ -940,22 +946,25 @@ class Game:
 
 # --- Main loop ---
 
-    def phase_initiation(self, dt):
-        if getattr(self, 'phase_ended', True):
+    def set_phase(self, dt):
+        if getattr(self, 'phase_ended', False):
             self.phase_ended = False
             self.score_of_last_phase = STATS['score']
-            self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            self.change_background()
+            while self.current_phase == self.prev_phase:
+                self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values()) 
+                # change background
+                self.background.frames = self.backgrounds[self.current_phase]
+            
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()       
-                self.spawn_fruit(dt)
+                self.spawn_fruit(dt, with_bias=0.3)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt)
+                self.spawn_fruit(dt, with_bias=None)
 
     def rectangle_phase(self):
-        # --- choose speed of obstacle ---
+        # --- choose speed of rectangle ---
         if STATS['score'] < FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 250
         elif FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase:
@@ -968,37 +977,58 @@ class Game:
             self.phase_ended = True
             return
 
-        # --- spawn obstacle ---
+        # --- spawn rectangle ---
         if not hasattr(self, 'next_rectangle_spawn_time'):
             self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         if self.play_time >= self.next_rectangle_spawn_time:
-            Rectangle((self.all_sprites, self.rectangle_sprites),
-                    self.LAYERS['obstacles'], 
-                    speed, 
-                    self.rectangle_sprite_variants)
+            Rectangle((self.all_sprites, self.obstacle_sprites ,self.rectangle_sprites),
+                      self.LAYERS['obstacles'],
+                      "self.rect.right < 0",
+                      self.rectangle_sprite_variants,
+                      speed)
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME
 
     def icicle_phase(self):
-        pass
+        # --- choose speed of icicle ---
+        if STATS['score'] < FIRST_ICICLE_PHASE_END + self.score_of_last_phase:
+            speed = 150
+        elif FIRST_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_ICICLE_PHASE_END + self.score_of_last_phase:
+            speed = 200
+        elif SECOND_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_ICICLE_PHASE_END + self.score_of_last_phase:
+            speed = 250
+        elif THIRD_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < ICICLE_PHASE_END + self.score_of_last_phase:
+            speed = 300
+        elif STATS['score'] >= ICICLE_PHASE_END + self.score_of_last_phase:
+            self.phase_ended = True
+            return
 
-    def spawn_fruit(self, dt):
+        # spawn icicle
+        if not hasattr(self, 'next_icicle_spawn_time'):
+            self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
+        if self.play_time >= self.next_icicle_spawn_time:
+            Icicle((self.all_sprites, self.obstacle_sprites, self.icicle_sprites),
+                   self.LAYERS['obstacles'],
+                   "self.rect.top > WINDOW_HEIGHT",
+                   self.icicle_image,
+                   speed)
+            self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME
+
+    def spawn_fruit(self, dt, with_bias=None):
+        """spawn_fruits with_bias (<0.5 means further to the left)"""
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
-            speed = random_of_spectrum(50,270,False,bias=0.3)
+            speed = random_of_spectrum(50,270,False,bias=with_bias)
             new_fruit = random_of_selection((Apple,Blueberry,Banana),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit((self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
                     speed,
                     self.fruit_sprite_variants[new_fruit])
 
-    def change_background(self):
-        self.background.frames = self.backgrounds[self.current_phase]
-
     def check_collisions(self):
         if not self.player.is_alive:
             return
         
         if not self.player.iframes and self.player.can_collide and not self.player.dashing:
-            hit = pygame.sprite.spritecollide(self.player, self.rectangle_sprites, True, pygame.sprite.collide_mask)
+            hit = pygame.sprite.spritecollide(self.player, (self.rectangle_sprites or self.icicle_sprites), True, pygame.sprite.collide_mask)
             if hit:
                 self.player.health -= 1
                 if self.player.health >= 1:

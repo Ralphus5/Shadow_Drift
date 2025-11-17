@@ -324,30 +324,38 @@ class EffectText(pygame.sprite.Sprite):
         if t >= 1.0:
             self.kill()
 
-class Rectangle(pygame.sprite.Sprite):
-    """Rectangle sprite: moves across the screen and updates score on exit."""
-
-    def __init__(self, groups, layer, speed, sprite_variants):
+class Obstacle(pygame.sprite.Sprite):
+    def __init__(self, groups, layer, kill_condition, images, speed):
         self._layer = layer
         super().__init__(groups)
+        self.kill_condition = kill_condition
+        self.image = images
         self.speed = speed
 
-        # --- visual setup ---
-        self.width = random_of_selection((150, 200, 250, 300))
-        self.image = sprite_variants[self.width]
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.width, random_of_spectrum(0, WINDOW_HEIGHT)))
-        self.mask = pygame.mask.from_surface(self.image)
-
-        # --- motion setup ---
-        self.direction = pygame.Vector2(-1, 0)
-
     def destroy(self):
-        if self.rect.right < 0:
+        """Destroy spite when leaving screen and add to score."""
+        if eval(self.kill_condition):
             self.kill()
-        # update stats when killed
             STATS['score'] += 1
-        
+
     def update(self, dt, play_time):
-        # --- move ---
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
+
+class Rectangle(Obstacle):
+    def __init__(self, groups, layer, kill_condition, sprite_variants, speed):
+        super().__init__(groups, layer, kill_condition, sprite_variants, speed)
+        self.width = random_of_selection((150, 200, 250, 300))
+        self.image = sprite_variants[self.width]
+        self.size = self.image.get_size()
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH+self.width, random_of_spectrum(0, WINDOW_HEIGHT)))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(-1, 0)
+
+class Icicle(Obstacle):
+    def __init__(self, groups, layer, kill_condition, image, speed):
+        super().__init__(groups, layer, kill_condition, image, speed)
+        self.size = self.image.get_size()
+        self.rect = self.image.get_frect(center=(random_of_spectrum(self.size[0]/2,WINDOW_WIDTH-self.size[0]/2, as_float=True), 0-self.size[1]))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, 1)

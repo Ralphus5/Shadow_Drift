@@ -129,7 +129,7 @@ BANANA_BOOST_DURATION: float = 12.0
 
 # phase probabilities
 START_PHASES: tuple[str] = ('rectangle', 'icicle')
-PHASE_PROBABILITIES: dict[str:float] = {'rectangle': .9, 'icicle': .9}
+PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 1.0, 'icicle': 1.0}
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.5 # seconds
@@ -139,6 +139,11 @@ THIRD_RECTANGLE_PHASE_END: int = 120
 RECTANGLE_PHASE_END: int = 160
 
 # icicle phase
+ICICLE_SPAWN_TIME: float = 0.25 # seconds
+FIRST_ICICLE_PHASE_END: int = 40
+SECOND_ICICLE_PHASE_END: int = 80
+THIRD_ICICLE_PHASE_END: int = 120
+ICICLE_PHASE_END: int = 160
 
 
 # --- DEFAULT KEY BINDINGS ---
