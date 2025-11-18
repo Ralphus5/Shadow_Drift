@@ -229,6 +229,8 @@ class AnimatedBackground(pygame.sprite.Sprite):
         self.interval = interval  # ms between frame changes
         self.image = self.frames[self.index]
         self.rect = self.image.get_rect(topleft=(0, 0))
+        self.speed = 120
+        self.rect2 = self.image.get_rect(topleft=self.rect.topright)
 
     def update(self, dt, *_):
         self.timer += dt * 1000
@@ -236,6 +238,12 @@ class AnimatedBackground(pygame.sprite.Sprite):
             self.timer = 0
             self.index = (self.index + 1) % len(self.frames)
             self.image = self.frames[self.index]
+        self.rect.right += dt * self.speed * -1
+        self.rect2.right += dt * self.speed * -1
+        if self.rect.right <= 0:
+            self.rect.left = self.rect2.right
+        elif self.rect2.right <= 0:
+            self.rect2.left = self.rect.right
 
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""
@@ -335,17 +343,18 @@ class Obstacle(pygame.sprite.Sprite):
     def destroy(self):
         """Destroy spite when leaving screen and add to score."""
         if eval(self.kill_condition):
+            if not any(getattr(group, 'does_not_increase_score', False) for group in self.groups()):
+                STATS['score'] += 1
             self.kill()
-            STATS['score'] += 1
 
     def update(self, dt, play_time):
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
 
 class Rectangle(Obstacle):
-    def __init__(self, groups, layer, kill_condition, sprite_variants, speed):
+    def __init__(self, groups, layer, kill_condition, sprite_variants, speed, width):
         super().__init__(groups, layer, kill_condition, sprite_variants, speed)
-        self.width = random_of_selection((150, 200, 250, 300))
+        self.width = width
         self.image = sprite_variants[self.width]
         self.size = self.image.get_size()
         self.rect = self.image.get_frect(center=(WINDOW_WIDTH+self.width, random_of_spectrum(0, WINDOW_HEIGHT)))

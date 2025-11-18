@@ -68,6 +68,8 @@ class Game:
                         else: self.show_start_player = True
                     elif event.key == pygame.K_2:
                         self.show_blueberry = True
+                    elif event.key == pygame.K_3:
+                        self.show_icicle = True
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_start_hint = True
@@ -125,6 +127,8 @@ class Game:
                         else: self.show_dead_player = True
                     elif event.key == pygame.K_2:
                         self.show_apple = True
+                    elif event.key == pygame.K_3:
+                        self.show_rectangle = True
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_game_over_hint = True
@@ -190,6 +194,7 @@ class Game:
 
         # --- clear secrets ---
         self.secret_fruits.empty()
+        self.secret_obstacles.empty()
 
         # --- switch ---
         self.state = new
@@ -318,15 +323,34 @@ class Game:
                 self.fruit_sprite_variants[Blueberry])
             self.show_blueberry = False
 
-        if hasattr(self, 'secret_fruits') and self.secret_fruits:
+        if getattr(self, 'show_icicle', False):
+            Icicle((self.secret_obstacles),
+                   self.LAYERS['obstacles'],
+                   "self.rect.top > WINDOW_HEIGHT",
+                   self.icicle_image,
+                   random_of_spectrum(250,400))
+            self.show_icicle = False
+
+        if getattr(self, 'secret_fruits', False):
             self.secret_fruits.update(dt, self.play_time)
             self.secret_fruits.draw(self.screen)
-            if hasattr(self, 'show_start_player') and self.show_start_player:
+            if getattr(self, 'show_start_player', False):
                 for fruit in self.secret_fruits.sprites():
                     offset = (fruit.rect.x - rect.x, fruit.rect.y - rect.y)
                     if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(fruit.image), offset):
                         fruit.kill()
                         self.eat_fruit_sound.play()
+
+        if getattr(self, 'secret_obstacles', False):
+            self.secret_obstacles.update(dt, self.play_time)
+            self.secret_obstacles.draw(self.screen)
+            if getattr(self, 'show_start_player', False):
+                for obstacle in self.secret_obstacles.sprites():
+                    offset = (obstacle.rect.x - rect.x, obstacle.rect.y - rect.y)
+                    if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(obstacle.image), offset):
+                        obstacle.kill()
+                        self.damage_sound.play()
+                        self.show_start_player = False
 
     def play_loop(self, dt):
         # update dt
@@ -334,6 +358,7 @@ class Game:
         # set_game_mode
         self.set_phase(dt)
         self.update_play_time()
+        self.background_sprites.update(dt)
         self.all_sprites.update(dt, self.play_time)
         self.check_collisions()
         self.check_record()
@@ -346,8 +371,10 @@ class Game:
         if not getattr(self, 'show_credits', False):
             mouse_pos = self.get_scaled_mouse_pos()
             mouse_click = pygame.mouse.get_pressed()[0]
-            self.draw_sprites()
-            self.draw_effects()
+            self.draw_background()
+            self.draw_player_glow()
+            self.all_sprites.draw(self.screen)
+            self.draw_player_explosion()
 
             # --- dim effect ---
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
@@ -420,6 +447,7 @@ class Game:
     def game_over_secrets(self, dt):
         if getattr(self, 'show_game_over_hint', False):
             self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint'])
+
         if getattr(self,'show_dead_player', False):  
             self.dead_player_rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
             self.dead_player_rect = self.dead_player_rotated.get_rect(center=self.player.rect.center)
@@ -432,7 +460,7 @@ class Game:
                 random_of_spectrum(300,700),
                 self.fruit_sprite_variants[Apple])
             self.show_apple = False
-            
+
         if hasattr(self, 'secret_fruits') and self.secret_fruits:
             self.secret_fruits.update(dt, self.play_time)
             self.secret_fruits.draw(self.screen)
@@ -442,6 +470,26 @@ class Game:
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
                         fruit.kill()
                         self.eat_fruit_sound.play()
+
+        if getattr(self, 'show_rectangle', False):
+            Rectangle((self.secret_obstacles),
+                      self.LAYERS['obstacles'],
+                      "self.rect.right < 0",
+                      self.rectangle_sprite_variants,
+                      random_of_spectrum(300, 500),
+                      400)
+            self.show_rectangle = False
+
+        if getattr(self, 'secret_obstacles', False):
+            self.secret_obstacles.update(dt, self.play_time)
+            self.secret_obstacles.draw(self.screen)
+            if hasattr(self, 'dead_player_rect') and getattr(self, 'show_dead_player', False):
+                for obstacle in self.secret_obstacles.sprites():
+                    offset = (obstacle.rect.x - self.dead_player_rect.x, obstacle.rect.y - self.dead_player_rect.y)
+                    if self.dead_player_mask.overlap(pygame.mask.from_surface(obstacle.image), offset):
+                        obstacle.kill()
+                        self.damage_sound.play()
+                        self.show_dead_player = False
 
     def settings_menu(self, dt):
             self.screen.fill(COLOR['settings_bg'])
@@ -810,7 +858,7 @@ class Game:
 
         # --- animated backgrounds ---
         self.backgrounds: dict = {
-            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
+            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', 'bg_rectangle_phase_0.png')).convert_alpha()],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
             'bg_3': [pygame.image.load(join(self.IMG_DIR, 'bg_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
 
@@ -821,7 +869,7 @@ class Game:
                                              2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
 
         # --- other entities ---
-        self.rectangle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (150, 200, 250, 300)}
+        self.rectangle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)}
 
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
 
@@ -869,11 +917,12 @@ class Game:
 
         # obstacle timing
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
+        self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
 
         for attr in (# reset start secrets
-                     'show_start_hint', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
+                     'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
                      # reset game over secrets
-                     'show_game_over_hint','show_apple','secret_apples','dead_player_rect','dead_player_mask',
+                     'show_game_over_hint', 'show_rectangle', 'show_apple','secret_apples','dead_player_rect','dead_player_mask',
                      # other flags
                      'phase_ended'):
             if hasattr(self, attr):
@@ -883,21 +932,25 @@ class Game:
         # --- sprite groups and layers ---
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.player_group = pygame.sprite.GroupSingle()
+        self.background_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
+        self.secret_obstacles = pygame.sprite.Group()
+        self.secret_obstacles.does_not_increase_score = True
         self.effect_sprites = pygame.sprite.Group()
 
         self.LAYERS = {'background': 0,
-                       'fruits': 1,
-                       'obstacles': 2,
-                       'player': 3,
-                       'effects': 4,}
+                       'player': 1,
+                       'fruits': 2,
+                       'obstacles': 3,
+                       'effects': 4,
+                       }
 
         # --- instantiate background ---
-        self.background = AnimatedBackground(self.all_sprites,
+        self.background = AnimatedBackground(self.background_sprites,
                                              self.LAYERS['background'],
                                              self.backgrounds[self.current_phase],)
 
@@ -950,9 +1003,11 @@ class Game:
         if getattr(self, 'phase_ended', False):
             self.phase_ended = False
             self.score_of_last_phase = STATS['score']
+            for sprite in self.obstacle_sprites:
+                sprite.kill()
+            self.prev_phase = self.current_phase
             while self.current_phase == self.prev_phase:
-                self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values()) 
-                # change background
+                self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
                 self.background.frames = self.backgrounds[self.current_phase]
             
         match(self.current_phase):
@@ -967,13 +1022,21 @@ class Game:
         # --- choose speed of rectangle ---
         if STATS['score'] < FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 250
+            weight = (1, 0.8, 0.6, 0.4)
+            spawn_rate_factor = 1
         elif FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 350
+            weight = (0.8, 0.7, 0.7, 0.6)
+            spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
         elif SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 450
-        elif THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < RECTANGLE_PHASE_END + self.score_of_last_phase:
+            weight = (0.6, 0.6, 0.8, 0.8)
+            spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
+        elif THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 550
-        elif STATS['score'] >= RECTANGLE_PHASE_END + self.score_of_last_phase:
+            weight = (0.4, 0.5, 0.9, 1)
+            spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
+        elif STATS['score'] >= FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
             self.phase_ended = True
             return
 
@@ -985,8 +1048,9 @@ class Game:
                       self.LAYERS['obstacles'],
                       "self.rect.right < 0",
                       self.rectangle_sprite_variants,
-                      speed)
-            self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME
+                      speed,
+                      random_of_selection((250, 300, 350, 400), weights=weight))
+            self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
     def icicle_phase(self):
         # --- choose speed of icicle ---
@@ -1028,7 +1092,7 @@ class Game:
             return
         
         if not self.player.iframes and self.player.can_collide and not self.player.dashing:
-            hit = pygame.sprite.spritecollide(self.player, (self.rectangle_sprites or self.icicle_sprites), True, pygame.sprite.collide_mask)
+            hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
             if hit:
                 self.player.health -= 1
                 if self.player.health >= 1:
@@ -1066,23 +1130,24 @@ class Game:
 
     def draw_order(self):
         # --- DRAWING ORDER ---
-        self.draw_sprites()
-        self.draw_effects()
+        self.draw_background()
+        self.draw_player_glow()
+        self.all_sprites.draw(self.screen)
+        self.draw_player_explosion()
         self.draw_score_text()
 
-    def draw_sprites(self):
-        self.all_sprites.draw(self.screen)
+    def draw_background(self):
+        for bg in self.background_sprites:
+            self.screen.blit(bg.image, bg.rect)
+            self.screen.blit(bg.image, bg.rect2) 
 
-    def draw_effects(self):
-        # player death explosion
-        if not self.player.is_alive and self.explosion_index < len(self.explosion_frames):
-            self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))
-
-        # player glow
+    def draw_player_glow(self):
         if self.player.ability_ready and self.player.health:
             self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
 
-        self.effect_sprites.draw(self.screen)
+    def draw_player_explosion(self):
+        if not self.player.is_alive and self.explosion_index < len(self.explosion_frames):
+            self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))        
 
     def draw_score_text(self):
         self.screen.blit(self.stats_text_shadow, (22, 22))
