@@ -37,7 +37,7 @@ def random_of_selection(selection: Sequence, weights: Optional[Sequence[float]] 
 
 # --- debugging and performance check ---
 def get_func_time(func: Callable) -> Callable:
-    '''check how long a function took to execute'''
+    '''DEBUGGING TOOL: check how long a function took to execute'''
 
     @wraps(func)
     def wrapper(*args, **kwargs) -> Any:
@@ -54,6 +54,11 @@ def print_game_time(play_time, total_paused, runtime):
     '''DEBUGGING TOOL: Use this at top of the event handler function to measure times.'''
 
     print(f"[time] played = {play_time:.3f}s   stopped = {total_paused:.3f}s   absolute runtime = {runtime}")
+
+def show_rects(sprites, surf):
+    """DEBUGGING TOOL: SHOW HITBOXES. (to be removed in final version)"""
+    for sprite in sprites:
+        pygame.draw.rect(surf, (255,0,0), sprite.rect, 1)
 
 # --- UI elements ---
 class ClickableIcon:

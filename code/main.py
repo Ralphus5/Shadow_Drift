@@ -37,6 +37,7 @@ class Game:
                 self.game_over_screen(dt)
             elif self.state == 'settings':
                 self.settings_menu(dt)
+            #show_rects(self.all_sprites, self.screen) # debugging
             self.present_frame()
 
     def handle_input(self):
@@ -96,7 +97,7 @@ class Game:
                     if not getattr(self, 'header_counter', False): self.header_counter = 1
                     else: self.header_counter += 1
                     if self.header_counter <= len(self.credits_texts):
-                        self.credits_instances.append(CreditsText(self.credits_texts[self.header_counter],
+                        self.credits_instances.append(CreditsText(self.credits_texts[self.header_counter-1],
                                     self.fonts['credits_header'],
                                     (WINDOW_CENTER[0], WINDOW_HEIGHT),
                                     COLOR['credits_header'],))
@@ -214,6 +215,9 @@ class Game:
 
         elif new == 'play':
             if old == 'start':
+                for sprite in self.all_sprites:
+                    if sprite != self.player:
+                        sprite.kill()
                 self.play_start = perf_counter()
                 self.change_track('game_track_1', fade_ms=1000)
                 pygame.key.get_pressed()   # resets held keys
@@ -317,14 +321,14 @@ class Game:
             self.screen.blit(img, rect)
 
         if getattr(self, 'show_blueberry', False):
-            Blueberry((self.secret_fruits),
+            Blueberry((self.all_sprites, self.secret_fruits),
                 self.LAYERS['fruits'],
                 random_of_spectrum(300,700),
                 self.fruit_sprite_variants[Blueberry])
             self.show_blueberry = False
 
         if getattr(self, 'show_icicle', False):
-            Icicle((self.secret_obstacles),
+            Icicle((self.all_sprites, self.secret_obstacles),
                    self.LAYERS['obstacles'],
                    "self.rect.top > WINDOW_HEIGHT",
                    self.icicle_image,
@@ -461,7 +465,7 @@ class Game:
             self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
             
         if getattr(self, 'show_apple', False):
-            Apple((self.secret_fruits),
+            Apple((self.all_sprites, self.secret_fruits),
                 self.LAYERS['fruits'],
                 random_of_spectrum(300,700),
                 self.fruit_sprite_variants[Apple])
@@ -470,7 +474,7 @@ class Game:
         if hasattr(self, 'secret_fruits') and self.secret_fruits:
             self.secret_fruits.update(dt, self.play_time)
             self.secret_fruits.draw(self.screen)
-            if hasattr(self, 'dead_player_rect') and hasattr(self, 'show_dead_player'):
+            if hasattr(self, 'dead_player_rect') and getattr(self, 'show_dead_player', False):
                 for fruit in self.secret_fruits.sprites():
                     offset = (fruit.rect.x - self.dead_player_rect.x, fruit.rect.y - self.dead_player_rect.y)
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
@@ -478,7 +482,7 @@ class Game:
                         self.eat_fruit_sound.play()
 
         if getattr(self, 'show_rectangle', False):
-            Rectangle((self.secret_obstacles),
+            Rectangle((self.all_sprites, self.secret_obstacles),
                       self.LAYERS['obstacles'],
                       "self.rect.right < 0",
                       self.rectangle_sprite_variants,
@@ -778,27 +782,27 @@ class Game:
         self.credits_title_rect = self.text_rects['title'].copy()
         
         # --- define fruit-collect messages ---
-        self.FRUIT_PICKUP_TEXTS = {Apple: ("+10 points", 'apple_pickup'),
+        self.FRUIT_PICKUP_TEXTS: dict = {Apple: (f"+{APPLE_POINTS} points", 'apple_pickup'),
                                    Banana: ("+speed", 'banana_pickup'),
                                    Blueberry: ("health restored", 'blueberry_pickup'),}
         
         # --- define credits texts ---
-        self.credits_texts = {1:"Director",
-                              2:"Producer",
-                              3:"Designer",
-                              4:"Pixel Artist",
-                              5:"Concept Artist",
-                              6:"Music Supervisor",
-                              7:"Music Composer",
-                              8:"SFX Artist",
-                              9:"Programmer",
-                              10:"2D Animator",
-                              11:"Project Manager",
-                              12:"Production Coordinator",
-                              13:"Creative Director",
-                              14:"Writer",
-                              15:"Editor",
-                              16:"Playtester",}                            
+        self.credits_texts: list = ("Director",
+                              "Producer",
+                              "Designer",
+                              "Pixel Artist",
+                              "Concept Artist",
+                              "Music Supervisor",
+                              "Music Composer",
+                              "SFX Artist",
+                              "Programmer",
+                              "2D Animator",
+                              "Project Manager",
+                              "Production Coordinator",
+                              "Creative Director",
+                              "Writer",
+                              "Editor",
+                              "Playtester")
         
         # --- images ---
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
@@ -1085,14 +1089,18 @@ class Game:
     def icicle_phase(self):
         # --- choose speed of icicle ---
         if STATS['score'] < FIRST_ICICLE_PHASE_END + self.score_of_last_phase:
-            speed = 150
-        elif FIRST_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_ICICLE_PHASE_END + self.score_of_last_phase:
             speed = 200
-        elif SECOND_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_ICICLE_PHASE_END + self.score_of_last_phase:
+            spawn_rate_factor = 1
+        elif FIRST_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_ICICLE_PHASE_END + self.score_of_last_phase:
             speed = 250
-        elif THIRD_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < ICICLE_PHASE_END + self.score_of_last_phase:
+            spawn_rate_factor = SECOND_ICICLE_PHASE_SPAWN_FACTOR
+        elif SECOND_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_ICICLE_PHASE_END + self.score_of_last_phase:
             speed = 300
-        elif STATS['score'] >= ICICLE_PHASE_END + self.score_of_last_phase:
+            spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
+        elif THIRD_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < FOURTH_ICICLE_PHASE_END + self.score_of_last_phase:
+            speed = 350
+            spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
+        elif STATS['score'] >= FOURTH_ICICLE_PHASE_END + self.score_of_last_phase:
             self.phase_ended = True
             return
 
@@ -1105,7 +1113,7 @@ class Game:
                    "self.rect.top > WINDOW_HEIGHT",
                    self.icicle_image,
                    speed)
-            self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME
+            self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
     def spawn_fruit(self, dt, with_bias=None):
         """spawn_fruits with_bias (<0.5 means further to the left)"""

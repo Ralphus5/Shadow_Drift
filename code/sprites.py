@@ -327,7 +327,16 @@ class EffectText(pygame.sprite.Sprite):
     def update(self, dt, *_):
         self.rect.y -= int(self.rise * dt)
         t = (perf_counter() - self.spawn) / max(self.lifetime, 1e-6)
-        self.image.set_alpha(max(0, 255 - int(255 * t)))
+        fade_start = 0.7          # 0–0.7: fully visible, 0.7–1.0: fade
+        if t < fade_start:
+            alpha = 255
+        else:
+            u = (t - fade_start) / (1 - fade_start) 
+
+            # fast fade: power > 1 makes it drop quickly near the end
+            alpha = int(255 * (1 - u)**2)
+
+        self.image.set_alpha(max(0, min(255, alpha)))
         if t >= 1.0:
             self.kill()
 
