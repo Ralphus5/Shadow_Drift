@@ -220,17 +220,17 @@ class Player(pygame.sprite.Sprite):
 class AnimatedBackground(pygame.sprite.Sprite):
     """Animated background sprite cycling through frames."""
 
-    def __init__(self, groups, layer, frames, interval=BACKGROUND_FRAME_INTERVALL):
+    def __init__(self, groups, layer, frames, scroll, interval=BACKGROUND_FRAME_INTERVALL):
         self._layer = layer
         super().__init__(groups)
         self.frames = frames
         self.index = 0
         self.timer = 0
-        self.interval = interval  # ms between frame changes
+        self.interval = interval
         self.image = self.frames[self.index]
         self.rect = self.image.get_rect(topleft=(0, 0))
-        self.speed = 120
-        self.rect2 = self.image.get_rect(topleft=self.rect.topright)
+        self.speed = DEFAULT_BACKGROUND_SCROLL_SPEED
+        self.scroll = scroll
 
     def update(self, dt, *_):
         self.timer += dt * 1000
@@ -238,12 +238,11 @@ class AnimatedBackground(pygame.sprite.Sprite):
             self.timer = 0
             self.index = (self.index + 1) % len(self.frames)
             self.image = self.frames[self.index]
-        self.rect.right += dt * self.speed * -1
-        self.rect2.right += dt * self.speed * -1
-        if self.rect.right <= 0:
-            self.rect.left = self.rect2.right
-        elif self.rect2.right <= 0:
-            self.rect2.left = self.rect.right
+
+        if self.scroll:
+            self.rect.centerx += dt * self.speed * -1
+            if self.rect.centerx <= 0:
+                self.rect.topleft = (0,0)
 
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""

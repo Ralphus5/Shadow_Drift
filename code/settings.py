@@ -10,10 +10,10 @@ BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FPS: Annotated[int, (25-120)] = 60
 
 # colors
-COLOR = {'ui_text': "#000000",
-         'ui_text_shadow': "#FFFFFF",
-         'ui_text_stop': "#70C1FF",
-         'ui_text_shadow_stop': "#000000",
+COLOR = {'score_rectangle_phase': "#70C1FF",
+         'score_shadow_rectangle_phase': "#000000",
+         'score_icicle_phase': "#000000",
+         'score_shadow_icicle_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
@@ -38,7 +38,10 @@ COLOR = {'ui_text': "#000000",
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
-         'credits_name': "#FFFFFF"}
+         'credits_name': "#FFFFFF",
+         'quit_icon_text': "#FB0000",
+         'play_icon_text': "#00D512",
+         'settings_icon_text':"#7E7E7E",}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -55,6 +58,7 @@ CREDITS_BUTTON_FONT_SIZE: int = 30
 FRUIT_PICKUP_MESSAGES_FONT_SIZE: int = 35
 CREDITS_HEADER_FONT_SIZE: int = 70
 CREDITS_NAME_FONT_SIZE: int = 45
+ICON_TEXTS_FONT_SIZE: int = 20
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
@@ -68,8 +72,7 @@ MAX_FLICKER_INT: Annotated[int, (188-255)] = 255
 MIN_FLICKER_INT: Annotated[int, (60-160)] = 100
 FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
-GAME_OVER_SCROLL_SPEED: float = 1.6
-BACKGROUND_FRAME_INTERVALL: int = 100
+GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 FRUIT_PICKUP_MESSAGES_DURATION: float = 1.0
@@ -77,6 +80,11 @@ FRUIT_PICKUP_RISE_SPEED: float = 100.0 # pixels / second
 BANANA_TRAIL_DRAW_INTERVALL: float = 0.005  # shadows per frame
 BANANA_TRAIL_LIFETIME: float = 0.4
 
+# backgrounds
+BACKGROUND_FRAME_INTERVALL: int = 70
+DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
+BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
+                                              'icicle': False,}
 
 # ----- AUDIO -----
 # user volume settings
@@ -102,6 +110,7 @@ EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1

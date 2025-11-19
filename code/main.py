@@ -238,7 +238,7 @@ class Game:
             self.all_sprites.empty()
             if self.music_channel: self.music_channel.stop()
             self.game_over_sound.play()
-            self.fade_to_black(duration=GAME_OVER_SCROLL_SPEED)
+            self.fade_to_black(duration=GAME_OVER_FADE_DURATION)
             self.change_track('game_over_track', fade_ms=300)
 
         elif new == 'settings':
@@ -360,9 +360,9 @@ class Game:
         self.update_play_time()
         self.background_sprites.update(dt)
         self.all_sprites.update(dt, self.play_time)
-        self.check_collisions()
+        self.collisions()
         self.check_record()
-        self.render_score_text()
+        self.render_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         self.draw_order()
         self.handle_player_death()
         # present_frame
@@ -371,7 +371,7 @@ class Game:
         if not getattr(self, 'show_credits', False):
             mouse_pos = self.get_scaled_mouse_pos()
             mouse_click = pygame.mouse.get_pressed()[0]
-            self.draw_background()
+            self.background_sprites.draw(self.screen)
             self.draw_player_glow()
             self.all_sprites.draw(self.screen)
             self.draw_player_explosion()
@@ -384,17 +384,23 @@ class Game:
 
             if not self.quit_prompt:
                 # --- display main pause menu ---
-                self.render_score_text(True, COLOR['ui_text_stop'], COLOR['ui_text_shadow_stop'])
+                self.render_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
                 self.draw_score_text()
-                self.render_score_text(True)
                 self.credits_btn.update(mouse_pos, mouse_click)
                 self.credits_btn.draw(self.screen)
                 if self.credits_btn.clicked:
                     self.show_credits = True
                 for btn in self.clickable_icons:
                     btn.update(mouse_pos, mouse_click)
-                    if btn.hover_changed and btn.hovered:
-                        self.menu_hover_sound.play()
+                    if btn.hovered:
+                        if btn is self.clickable_icons[0]:
+                            self.screen.blit(self.text_surfaces['quit_icon_text'], self.text_rects['quit_icon_text'])
+                        elif btn is self.clickable_icons[1]:
+                            self.screen.blit(self.text_surfaces['play_icon_text'], self.text_rects['play_icon_text'])
+                        elif btn is self.clickable_icons[2]:
+                            self.screen.blit(self.text_surfaces['settings_icon_text'], self.text_rects['settings_icon_text'])
+                        if btn.hover_changed:
+                            self.menu_hover_sound.play()
                     btn.draw(self.screen)
 
                     if btn.clicked:
@@ -691,6 +697,7 @@ class Game:
         self.record_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'new_record_sound.ogg'))
         self.ability_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'ability_sound.wav'))
         self.dash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'dash_sound.wav'))
+        self.phase_switch_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'phase_switch_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -714,6 +721,7 @@ class Game:
         self.record_sound.set_volume(RECORD_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
         self.ability_sound.set_volume(ABILITY_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
         self.dash_sound.set_volume(DASH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.phase_switch_sound.set_volume(PHASE_SWITCH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -730,7 +738,10 @@ class Game:
                             'credits_button': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_BUTTON_FONT_SIZE),
                             'fruit_pickup_messages': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), FRUIT_PICKUP_MESSAGES_FONT_SIZE),
                             'credits_header': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_HEADER_FONT_SIZE),
-                            'credits_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_NAME_FONT_SIZE),}
+                            'credits_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_NAME_FONT_SIZE),
+                            'quit_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
+                            'play_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
+                            'settings_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE)}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
@@ -741,7 +752,10 @@ class Game:
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
                                     'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),
-                                    'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),}
+                                    'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),
+                                    'quit_icon_text': self.fonts['quit_icon_text'].render("Quit", True, COLOR['quit_icon_text']),
+                                    'play_icon_text': self.fonts['quit_icon_text'].render("Continue", True, COLOR['play_icon_text']),
+                                    'settings_icon_text': self.fonts['quit_icon_text'].render("Settings", True, COLOR['settings_icon_text'])}
         
         # credits title
         self.credits_title_surf = self.text_surfaces['title'].copy()
@@ -755,7 +769,10 @@ class Game:
                                  'settings': self.text_surfaces['settings'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'controls': self.text_surfaces['controls'].get_rect(center=(WINDOW_CENTER[0], 50)),
                                  'audio': self.text_surfaces['audio'].get_rect(center=(WINDOW_CENTER[0], 50)),
-                                 'quit_prompt_heading': self.text_surfaces['quit_prompt_heading'].get_rect(center=(QUIT_RECT_WIDTH/2, QUIT_RECT_HEIGHT/8)),}
+                                 'quit_prompt_heading': self.text_surfaces['quit_prompt_heading'].get_rect(center=(QUIT_RECT_WIDTH/2, QUIT_RECT_HEIGHT/8)),
+                                 'quit_icon_text': self.text_surfaces['quit_icon_text'].get_rect(center=(WINDOW_WIDTH - 70, 130)),
+                                 'play_icon_text': self.text_surfaces['play_icon_text'].get_rect(center=(WINDOW_WIDTH - 170, 130)),
+                                 'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130))}
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
@@ -858,8 +875,8 @@ class Game:
 
         # --- animated backgrounds ---
         self.backgrounds: dict = {
-            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', 'bg_rectangle_phase_0.png')).convert_alpha()],
-            'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', f'bg2_{i}.png')).convert_alpha() for i in range(11)],
+            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
+            'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', f'bg_icicle_phase_{i}.png')).convert_alpha() for i in range(11)],
             'bg_3': [pygame.image.load(join(self.IMG_DIR, 'bg_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
 
         # --- player images ---
@@ -952,7 +969,8 @@ class Game:
         # --- instantiate background ---
         self.background = AnimatedBackground(self.background_sprites,
                                              self.LAYERS['background'],
-                                             self.backgrounds[self.current_phase],)
+                                             self.backgrounds[self.current_phase],
+                                             BACKGROUND_SCROLLABILITIES[self.current_phase])
 
         # --- instantiate player sprite ---
         Player((self.all_sprites, self.player_group),
@@ -1003,12 +1021,21 @@ class Game:
         if getattr(self, 'phase_ended', False):
             self.phase_ended = False
             self.score_of_last_phase = STATS['score']
+            self.phase_switch_sound.play()
+            self.fade_to_black()
             for sprite in self.obstacle_sprites:
                 sprite.kill()
+            for sprite in self.fruit_sprites:
+                sprite.kill()
+            self.player.rect.center = WINDOW_CENTER
             self.prev_phase = self.current_phase
             while self.current_phase == self.prev_phase:
                 self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-                self.background.frames = self.backgrounds[self.current_phase]
+                self.background = AnimatedBackground(self.background_sprites,
+                                                     self.LAYERS['background'],
+                                                     self.backgrounds[self.current_phase],
+                                                     BACKGROUND_SCROLLABILITIES[self.current_phase])
+                self.change_score_color = True
             
         match(self.current_phase):
             case 'rectangle':
@@ -1028,14 +1055,17 @@ class Game:
             speed = 350
             weight = (0.8, 0.7, 0.7, 0.6)
             spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
+            self.background.speed = 84
         elif SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 450
             weight = (0.6, 0.6, 0.8, 0.8)
             spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
+            self.background.speed = 108
         elif THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
             speed = 550
             weight = (0.4, 0.5, 0.9, 1)
             spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
+            self.background.speed = 132
         elif STATS['score'] >= FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
             self.phase_ended = True
             return
@@ -1087,7 +1117,7 @@ class Game:
                     speed,
                     self.fruit_sprite_variants[new_fruit])
 
-    def check_collisions(self):
+    def collisions(self):
         if not self.player.is_alive:
             return
         
@@ -1119,10 +1149,12 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
-    def render_score_text(self, paused=False, text_color=COLOR['ui_text'], text_shadow_color=COLOR['ui_text_shadow']):
+    def render_score_text(self, text_color, text_shadow_color):
         '''Render text surfaces only when stats change.'''
+
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
-        if self.current_stats != self.prev_stats or paused:
+        if self.current_stats != self.prev_stats or getattr(self, 'change_score_color', False):
+            self.change_score_color = False
             text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
             self.stats_text = self.fonts['stats'].render(text, True, text_color)
             self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
@@ -1130,16 +1162,11 @@ class Game:
 
     def draw_order(self):
         # --- DRAWING ORDER ---
-        self.draw_background()
+        self.background_sprites.draw(self.screen)
         self.draw_player_glow()
         self.all_sprites.draw(self.screen)
         self.draw_player_explosion()
         self.draw_score_text()
-
-    def draw_background(self):
-        for bg in self.background_sprites:
-            self.screen.blit(bg.image, bg.rect)
-            self.screen.blit(bg.image, bg.rect2) 
 
     def draw_player_glow(self):
         if self.player.ability_ready and self.player.health:
