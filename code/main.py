@@ -22,7 +22,7 @@ class Game:
     def run(self):
         while True:
             dt = self.clock.tick(FPS) / 1000
-            self.handle_input()
+            self.handle_events_and_input()
             self.set_game_mode()
             #print_game_time(self.play_time,self.total_paused,self.runtime) # DEBUGGING
             #print("Track:", self.current_track,"Sound volume:", self.tracks[self.current_track].get_volume(),"Channel volume:", self.music_channel.get_volume()) # DEBUGGING
@@ -40,7 +40,7 @@ class Game:
             #show_rects(self.all_sprites, self.screen) # debugging
             self.present_frame()
 
-    def handle_input(self):
+    def handle_events_and_input(self):
         '''Check for user input regarding non-gameplay actions.'''
 
         for event in pygame.event.get():
@@ -80,6 +80,9 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.requested_state = 'stop'
+
+                elif event.type == self.score_event:
+                    STATS['score'] += 1
 
             # --- pause state ---
             elif self.state == 'stop':
@@ -906,7 +909,6 @@ class Game:
         self.active_settings_tab = None
         self.waiting_for_key = None
         self.quit_prompt = False
-        self.score_of_last_phase = 0
 
         # --- starting phase ---
         self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
@@ -916,6 +918,7 @@ class Game:
         if not hasattr(self,'absolute_start_time'):
             self.absolute_start_time = perf_counter()
         self.play_time = 0.0
+        self.phase_start = 0.0
         self.play_start = None
         self.pause_start = 0.0
         self.total_paused = 0.0
@@ -945,7 +948,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_apple','secret_apples','dead_player_rect','dead_player_mask',
                      # other flags
-                     'phase_ended'):
+                     'phase_ended',):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -960,7 +963,6 @@ class Game:
         self.fruit_sprites = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
         self.secret_obstacles = pygame.sprite.Group()
-        self.secret_obstacles.does_not_increase_score = True
         self.effect_sprites = pygame.sprite.Group()
 
         self.LAYERS = {'background': 0,
@@ -1016,15 +1018,19 @@ class Game:
             pass
 
     def create_custome_events(self):
+        # --- credits text spawn rate ---
         self.credits_event = pygame.event.custom_type()
         pygame.time.set_timer(self.credits_event, 5000)
+
+        # --- increase score with time ---
+        self.score_event = pygame.event.custom_type()
+        pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
 # --- Main loop ---
 
     def set_phase(self, dt):
         if getattr(self, 'phase_ended', False):
             self.phase_ended = False
-            self.score_of_last_phase = STATS['score']
             self.phase_switch_sound.play()
             self.fade_to_black()
             for sprite in self.obstacle_sprites:
@@ -1039,38 +1045,39 @@ class Game:
                                                      self.LAYERS['background'],
                                                      self.backgrounds[self.current_phase],
                                                      BACKGROUND_SCROLLABILITIES[self.current_phase])
-                self.change_score_color = True
+            self.change_score_color = True
+            self.phase_start = self.play_time
             
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()       
-                self.spawn_fruit(dt, with_bias=0.3)
+                self.spawn_fruit(dt, with_bias=None)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt, with_bias=None)
+                self.spawn_fruit(dt, with_bias=0.5)
 
     def rectangle_phase(self):
-        # --- choose speed of rectangle ---
-        if STATS['score'] < FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase:
+        # --- choose speed and spawn rate of rectangle ---
+        if self.play_time - self.phase_start < FIRST_RECTANGLE_PHASE_END:
             speed = 250
             weight = (1, 0.8, 0.6, 0.4)
             spawn_rate_factor = 1
-        elif FIRST_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase:
+        elif FIRST_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < SECOND_RECTANGLE_PHASE_END:
             speed = 350
             weight = (0.8, 0.7, 0.7, 0.6)
             spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
             self.background.speed = 84
-        elif SECOND_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase:
+        elif SECOND_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < THIRD_RECTANGLE_PHASE_END:
             speed = 450
             weight = (0.6, 0.6, 0.8, 0.8)
             spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
             self.background.speed = 108
-        elif THIRD_RECTANGLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
+        elif THIRD_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_RECTANGLE_PHASE_END:
             speed = 550
             weight = (0.4, 0.5, 0.9, 1)
             spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
             self.background.speed = 132
-        elif STATS['score'] >= FOURTH_RECTANGLE_PHASE_END + self.score_of_last_phase:
+        elif self.play_time - self.phase_start >= FOURTH_RECTANGLE_PHASE_END:
             self.phase_ended = True
             return
 
@@ -1087,24 +1094,24 @@ class Game:
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
     def icicle_phase(self):
-        # --- choose speed of icicle ---
-        if STATS['score'] < FIRST_ICICLE_PHASE_END + self.score_of_last_phase:
+        # --- choose speed and spawn rate of icicle ---
+        if self.play_time - self.phase_start < FIRST_ICICLE_PHASE_END:
             speed = 200
             spawn_rate_factor = 1
-        elif FIRST_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < SECOND_ICICLE_PHASE_END + self.score_of_last_phase:
+        elif FIRST_ICICLE_PHASE_END <= self.play_time - self.phase_start < SECOND_ICICLE_PHASE_END:
             speed = 250
             spawn_rate_factor = SECOND_ICICLE_PHASE_SPAWN_FACTOR
-        elif SECOND_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < THIRD_ICICLE_PHASE_END + self.score_of_last_phase:
+        elif SECOND_ICICLE_PHASE_END <= self.play_time - self.phase_start < THIRD_ICICLE_PHASE_END:
             speed = 300
             spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
-        elif THIRD_ICICLE_PHASE_END + self.score_of_last_phase <= STATS['score'] < FOURTH_ICICLE_PHASE_END + self.score_of_last_phase:
+        elif THIRD_ICICLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_ICICLE_PHASE_END:
             speed = 350
             spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
-        elif STATS['score'] >= FOURTH_ICICLE_PHASE_END + self.score_of_last_phase:
+        elif self.play_time - self.phase_start >= FOURTH_ICICLE_PHASE_END:
             self.phase_ended = True
             return
 
-        # spawn icicle
+        # --- spawn icicle ---
         if not hasattr(self, 'next_icicle_spawn_time'):
             self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         if self.play_time >= self.next_icicle_spawn_time:

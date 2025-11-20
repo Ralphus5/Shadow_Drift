@@ -349,10 +349,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.speed = speed
 
     def destroy(self):
-        """Destroy spite when leaving screen and add to score."""
         if eval(self.kill_condition):
-            if not any(getattr(group, 'does_not_increase_score', False) for group in self.groups()):
-                STATS['score'] += 1
             self.kill()
 
     def update(self, dt, play_time):
