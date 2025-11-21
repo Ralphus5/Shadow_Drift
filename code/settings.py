@@ -32,9 +32,10 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'quit_prompt_rect_outline': "#000000",
          'quit_prompt_heading': "#70C1FF",
          'fruit_pickup_shadow': "#FFFFFF",
-         'apple_pickup': "#FF0000FF",
-         'blueberry_pickup': "#000DFFFF",
-         'banana_pickup': "#FFFB00FF",
+         'apple_pickup': "#ea0808",
+         'blueberry_pickup': "#2639db",
+         'banana_pickup': "#efe508",
+         'chili_pickup': "#953333",
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
@@ -121,6 +122,7 @@ STATS = {'score': 0, 'record': 0}
 SCORE_UPDATE_TIME = 5000 #ms
 
 # player
+PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
 DEFAULT_PLAYER_SPEED: int = 250
 ONE_LIFE_PLAYER_SPEED: int = 300
 PLAYER_ABILITY_DURATION: float = 1.6 # seconds
@@ -128,14 +130,16 @@ PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
-PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
+FIREBALL_SHOOT_COOLDOWN: float = 1.0
+FIRE_BALL_SPEED: int = 600
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 5.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.25}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.25, 'chili': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0
+FIRE_POWER_DURATION: float = 20.0
 
 # phase probabilities
 START_PHASES: tuple[str] = ('rectangle', 'icicle')
@@ -164,10 +168,14 @@ FOURTH_ICICLE_PHASE_END: int = 60
 
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS = {
-    "move_left": pygame.K_a,
-    "move_right": pygame.K_d,
-    "move_up": pygame.K_w,
-    "move_down": pygame.K_s,
-    "ability": pygame.K_SPACE,
-    "dash": pygame.K_RETURN,
-    "fullscreen": pygame.K_F11,}
+    'move_left': pygame.K_a,
+    'move_right': pygame.K_d,
+    'move_up': pygame.K_w,
+    'move_down': pygame.K_s,
+    'ability': pygame.K_SPACE,
+    'dash': pygame.K_RETURN,
+    'shoot_up': pygame.K_UP,
+    'shoot_down': pygame.K_DOWN,
+    'shoot_right': pygame.K_RIGHT,
+    'shoot_left': pygame.K_LEFT,
+    'fullscreen': pygame.K_F11,}

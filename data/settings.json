@@ -6,6 +6,10 @@
     "move_down": "s",
     "ability": "space",
     "dash": "return",
+    "shoot_up": "up",
+    "shoot_down": "down",
+    "shoot_right": "right",
+    "shoot_left": "left",
     "fullscreen": "f11"
   },
   "audio": {

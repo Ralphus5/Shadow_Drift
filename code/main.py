@@ -166,7 +166,7 @@ class Game:
                                                                 self.menu_hover_sound))
 
                         # rebuild keybind buttons below it
-                        y = 220
+                        y = 180
                         for action, key in KEY_BINDINGS.items():
                             label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
                             self.control_texts.append(ClickableText(label,
@@ -380,6 +380,7 @@ class Game:
             mouse_click = pygame.mouse.get_pressed()[0]
             self.background_sprites.draw(self.screen)
             self.draw_player_glow()
+            self.draw_player_fire_outline()
             self.all_sprites.draw(self.screen)
             self.draw_player_explosion()
 
@@ -558,13 +559,17 @@ class Game:
                         if btn.text == "Reset to Defaults":
                             # restore defaults
                             KEY_BINDINGS.clear()
-                            KEY_BINDINGS.update({"move_left": pygame.K_a,
-                                                         "move_right": pygame.K_d,
-                                                         "move_up": pygame.K_w,
-                                                         "move_down": pygame.K_s,
-                                                         "ability": pygame.K_SPACE,
-                                                         "dash": pygame.K_RETURN,
-                                                         "fullscreen": pygame.K_F11,})
+                            KEY_BINDINGS.update({'move_left': pygame.K_a,
+                                                 'move_right': pygame.K_d,
+                                                 'move_up': pygame.K_w,
+                                                 'move_down': pygame.K_s,
+                                                 'ability': pygame.K_SPACE,
+                                                 'dash': pygame.K_RETURN,
+                                                 'shoot_up': pygame.K_UP,
+                                                 'shoot_down': pygame.K_DOWN,
+                                                 'shoot_right': pygame.K_RIGHT,
+                                                 'shoot_left': pygame.K_LEFT,
+                                                 'fullscreen': pygame.K_F11,})
 
                             # rebuild control texts
                             self.control_texts.clear()
@@ -575,7 +580,7 @@ class Game:
                                                       COLOR["clickable_text_buttons_hovered"],
                                                       self.menu_select_sound,
                                                       self.menu_hover_sound))
-                            y = 220
+                            y = 180
                             for action, key in KEY_BINDINGS.items():
                                 label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
                                 self.control_texts.append(ClickableText(label,
@@ -787,7 +792,8 @@ class Game:
         # --- define fruit-collect messages ---
         self.FRUIT_PICKUP_TEXTS: dict = {Apple: (f"+{APPLE_POINTS} points", 'apple_pickup'),
                                    Banana: ("+speed", 'banana_pickup'),
-                                   Blueberry: ("health restored", 'blueberry_pickup'),}
+                                   Blueberry: ("health restored", 'blueberry_pickup'),
+                                   Chili: ("fire power", 'chili_pickup')}
         
         # --- define credits texts ---
         self.credits_texts: list = ("Director",
@@ -847,7 +853,7 @@ class Game:
         # --- keybinding clickable texts ---
         if not hasattr(self, "control_texts"):
             self.control_texts = [ClickableText('Reset to Defaults', self.fonts['settings_texts'], (WINDOW_CENTER[0], 110), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound)]
-            y = 220
+            y = 180
             for action, key in KEY_BINDINGS.items():
                 label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
                 btn = ClickableText(
@@ -891,6 +897,9 @@ class Game:
 
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
                                              2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
+        
+        # --- fireball ---
+        self.fireball_image = pygame.image.load(join(self.IMG_DIR, 'fireball.png')).convert_alpha()
 
         # --- other entities ---
         self.rectangle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)}
@@ -899,7 +908,8 @@ class Game:
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
-                                      Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),}
+                                      Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
+                                      Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha()}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -956,6 +966,7 @@ class Game:
         # --- sprite groups and layers ---
         self.all_sprites = pygame.sprite.LayeredUpdates()
         self.player_group = pygame.sprite.GroupSingle()
+        self.fireball_sprites = pygame.sprite.Group()
         self.background_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
@@ -968,8 +979,9 @@ class Game:
         self.LAYERS = {'background': 0,
                        'player': 1,
                        'fruits': 2,
-                       'obstacles': 3,
-                       'effects': 4,
+                       'fireballs': 3,
+                       'obstacles': 4,
+                       'effects': 5,
                        }
 
         # --- instantiate background ---
@@ -985,6 +997,7 @@ class Game:
                 self.ability_sound,
                 self.dash_sound)
         self.player = self.player_group.sprite
+        self.player.game = self
 
     def load_save(self):
         try:
@@ -1029,7 +1042,7 @@ class Game:
 # --- Main loop ---
 
     def set_phase(self, dt):
-        if getattr(self, 'phase_ended', False):
+        if getattr(self, 'phase_ended', False) and self.player.is_alive:
             self.phase_ended = False
             self.phase_switch_sound.play()
             self.fade_to_black()
@@ -1037,6 +1050,11 @@ class Game:
                 sprite.kill()
             for sprite in self.fruit_sprites:
                 sprite.kill()
+            for sprite in self.fireball_sprites:
+                sprite.kill()
+            self.obstacle_sprites.empty()
+            self.fruit_sprites.empty()
+            self.fireball_sprites.empty()
             self.player.rect.center = WINDOW_CENTER
             self.prev_phase = self.current_phase
             while self.current_phase == self.prev_phase:
@@ -1122,11 +1140,14 @@ class Game:
                    speed)
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
-    def spawn_fruit(self, dt, with_bias=None):
+    def spawn_fruit(self, dt, with_bias=None, chili_only=False):
         """spawn_fruits with_bias (<0.5 means further to the left)"""
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
             speed = random_of_spectrum(50,270,False,bias=with_bias)
-            new_fruit = random_of_selection((Apple,Blueberry,Banana),FRUITS_SPAWN_PROBABILITIES.values())
+            if chili_only:
+                new_fruit = Chili
+            else:
+                new_fruit = random_of_selection((Apple,Blueberry,Banana,Chili),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit((self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
                     speed,
@@ -1159,6 +1180,12 @@ class Game:
                 fruit.display_pickup_message(self, self.fonts['fruit_pickup_messages'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
+        shoot = pygame.sprite.groupcollide(self.fireball_sprites, self.obstacle_sprites, True, True, pygame.sprite.collide_mask)
+        if shoot:
+            for fireball in shoot:
+                self.explosion_sound.play()
+                STATS['score'] += 1
+
     def check_record(self):
         if STATS['score'] > STATS['record'] and not self.record_checked:
             self.record_checked = True
@@ -1179,6 +1206,7 @@ class Game:
         # --- DRAWING ORDER ---
         self.background_sprites.draw(self.screen)
         self.draw_player_glow()
+        self.draw_player_fire_outline()
         self.all_sprites.draw(self.screen)
         self.draw_player_explosion()
         self.draw_score_text()
@@ -1186,6 +1214,12 @@ class Game:
     def draw_player_glow(self):
         if self.player.ability_ready and self.player.health:
             self.screen.blit(self.player.glow, self.player.rect.move(-5, -5))
+
+    def draw_player_fire_outline(self):
+        surf = getattr(self.player, "fire_outline_surface", None)
+        if surf is not None and self.player.is_alive:
+            rect = surf.get_rect(center=self.player.rect.center)
+            self.screen.blit(surf, rect)
 
     def draw_player_explosion(self):
         if not self.player.is_alive and self.explosion_index < len(self.explosion_frames):
