@@ -1,11 +1,11 @@
-from utils import *
+from imports import *
 
 
 # --- VISUALS ---
 # display
 WINDOW_WIDTH: int = 1280 
 WINDOW_HEIGHT: int = 720
-WINDOW_CENTER = (WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2)
+WINDOW_CENTER = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2)
 BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FPS: Annotated[int, (25-120)] = 60
 
@@ -31,11 +31,16 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'quit_prompt_rect': "#11121F",
          'quit_prompt_rect_outline': "#000000",
          'quit_prompt_heading': "#70C1FF",
-         'fruit_pickup_shadow': "#FFFFFF",
-         'apple_pickup': "#ea0808",
-         'blueberry_pickup': "#2639db",
-         'banana_pickup': "#efe508",
-         'chili_pickup': "#953333",
+         'effect_text_shadow': "#FFFFFF",
+         'apple_effect_text': "#ea0808",
+         'blueberry_effect_text': "#2639db",
+         'banana_effect_text': "#efe508",
+         'chili_effect_text': "#953333",
+         'icicle_shot_effect_text': '#70c4f5',
+         '250_rectangle_shot_effect_text': '#119329',
+         '300_rectangle_shot_effect_text': '#d700ff',
+         '350_rectangle_shot_effect_text': '#fff200',
+         '400_rectangle_shot_effect_text': '#ff0000',
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
@@ -76,8 +81,8 @@ FADE_TO_BLACK_DURATION: float = 0.6
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
-FRUIT_PICKUP_MESSAGES_DURATION: float = 1.0
-FRUIT_PICKUP_RISE_SPEED: float = 65.0 # pixels / second
+EFFECT_TEXT_DURATION: float = 1.0
+EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
 BANANA_TRAIL_DRAW_INTERVALL: float = 0.005  # shadows per frame
 BANANA_TRAIL_LIFETIME: float = 0.4
 
@@ -109,17 +114,19 @@ TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 # gameplay sound volumes
 EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
-EXPLOSION_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
-GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
+GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
-RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 
 
 # ----- GAMEPLAY -----
-STATS = {'score': 0, 'record': 0}
-SCORE_UPDATE_TIME = 5000 #ms
+STATS: dict = {'score': 0, 'record': 0}
+SCORE_UPDATE_TIME: int = 5000 #ms
+POINTS_FOR_OBSTACLE_SHOOT: int = 3
 
 # player
 PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
@@ -134,7 +141,7 @@ FIREBALL_SHOOT_COOLDOWN: float = 1.0
 FIRE_BALL_SPEED: int = 600
 
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 5.00
+FRUIT_SPAWNS_PER_MINUTE: float = 500.00
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.25, 'chili': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
@@ -167,15 +174,14 @@ FOURTH_ICICLE_PHASE_END: int = 60
 
 
 # --- DEFAULT KEY BINDINGS ---
-KEY_BINDINGS = {
-    'move_left': pygame.K_a,
-    'move_right': pygame.K_d,
-    'move_up': pygame.K_w,
-    'move_down': pygame.K_s,
-    'ability': pygame.K_SPACE,
-    'dash': pygame.K_RETURN,
-    'shoot_up': pygame.K_UP,
-    'shoot_down': pygame.K_DOWN,
-    'shoot_right': pygame.K_RIGHT,
-    'shoot_left': pygame.K_LEFT,
-    'fullscreen': pygame.K_F11,}
+KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
+                               'move_right': pygame.K_d,
+                               'move_up': pygame.K_w,
+                               'move_down': pygame.K_s,
+                               'ability': pygame.K_SPACE,
+                               'dash': pygame.K_RETURN,
+                               'shoot_up': pygame.K_UP,
+                               'shoot_down': pygame.K_DOWN,
+                               'shoot_right': pygame.K_RIGHT,
+                               'shoot_left': pygame.K_LEFT,
+                               'fullscreen': pygame.K_F11}
