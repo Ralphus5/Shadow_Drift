@@ -45,12 +45,12 @@ class Player(pygame.sprite.Sprite):
 
         # --- glow sprite ---
         self.glow_sprite = PlayerGlow(self.game,
-                   (self.game.all_sprites, self.game.UI_sprites),
+                   (self.game.all_sprites, self.game.player_abilities),
                    self.game.LAYERS['player_glow'])
         
         # --- fire outline ---
         self.fire_outline_sprite = PlayerFireOutline(self.game,
-                                                     (self.game.all_sprites, self.game.UI_sprites),
+                                                     (self.game.all_sprites, self.game.player_abilities),
                                                      self.game.LAYERS['player_fire_outline'])
 
         # --- motion setup ---
@@ -171,42 +171,13 @@ class Player(pygame.sprite.Sprite):
         self.rect.size = self.image.get_size()
 
         # --- banana trail ---
-        if not hasattr(self, "_last_trail_spawn"):
-            self._last_trail_spawn = 0.0
-
-        if not hasattr(self, "_TrailClass"):
-            class _TrailSprite(pygame.sprite.Sprite):
-                def __init__(self, groups, layer, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
-                    self._layer = layer
-                    super().__init__(groups)
-                    self.image = image.copy()
-                    self.rect = self.image.get_rect(center=pos)
-                    self._spawn = perf_counter()
-                    self._lifetime = lifetime
-                    self.is_trail = True
-
-                def update(self, dt):
-                    t = (perf_counter() - self._spawn) / max(self._lifetime, 1e-6)
-                    alpha = max(0, int(120 * (1.0 - t)))
-                    self.image.set_alpha(alpha)
-                    if t >= 1.0:
-                        self.kill()
-
-            self._TrailClass = _TrailSprite
-
-        # only produce trail while banana boost is active and player is moving
         if self.banana_boosted and self.direction.length_squared() > 0:
-            # throttle spawn rate
-            if self.game.play_time - self._last_trail_spawn > BANANA_TRAIL_DRAW_INTERVALL:  # shadows per frame
-                self._last_trail_spawn = self.game.play_time
+            w, h = self.image.get_size()
+            shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
+            pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
+            shadow.set_alpha(100)
 
-                # build a tinted surface
-                w, h = self.image.get_size()
-                shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
-                pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
-                shadow.set_alpha(100)
-
-                self._TrailClass((self.game.all_sprites, self.game.UI_sprites), self._layer - 0.1, shadow, self.rect.center)
+            PlayerBananaTrail((self.game.all_sprites, self.game.player_abilities), self.game.LAYERS['player_banana_trail'], shadow, self.rect.center)
 
         # --- ability and iframes ---
         if not self.can_collide or (self.game.play_time - self.dash_start_time < self.dash_duration and self.game.play_time > 1):
@@ -248,7 +219,6 @@ class PlayerGlow(pygame.sprite.Sprite):
 
         self.variations = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
                     "red": pygame.Surface((80, 80), pygame.SRCALPHA)}
-        
         pygame.draw.circle(self.variations["blue"], COLOR["blue_player_glow"], (40, 40), 40, width=5)
         pygame.draw.circle(self.variations["red"], COLOR["red_player_glow"], (40, 40), 40, width=5)
         self.glow = self.variations['blue']
@@ -310,6 +280,42 @@ class PlayerFireOutline(pygame.sprite.Sprite):
 
         self.image = surf
         self.rect = self.image.get_rect(center=self.game.player.rect.center)
+
+class PlayerDeathAnimation(pygame.sprite.Sprite):
+    def __init__(self, game, groups, layer):
+        self.game = game
+        self._layer = layer
+        super().__init__(groups)
+        self.frame_index = 0
+        self.image = self.game.death_animation_frames[0]
+        self.rect = self.image.get_frect(center=self.game.player.rect.center)
+
+    def update(self, dt):
+        if self.frame_index < len(self.game.death_animation_frames):
+            self.image = self.game.death_animation_frames[int(self.frame_index)]
+            if not self.game.player.facing_right:
+                self.image = pygame.transform.flip(self.image, True, False)
+            self.frame_index += PLAYER_EXPLOSION_SPEED 
+        else:
+            self.game.requested_state = 'game_over'
+            self.kill()
+
+class PlayerBananaTrail(pygame.sprite.Sprite):
+    def __init__(self, groups, layer, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
+        self._layer = layer
+        super().__init__(groups)
+        self.image = image.copy()
+        self.rect = self.image.get_rect(center=pos)
+        self._spawn = perf_counter()
+        self._lifetime = lifetime
+        self.is_trail = True
+
+    def update(self, dt):
+        t = (perf_counter() - self._spawn) / max(self._lifetime, 1e-6)
+        alpha = max(0, int(120 * (1.0 - t**2)))
+        self.image.set_alpha(alpha)
+        if t >= 1.0:
+            self.kill()
 
 class Fireball(pygame.sprite.Sprite):
     def __init__(self, game, groups, layer, shoot_direction):
@@ -381,8 +387,8 @@ class Fruit(pygame.sprite.Sprite):
         key = self.__class__
         if key in messages:
             text, color_key = messages[key]
-            EffectText((self.game.all_sprites, self.game.UI_sprites),
-                       self.game.LAYERS['effect_texts'],
+            EffectText((self.game.all_sprites, self.game.UI_texts),
+                       self.game.LAYERS['ui_texts'],
                        text,
                        font,
                        COLOR[color_key],
@@ -444,7 +450,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.speed = speed
 
     def handle_getting_shot(self):
-        EffectText((self.game.all_sprites, self.game.UI_sprites), self.game.LAYERS['effect_texts'], f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
+        EffectText((self.game.all_sprites, self.game.UI_texts), self.game.LAYERS['ui_texts'], f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
         self.kill()
         self.game.eat_fruit_sound.play()
         STATS['score'] += POINTS_FOR_OBSTACLE_SHOOT

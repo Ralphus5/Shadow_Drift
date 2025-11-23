@@ -17,7 +17,6 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
-         'game_over_hint': "#C90E0E",
          'start_screen_bg': "#11121F",
          'settings_bg': "#11121F",
          'credits_bg': "#11121F",
@@ -53,6 +52,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
 TITLE_FONT_SIZE: int = 140
 SCORE_FONT_SIZE: int = 35
 GAME_OVER_FONT_SIZE: int = 150
+GAME_OVER_SCORE_FONT_SIZE: int = 23
 GAME_OVER_HINT_FONT_SIZE: int = 23
 START_HINT_FONT_SITZE: int = 23
 CREDITS_HINT_FONT_SITZE: int = 23
@@ -83,7 +83,6 @@ PLAYER_EXPLOSION_SPEED: float = 0.9
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
-BANANA_TRAIL_DRAW_INTERVALL: float = 0.005  # shadows per frame
 BANANA_TRAIL_LIFETIME: float = 0.4
 
 # backgrounds
@@ -141,12 +140,12 @@ FIREBALL_SHOOT_COOLDOWN: float = 1.0
 FIRE_BALL_SPEED: int = 600
 
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 500.00
+FRUIT_SPAWNS_PER_MINUTE: float = 5.00
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.25, 'chili': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0
-FIRE_POWER_DURATION: float = 20.0
+FIRE_POWER_DURATION: float = 25.0
 
 # phase probabilities
 START_PHASES: tuple[str] = ('rectangle', 'icicle')

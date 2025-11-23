@@ -4,13 +4,13 @@
 
 **Shadow Drift** is a fast-paced arcade dodger.  
 Avoid obstacles, collect fruits, and survive as long as possible.  
-Score increases over time and with fruit pickups. Hitting an obstacle costs health.  
+Score increases over time and with fruit pickups and when shooting obstacles. Hitting an obstacle costs health.  
 The game ends when health reaches zero.
 
 ### Game States
-- **Start Screen** – Press `ENTER` to begin.  
-- **Pause Menu** – Press `ESC` to pause or resume.  
-- **Game Over** – Shows score and record; press `ENTER` to restart or `ESC` to quit.  
+- **Start Screen** – Press `ENTER` to begin or `ESC`.  
+- **Pause Menu** – Press `ESC` (during play) to pause or resume.  
+- **Game Over** – press `ENTER` to restart or `ESC` to quit.  
 - **Settings** – Adjust audio and key bindings.
 
 ---
@@ -23,6 +23,10 @@ The game ends when health reaches zero.
 | Move Down | `S` | Move downward |
 | Move Left | `A` | Move left |
 | Move Right | `D` | Move right |
+| Shoot Up | `UP` | Shoot a fire ball upward (after collecting a chili) |
+| Shoot Down | `DOWN` | Shoot a fire ball downward (after collecting a chili) |
+| Shoot Left | `LEFT` | Shoot a fire ball left (after collecting a chili) |
+| Shoot Right | `RIGHT` | Shoot a fire ball right (after collecting a chili) |
 | Ability | `SPACE` | Activate ability (temporary invincibility) |
 | Dash | `RETURN` | Quick burst in movement direction |
 | Pause / Resume | `ESC` | Toggle pause menu |
@@ -34,9 +38,10 @@ The game ends when health reaches zero.
 
 | Item | Effect |
 |------|---------|
-| **Apple** | Restores 1 health |
-| **Blueberry** | Temporary speed boost |
-| **Secret Fruits** | Hidden collectibles on title and game-over screens | Not in actual gameplay
+| **Apple** | Gain 10 points |
+| **Blueberry** | Restores health |
+| **Banana** | Temporary speed boost |
+| **Chili** | Grants temporary ability to shoot fireballs |
 
 ---
 
@@ -52,4 +57,4 @@ The game ends when health reaches zero.
 ## 🧩 Credits
 
 Created with **Python 3.12** and **Pygame**.  
-Developed by *Raphael*.
+Developed by *Raphael Glück*.

@@ -14,10 +14,10 @@ class Game:
         self.load_sounds()
         self.set_all_volumes()
         self.load_graphics()
+        self.create_custome_events()
         self.init_game_state()
         self.init_sprites()
         self.load_save()
-        self.create_custome_events()
 
     def run(self):
         while True:
@@ -57,7 +57,6 @@ class Game:
             if self.state == 'start':
                 if (event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.hovered):
                     title_flash(self)
-                    self.play_start = perf_counter()
                     fade_to_black(self)
                     self.requested_state = 'play'
                 elif event.type == pygame.KEYDOWN:
@@ -239,7 +238,9 @@ class Game:
             fade_to_black(self, duration=GAME_OVER_FADE_DURATION)
             clear_input()
             change_track(self, 'game_over_track')
-
+            self.text_surfaces['game_over_score'] = self.fonts['game_over_score'].render(f"Score: {STATS['score']}", True, COLOR['game_over_text'])
+            self.text_rects['game_over_score'] = self.text_surfaces['game_over_score'].get_rect(topleft=(10, 10))
+            
         elif new == 'settings':
             self.prev_state = old
 
@@ -346,9 +347,8 @@ class Game:
         self.all_sprites.update(dt)
         self.collisions()
         self.check_record()
-        self.render_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
-        self.draw_order()
-        self.handle_player_death()
+        self.all_sprites.draw(self.screen)
+        self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
 
     def pause_menu(self, dt):
@@ -356,7 +356,6 @@ class Game:
             mouse_pos = get_scaled_mouse_pos(self)
             mouse_click = pygame.mouse.get_pressed()[0]
             self.all_sprites.draw(self.screen)
-            self.draw_player_explosion()
 
             # --- dim effect ---
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
@@ -366,12 +365,12 @@ class Game:
 
             if not getattr(self, 'quit_prompt', False):
                 # --- display main pause menu ---
-                self.render_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
-                self.draw_score_text()
+                self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
                 self.credits_btn.update(mouse_pos, mouse_click)
                 self.credits_btn.draw(self.screen)
                 if self.credits_btn.clicked:
                     self.show_credits = True
+                    pygame.time.set_timer(self.credits_event, 5000)
                 for btn in self.clickable_icons:
                     btn.update(mouse_pos, mouse_click)
                     if btn.hovered:
@@ -434,7 +433,8 @@ class Game:
         
     def game_over_secrets(self, dt):
         if getattr(self, 'show_game_over_hint', False):
-            self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint'])
+            self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint']) 
+            self.screen.blit(self.text_surfaces['game_over_score'], self.text_rects['game_over_score'])
 
         if getattr(self,'show_dead_player', False):  
             self.dead_player_rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
@@ -741,6 +741,7 @@ class Game:
         self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
                             'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
                             'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
+                            'game_over_score': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_SCORE_FONT_SIZE),
                             'game_over_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_HINT_FONT_SIZE),
                             'start_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), START_HINT_FONT_SITZE),
                             'credits_hint': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_HINT_FONT_SITZE),
@@ -759,7 +760,7 @@ class Game:
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
-                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_hint']),
+                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_text']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
                                     'credits_hint': self.fonts['credits_hint'].render("Press ESC or RETURN", True, COLOR['credits_hint']),
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
@@ -894,11 +895,11 @@ class Game:
             'bg_3': [pygame.image.load(join(self.IMG_DIR, 'bg_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
 
         # --- player images ---
-        self.explosion_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
-
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
                                              2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
         
+        self.death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
+
         # --- fireball ---
         self.fireball_image = pygame.image.load(join(self.IMG_DIR, 'fireball.png')).convert_alpha()
 
@@ -919,6 +920,8 @@ class Game:
         self.requested_state = 'start'
         self.active_settings_tab = None
         self.waiting_for_key = None
+        self.score_event = pygame.event.custom_type()
+        pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
         self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
@@ -933,10 +936,6 @@ class Game:
         self.pause_start = 0.0
         self.total_paused = 0.0
         self.is_paused = False
-
-        # player death animation
-        self.explosion_index = 0
-        self.current_explosion_frame = self.explosion_frames[0]
 
         # obstacle timing
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
@@ -962,18 +961,19 @@ class Game:
         self.rectangle_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
         # animations and UI
+        self.player_abilities = pygame.sprite.Group()
+        self.UI_texts = pygame.sprite.Group()
         self.background_sprites = pygame.sprite.Group()
         self.secret_fireballs = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
         self.secret_obstacles = pygame.sprite.Group()
-        self.UI_sprites = pygame.sprite.Group()
 
-        self.LAYERS = {'background': 0,
-                       'player': 2, 'player_fire_outline': 2.2, 'player_glow': 2.3,
+        self.LAYERS = {'background': 1,
+                       'player_banana_trail': 2, 'player': 2.1, 'player_fire_outline': 2.2, 'player_glow': 2.3, 'player_death_animation': 2.4,
                        'fruits': 3,
                        'fireballs': 4,
                        'obstacles': 5,
-                       'effect_texts': 6}
+                       'ui_texts': 6}
 
         # --- instantiate background ---
         self.background = AnimatedBackground((self.all_sprites, self.background_sprites),
@@ -1032,7 +1032,7 @@ class Game:
         """Total runtime since the program started (seconds)."""
         return perf_counter() - self.absolute_start_time
 
-# --- Main loop ---
+# --- Play loop ---
 
     def set_phase(self, dt):
         if getattr(self, 'phase_ended', False) and self.player.is_alive:
@@ -1152,9 +1152,10 @@ class Game:
                     self.damage_sound.play()
                     self.player.activate_iframes()
                 else:
-                    self.death_sound.play()
-                    self.player.kill()
                     self.player.is_alive = False
+                    self.death_sound.play()
+                    PlayerDeathAnimation(self, (self.all_sprites, self.player_abilities), self.LAYERS['player_death_animation'])
+                    self.player.kill()
 
                     for sprite in list(self.all_sprites):
                         if getattr(sprite, "is_trail", False) or getattr(sprite, "is_effect_text", False):
@@ -1177,9 +1178,10 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
-    def render_score_text(self, text_color, text_shadow_color):
+    def draw_score_text(self, text_color, text_shadow_color):
         '''Render text surfaces only when stats change.'''
 
+        #render
         self.current_stats = (self.player.health, STATS['score'], STATS['record'])
         if self.current_stats != getattr(self, 'prev_stats', None) or getattr(self, 'change_score_color', False):
             self.change_score_color = False
@@ -1187,31 +1189,10 @@ class Game:
             self.stats_text = self.fonts['stats'].render(text, True, text_color)
             self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats
-
-    def draw_order(self):
-        self.all_sprites.draw(self.screen)
-        self.draw_player_explosion()
-        self.draw_score_text()
-
-    def draw_player_explosion(self):
-        if not self.player.is_alive and self.explosion_index < len(self.explosion_frames):
-            self.screen.blit(self.current_explosion_frame, self.current_explosion_frame.get_rect(center=self.player.rect.center))        
-
-    def draw_score_text(self):
+        
+        # draw
         self.screen.blit(self.stats_text_shadow, (22, 22))
         self.screen.blit(self.stats_text, (20, 20))
-
-    def handle_player_death(self):
-        if not self.player.is_alive:
-            
-            if self.explosion_index < len(self.explosion_frames):
-                self.current_explosion_frame = self.explosion_frames[int(self.explosion_index)]
-                if not self.player.facing_right:
-                    self.current_explosion_frame = pygame.transform.flip(self.current_explosion_frame, True, False)
-                self.explosion_index += PLAYER_EXPLOSION_SPEED  
-
-            else:
-                self.requested_state = 'game_over'
 
 # --- Execute Lifecycle ---
 def main():
