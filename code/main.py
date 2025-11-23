@@ -6,7 +6,6 @@ class Game:
 
 # --- Define game modes ---
     def __init__(self):
-        # --- initialization and preloading ---
         self.init_paths()
         self.init_pygame()
         self.load_settings()
@@ -42,7 +41,7 @@ class Game:
             present_frame(self)
 
     def handle_events_and_input(self):
-        '''Check for user input regarding non-gameplay actions.'''
+        '''Check for user input regarding non-gameplay actions and handling timed events.'''
 
         for event in pygame.event.get():
             # --- General events ---
@@ -446,7 +445,6 @@ class Game:
         if getattr(self, 'show_fireball', False):
             angle_deg = getattr(self, 'dead_angle_deg', 0.0)
             angle_rad = radians(angle_deg)
-
             Fireball(self,
                      (self.all_sprites, self.secret_fireballs),
                      self.LAYERS['fireballs'],
@@ -895,7 +893,7 @@ class Game:
         # --- animated backgrounds ---
         self.backgrounds: dict = {
             'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
-            'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', f'bg_icicle_phase_{i}.png')).convert_alpha() for i in range(11)],
+            'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
             'bg_3': [pygame.image.load(join(self.IMG_DIR, 'bg_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
 
         # --- player images ---

@@ -83,7 +83,6 @@ class Player(pygame.sprite.Sprite):
         self.can_collide = False
 
     def shoot_fireball(self, shoot_direction):
-        self.game.shoot_sound.play()
         self.fireball_ready = False
         self.last_fireball = self.game.play_time
         Fireball(self.game,
@@ -330,6 +329,7 @@ class Fireball(pygame.sprite.Sprite):
         self.game = game
         self._layer = layer
         super().__init__(*groups)
+        self.game.shoot_sound.play()
         self.speed = FIRE_BALL_SPEED
 
         # --- direction ---
