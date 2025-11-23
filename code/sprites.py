@@ -62,12 +62,6 @@ class Player(pygame.sprite.Sprite):
             self.iframes = True
             self.iframe_start = self.game.play_time
 
-    def activate_ability(self):
-        self.game.ability_sound.play()
-        self.ability_start_time = self.game.play_time
-        self.ability_ready = False
-        self.can_collide = False
-
     def dash(self):
         if self.direction.length_squared() != 0:
             self.game.dash_sound.play()
@@ -77,23 +71,28 @@ class Player(pygame.sprite.Sprite):
 
             # restrict to cardinal directions
             if abs(self.direction.x) >= abs(self.direction.y):
-                        self.dash_direction = pygame.Vector2(1 if self.direction.x > 0 else -1, 0)
+                self.dash_direction = pygame.Vector2(1 if self.direction.x > 0 else -1, 0)
             elif abs(self.direction.y) > abs(self.direction.x):
                 self.dash_direction = pygame.Vector2(0, 1 if self.direction.y > 0 else -1)
+            # self.dash_direction = pygame.Vector2(self.direction.normalize()) for diagonal dash
+
+    def activate_ability(self):
+        self.game.ability_sound.play()
+        self.ability_start_time = self.game.play_time
+        self.ability_ready = False
+        self.can_collide = False
 
     def shoot_fireball(self, shoot_direction):
         self.game.shoot_sound.play()
         self.fireball_ready = False
         self.last_fireball = self.game.play_time
         Fireball(self.game,
-                 (self.game.all_sprites, self.game.fireball_sprites),
-                 self.game.LAYERS['fireballs'],
-                 shoot_direction)
+                (self.game.all_sprites, self.game.fireball_sprites),
+                self.game.LAYERS['fireballs'],
+                shoot_direction,
+                origin=self.rect.center)
 
-    def keep_in_window(self):
-        self.rect.clamp_ip(pygame.Rect(-10, -10, WINDOW_WIDTH + 20, WINDOW_HEIGHT + 20))
-
-    def handle_input(self, dt):
+    def get_input(self):
         keys = pygame.key.get_pressed()
         recent_keys = pygame.key.get_just_pressed()
 
@@ -101,61 +100,78 @@ class Player(pygame.sprite.Sprite):
         self.direction.x = int(keys[KEY_BINDINGS["move_right"]]) - int(keys[KEY_BINDINGS["move_left"]])
         self.direction.y = int(keys[KEY_BINDINGS["move_down"]]) - int(keys[KEY_BINDINGS["move_up"]])
 
-        # --- shoot fire ball ---
-        if self.fire_power:
-            if self.game.play_time - self.fire_power_start > FIRE_POWER_DURATION:
-                self.fire_power = False
+        # --- dash and ability---
+        self.want_dash = recent_keys[KEY_BINDINGS["dash"]]
+        self.want_ability = recent_keys[KEY_BINDINGS["ability"]]
 
-            if self.game.play_time - self.last_fireball > FIREBALL_SHOOT_COOLDOWN:
-                self.fireball_ready = True
+        # --- shoot fireball ---
+        self.shoot_dir = pygame.Vector2()
+        if recent_keys[KEY_BINDINGS['shoot_up']]:
+            self.shoot_dir = pygame.Vector2(0,-1)
+        elif recent_keys[KEY_BINDINGS['shoot_down']]:
+            self.shoot_dir = pygame.Vector2(0,1)
+        elif recent_keys[KEY_BINDINGS['shoot_right']]:
+            self.shoot_dir = pygame.Vector2(1,0)
+        elif recent_keys[KEY_BINDINGS['shoot_left']]:
+            self.shoot_dir = pygame.Vector2(-1,0)
+
+    def update_banana_boost(self):
+        if self.banana_boosted and self.game.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
+            self.banana_boosted = False
+
+        if self.banana_boosted:
+            self.speed = DEFAULT_PLAYER_SPEED + BANANA_SPEED_BOOST if self.health > 1 else ONE_LIFE_PLAYER_SPEED + BANANA_SPEED_BOOST
+        else: 
+            self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
+
+    def update_fire_power(self):
+        if not self.fire_power:
+            return
         
-            if self.fireball_ready:
-                if recent_keys[KEY_BINDINGS['shoot_up']]:
-                    self.shoot_fireball((0,-1))
-                elif recent_keys[KEY_BINDINGS['shoot_down']]:
-                    self.shoot_fireball((0,1))
-                elif recent_keys[KEY_BINDINGS['shoot_right']]:
-                    self.shoot_fireball((1,0))
-                elif recent_keys[KEY_BINDINGS['shoot_left']]:
-                    self.shoot_fireball((-1,0))
+        if self.game.play_time - self.fire_power_start > FIRE_POWER_DURATION:
+            self.fire_power = False
+            return
 
-        # --- dash use ---
-        # cooldown
+        if self.game.play_time - self.last_fireball > FIREBALL_SHOOT_COOLDOWN:
+            self.fireball_ready = True
+
+        if self.fireball_ready and self.shoot_dir.length_squared() != 0:
+            self.shoot_fireball(self.shoot_dir)
+
+    def update_dash(self, dt):
         if not self.dash_ready and self.game.play_time - self.dash_start_time > self.dash_cooldown:
             self.dash_ready = True  
 
-        # activate dash
-        if self.dash_ready and recent_keys[KEY_BINDINGS["dash"]] and (keys[KEY_BINDINGS["move_left"]] or keys[KEY_BINDINGS["move_right"]] or keys[KEY_BINDINGS["move_up"]] or keys[KEY_BINDINGS["move_down"]]):
+        if self.dash_ready and self.want_dash and self.direction.length_squared() != 0:
             self.dash()
 
-        # end dash
-        if self.game.play_time - self.dash_start_time > self.dash_duration:
+        if self.dashing and self.game.play_time - self.dash_start_time > self.dash_duration:
             self.dashing = False
 
-        # dash movement
-        if self.dashing:
-            self.rect.center += dt * DASH_SPEED * self.dash_direction
-
-        # --- regular movement ---
-        else:
-            if not self.dashing and self.direction.length_squared() > 0:
-                self.direction = self.direction.normalize()
-            self.rect.center += dt * self.speed * self.direction
-
-        # --- ability use ---
-        # check cooldown
+    def update_ability(self):
         if not self.ability_ready and self.game.play_time - self.ability_start_time > self.ability_cooldown:
             self.ability_ready = True
 
-        # activate ability
-        if self.ability_ready and recent_keys[KEY_BINDINGS["ability"]]:
+        if self.ability_ready and self.want_ability:
             self.activate_ability()
 
-        # end ability duration
         if not self.can_collide and self.game.play_time - self.ability_start_time > self.ability_duration:
             self.can_collide = True
 
-    def refresh_appearance(self):
+    def update_iframes(self):
+        if self.iframes and self.game.play_time - self.iframe_start > PLAYER_IFRAMES_DURATION:
+            self.iframes = False
+
+    def apply_movement(self, dt):
+        if self.dashing:
+            self.rect.center += dt * DASH_SPEED * self.dash_direction
+            return
+        
+        if self.direction.length_squared() != 0:
+                self.direction = self.direction.normalize()
+        self.rect.center += dt * self.speed * self.direction
+
+    def update_appearance(self):
         # --- facing direction ---
         if self.direction.x < 0:
             self.facing_right = False
@@ -176,7 +192,6 @@ class Player(pygame.sprite.Sprite):
             shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
             pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
             shadow.set_alpha(100)
-
             PlayerBananaTrail((self.game.all_sprites, self.game.player_abilities), self.game.LAYERS['player_banana_trail'], shadow, self.rect.center)
 
         # --- ability and iframes ---
@@ -194,22 +209,15 @@ class Player(pygame.sprite.Sprite):
             self.image.set_alpha(255)
 
     def update(self, dt):
-        # banana cooldown
-        if self.banana_boosted and self.game.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
-            self.banana_boosted = False
-
-        if self.banana_boosted:
-            self.speed = DEFAULT_PLAYER_SPEED + BANANA_SPEED_BOOST if self.health > 1 else ONE_LIFE_PLAYER_SPEED + BANANA_SPEED_BOOST
-        else: 
-            self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
-
-        self.handle_input(dt)
-        self.keep_in_window()
-
-        if self.iframes and self.game.play_time - self.iframe_start > PLAYER_IFRAMES_DURATION:
-            self.iframes = False
-
-        self.refresh_appearance()
+        self.get_input()
+        self.update_banana_boost()
+        self.update_fire_power()
+        self.update_dash(dt)
+        self.update_ability()
+        self.update_iframes()
+        self.apply_movement(dt)
+        self.update_appearance()
+        self.rect.clamp_ip(pygame.Rect(-10, -7, WINDOW_WIDTH + 19, WINDOW_HEIGHT + 14))
 
 class PlayerGlow(pygame.sprite.Sprite):
     def __init__(self, game, groups, layer):
@@ -318,23 +326,37 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
             self.kill()
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer, shoot_direction):
+    def __init__(self, game, groups, layer, direction: pygame.Vector2, origin=None, spawn_offset=40):
         self.game = game
         self._layer = layer
-        super().__init__(groups)
-        self.image = self.game.fireball_image
+        super().__init__(*groups)
         self.speed = FIRE_BALL_SPEED
-        self.direction = pygame.Vector2(shoot_direction)
-        rotation = {(1,0): 0, (0,-1): 90, (-1,0): 180, (0,1): 270}
-        offset_x = {(1,0): 40, (0,-1): 0, (-1,0): -40, (0,1): 0}
-        offset_y = {(1,0): 0, (0,-1): -40, (-1,0): 0, (0,1): 40}
-        self.image = pygame.transform.rotozoom(self.image, rotation[shoot_direction], 1)
-        self.rect = self.image.get_frect(center=(self.game.player.rect.centerx + offset_x[shoot_direction], self.game.player.rect.centery + offset_y[shoot_direction]))
+
+        # --- direction ---
+        if direction.length_squared() == 0:
+            direction = pygame.Vector2(1, 0)
+        self.direction = direction.normalize()
+
+        # --- base image and rotation ---
+        base_img = self.game.fireball_image
+        angle_deg = degrees(atan2(-self.direction.y, self.direction.x))
+        self.image = pygame.transform.rotozoom(base_img, angle_deg, 1.0)
+
+        # --- spawn position ---
+        if origin is None:
+            origin = pygame.Vector2(self.game.player.rect.center)
+        else:
+            origin = pygame.Vector2(origin)
+
+        center = origin + self.direction * spawn_offset
+        self.rect = self.image.get_frect(center=center)
         self.mask = pygame.mask.from_surface(self.image)
+
 
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
-        if self.rect.right < 0 or self.rect.left > WINDOW_WIDTH or self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT:
+        if (self.rect.right < 0 or self.rect.left > WINDOW_WIDTH or
+            self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT):
             self.kill()
 
 # --- background and decoration related sprites ---

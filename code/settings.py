@@ -136,7 +136,7 @@ PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
-FIREBALL_SHOOT_COOLDOWN: float = 1.0
+FIREBALL_SHOOT_COOLDOWN: float = 0.8
 FIRE_BALL_SPEED: int = 600
 
 # fruits

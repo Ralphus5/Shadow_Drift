@@ -436,18 +436,22 @@ class Game:
             self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint']) 
             self.screen.blit(self.text_surfaces['game_over_score'], self.text_rects['game_over_score'])
 
-        if getattr(self,'show_dead_player', False):  
-            self.dead_player_rotated = pygame.transform.rotozoom(self.player.image, sin(self.runtime) * 360, 1)
+        if getattr(self, 'show_dead_player', False):
+            self.dead_angle_deg = sin(self.runtime) * 360
+            self.dead_player_rotated = pygame.transform.rotozoom(self.player.image, self.dead_angle_deg, 1)
             self.dead_player_rect = self.dead_player_rotated.get_rect(center=self.player.rect.center)
             self.dead_player_mask = pygame.mask.from_surface(self.dead_player_rotated)
             self.screen.blit(self.dead_player_rotated, self.dead_player_rect)
 
         if getattr(self, 'show_fireball', False):
-            self.shoot_sound.play()
+            angle_deg = getattr(self, 'dead_angle_deg', 0.0)
+            angle_rad = radians(angle_deg)
+
             Fireball(self,
                      (self.all_sprites, self.secret_fireballs),
                      self.LAYERS['fireballs'],
-                     (1,0) if self.player.facing_right else (-1,0))
+                     pygame.Vector2(cos(angle_rad), -sin(angle_rad)) * (-1 if not self.player.facing_right else 1),
+                     origin=self.dead_player_rect.center)
             self.show_fireball = False
             
         if getattr(self, 'show_apple', False):
