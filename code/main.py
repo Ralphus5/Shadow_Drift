@@ -894,7 +894,7 @@ class Game:
         self.backgrounds: dict = {
             'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
-            'bg_3': [pygame.image.load(join(self.IMG_DIR, 'bg_3', f'bg3_{i}.png')).convert_alpha() for i in range(11)],}
+            'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()]}
 
         # --- player images ---
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
@@ -910,10 +910,12 @@ class Game:
 
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
 
+        self.saw_blade_image = pygame.image.load(join(self.IMG_DIR, 'saw_blade.png')).convert_alpha()
+
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
-                                      Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha()}
+                                      Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -942,6 +944,7 @@ class Game:
         # obstacle timing
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
+        self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
 
         for attr in (# reset start secrets
                      'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
@@ -962,6 +965,7 @@ class Game:
         self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
+        self.saw_blade_sprites = pygame.sprite.Group()
         # animations and UI
         self.player_abilities = pygame.sprite.Group()
         self.UI_texts = pygame.sprite.Group()
@@ -1044,7 +1048,6 @@ class Game:
             kill_sprites(self.obstacle_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.fireball_sprites)
-            self.player.rect.center = WINDOW_CENTER
             self.prev_phase = self.current_phase
             while self.current_phase == self.prev_phase:
                 self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
@@ -1054,6 +1057,7 @@ class Game:
                                                      BACKGROUND_SCROLLABILITIES[self.current_phase])
             self.change_score_color = True
             self.phase_start = self.play_time
+            self.player.rect.center = WINDOW_CENTER
             
         match(self.current_phase):
             case 'rectangle':
@@ -1062,6 +1066,9 @@ class Game:
             case 'icicle':
                 self.icicle_phase()
                 self.spawn_fruit(dt, with_bias=0.5)
+            case 'saw_blade':
+                self.saw_blade_phase()
+                self.spawn_fruit(dt, with_bias=0.75)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1128,6 +1135,35 @@ class Game:
                    "self.rect.top > WINDOW_HEIGHT",
                    speed)
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
+
+    def saw_blade_phase(self):
+        # --- choose speed and spawn rate of saw blade ---
+        if self.play_time - self.phase_start < FIRST_SAW_BLADE_PHASE_END:
+            speed = 400
+            spawn_rate_factor = 1
+        elif FIRST_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < SECOND_SAW_BLADE_PHASE_END:
+            speed = 500
+            spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
+        elif SECOND_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < THIRD_SAW_BLADE_PHASE_END:
+            speed = 600
+            spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
+        elif THIRD_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < FOURTH_SAW_BLADE_PHASE_END:
+            speed = 700
+            spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
+        elif self.play_time - self.phase_start >= FOURTH_SAW_BLADE_PHASE_END:
+            self.phase_ended = True
+            return
+
+        # --- spawn saw blade ---
+        if not hasattr(self, 'next_saw_blade_spawn_time'):
+            self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
+        if self.play_time >= self.next_saw_blade_spawn_time:
+            SawBlade(self,
+                    (self.all_sprites, self.obstacle_sprites, self.saw_blade_sprites),
+                    self.LAYERS['obstacles'],
+                    "self.rect.left > WINDOW_WIDTH",
+                    speed)
+            self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
     def spawn_fruit(self, dt, with_bias=None, chili_only=False):
         """spawn_fruits with_bias (<0.5 means further to the left)"""

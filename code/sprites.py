@@ -74,7 +74,7 @@ class Player(pygame.sprite.Sprite):
                 self.dash_direction = pygame.Vector2(1 if self.direction.x > 0 else -1, 0)
             elif abs(self.direction.y) > abs(self.direction.x):
                 self.dash_direction = pygame.Vector2(0, 1 if self.direction.y > 0 else -1)
-            # self.dash_direction = pygame.Vector2(self.direction.normalize()) for diagonal dash
+            self.dash_direction = pygame.Vector2(self.direction.normalize())
 
     def activate_ability(self):
         self.game.ability_sound.play()
@@ -501,10 +501,31 @@ class Icicle(Obstacle):
         super().__init__(game, groups, layer, kill_condition, speed)
         self.image = self.game.icicle_image
         self.size = self.image.get_size()
-        self.rect = self.image.get_frect(center=(random_of_spectrum(self.size[0]/2,WINDOW_WIDTH-self.size[0]/2, as_float=True), 0-self.size[1]))
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), 0-self.size[1]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, 1)
         self.effect_text_color = COLOR['icicle_shot_effect_text']
+
+class SawBlade(Obstacle):
+    def __init__(self, game, groups, layer, kill_condition, speed):
+        super().__init__(game, groups, layer, kill_condition, speed)
+        self.base_image = self.game.saw_blade_image
+        self.angle = 0
+        self.rotation_speed = 180
+        self.image = self.base_image
+        self.size = self.image.get_size()
+        self.rect = self.image.get_frect(center=(-self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(1, 0)
+        self.effect_text_color = COLOR['saw_blade_shot_effect_text']
+
+    def update(self, dt):
+        super().update(dt)
+        self.angle = (self.angle + self.rotation_speed * dt) % 360
+        old_center = self.rect.center
+        self.image = pygame.transform.rotozoom(self.base_image, -self.angle, 1)
+        self.rect = self.image.get_frect(center=old_center)
+        self.mask = pygame.mask.from_surface(self.image)
 
 # --- effects ---
 class EffectText(pygame.sprite.Sprite):
