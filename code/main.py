@@ -798,7 +798,8 @@ class Game:
                                          Banana: ("+speed", 'banana_effect_text'),
                                          Blueberry: ("health restored", 'blueberry_effect_text'),
                                          Chili: ("fire power", 'chili_effect_text'),
-                                         Grapes: ("extra life", 'grapes_effect_text')}
+                                         Grapes: ("extra life", 'grapes_effect_text'),
+                                         Pear: ("clear obstacles", 'pear_effect_text')}
         
         # --- define credits texts ---
         self.credits_texts: list = ("Director",
@@ -917,7 +918,8 @@ class Game:
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
                                       Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),
-                                      Grapes: pygame.image.load(join(self.IMG_DIR, 'grapes.png')).convert_alpha()}
+                                      Grapes: pygame.image.load(join(self.IMG_DIR, 'grapes.png')).convert_alpha(),
+                                      Pear: pygame.image.load(join(self.IMG_DIR, 'pear.png')).convert_alpha()}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -1065,13 +1067,13 @@ class Game:
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()       
-                self.spawn_fruit(dt, with_bias=None)
+                self.spawn_fruit(dt)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt, with_bias=0.5)
+                self.spawn_fruit(dt)
             case 'saw_blade':
                 self.saw_blade_phase()
-                self.spawn_fruit(dt, with_bias=0.75)
+                self.spawn_fruit(dt)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1168,14 +1170,13 @@ class Game:
                     speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
-    def spawn_fruit(self, dt, with_bias=None, chili_only=False):
-        """spawn_fruits with_bias (<0.5 means further to the left)"""
+    def spawn_fruit(self, dt, chili_only=False):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
-            speed = random_of_spectrum(50,270,False,bias=with_bias)
+            speed = random_of_spectrum(50,270,False)
             if chili_only:
                 new_fruit = Chili
             else:
-                new_fruit = random_of_selection((Apple,Blueberry,Banana,Chili,Grapes),FRUITS_SPAWN_PROBABILITIES.values())
+                new_fruit = random_of_selection((Apple,Blueberry,Banana,Chili,Grapes,Pear),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit(self,
                     (self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],

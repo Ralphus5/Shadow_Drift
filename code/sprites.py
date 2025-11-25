@@ -468,6 +468,18 @@ class Grapes(Fruit):
     def apply_effect(self):
         self.game.player.extra_life = 1
 
+class Pear(Fruit):
+    """Pear collectable: clear all obstacles currently on screen and gain a point for each."""
+    def __init__(self, game, groups, layer, speed):
+        super().__init__(game, groups, layer, speed)
+
+    def apply_effect(self):
+        for sprite in self.game.obstacle_sprites:
+            EffectText((self.game.all_sprites, self.game.UI_texts), self.game.LAYERS['ui_texts'], "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
+            self.kill()
+            sprite.kill()
+            STATS['score'] += 1
+
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, game, groups, layer, kill_condition, speed):
         self.game = game

@@ -38,6 +38,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'banana_effect_text': "#efe508",
          'chili_effect_text': "#953333",
          'grapes_effect_text': "#8D53AA",
+         'pear_effect_text': "#99e550",
          '250_rectangle_shot_effect_text': '#119329',
          '300_rectangle_shot_effect_text': '#d700ff',
          '350_rectangle_shot_effect_text': '#fff200',
@@ -146,10 +147,10 @@ FIRE_BALL_SPEED: int = 600
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 5.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1, 'pear': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
-BANANA_BOOST_DURATION: float = 12.0
+BANANA_BOOST_DURATION: float = 18.0
 FIRE_POWER_DURATION: float = 25.0
 
 # phase probabilities
