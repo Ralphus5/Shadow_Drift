@@ -37,6 +37,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'blueberry_effect_text': "#2639db",
          'banana_effect_text': "#efe508",
          'chili_effect_text': "#953333",
+         'grapes_effect_text': "#8D53AA",
          '250_rectangle_shot_effect_text': '#119329',
          '300_rectangle_shot_effect_text': '#d700ff',
          '350_rectangle_shot_effect_text': '#fff200',
@@ -128,7 +129,7 @@ SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 
 # ----- GAMEPLAY -----
 STATS: dict = {'score': 0, 'record': 0}
-SCORE_UPDATE_TIME: int = 5000 #ms
+SCORE_UPDATE_TIME: int = 3000 #ms
 POINTS_FOR_OBSTACLE_SHOOT: int = 3
 
 # player
@@ -145,7 +146,7 @@ FIRE_BALL_SPEED: int = 600
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 5.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.25, 'chili': 0.1}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 12.0

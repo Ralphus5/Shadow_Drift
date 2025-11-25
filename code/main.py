@@ -795,9 +795,10 @@ class Game:
         
         # --- define fruit-collect messages ---
         self.FRUIT_PICKUP_TEXTS: dict = {Apple: (f"+{APPLE_POINTS} points", 'apple_effect_text'),
-                                   Banana: ("+speed", 'banana_effect_text'),
-                                   Blueberry: ("health restored", 'blueberry_effect_text'),
-                                   Chili: ("fire power", 'chili_effect_text')}
+                                         Banana: ("+speed", 'banana_effect_text'),
+                                         Blueberry: ("health restored", 'blueberry_effect_text'),
+                                         Chili: ("fire power", 'chili_effect_text'),
+                                         Grapes: ("extra life", 'grapes_effect_text')}
         
         # --- define credits texts ---
         self.credits_texts: list = ("Director",
@@ -915,7 +916,8 @@ class Game:
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
-                                      Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),}
+                                      Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),
+                                      Grapes: pygame.image.load(join(self.IMG_DIR, 'grapes.png')).convert_alpha()}
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -1045,6 +1047,7 @@ class Game:
             self.phase_ended = False
             self.phase_switch_sound.play()
             fade_to_black(self)
+            clear_input()
             kill_sprites(self.obstacle_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.fireball_sprites)
@@ -1172,9 +1175,9 @@ class Game:
             if chili_only:
                 new_fruit = Chili
             else:
-                new_fruit = random_of_selection((Apple,Blueberry,Banana,Chili),FRUITS_SPAWN_PROBABILITIES.values())
+                new_fruit = random_of_selection((Apple,Blueberry,Banana,Chili,Grapes),FRUITS_SPAWN_PROBABILITIES.values())
             new_fruit(self,
-                (self.all_sprites, self.fruit_sprites),
+                    (self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
                     speed)
 
@@ -1185,7 +1188,10 @@ class Game:
         if not self.player.iframes and self.player.can_collide and not self.player.dashing:
             hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
             if hit:
-                self.player.health -= 1
+                if self.player.extra_life:
+                    self.player.extra_life -= 1
+                else:
+                    self.player.health -= 1
                 if self.player.health >= 1:
                     self.damage_sound.play()
                     self.player.activate_iframes()
@@ -1202,8 +1208,11 @@ class Game:
         eat = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
         if eat:
             for fruit in eat:
+                last_stats = [STATS['score'], self.player.health, self.player.banana_boost_start, self.player.fire_power_start, self.player.extra_life]
                 fruit.apply_effect()
-                fruit.display_pickup_message(self.fonts['effect_texts'], self.FRUIT_PICKUP_TEXTS)
+                new_stats = [STATS['score'], self.player.health, self.player.banana_boost_start, self.player.fire_power_start, self.player.extra_life]
+                if new_stats != last_stats:
+                    fruit.display_pickup_message(self.fonts['effect_texts'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
         shoot = pygame.sprite.groupcollide(self.obstacle_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
@@ -1220,10 +1229,10 @@ class Game:
         '''Render text surfaces only when stats change.'''
 
         #render
-        self.current_stats = (self.player.health, STATS['score'], STATS['record'])
+        self.current_stats = (self.player.health + self.player.extra_life, STATS['score'], STATS['record'])
         if self.current_stats != getattr(self, 'prev_stats', None) or getattr(self, 'change_score_color', False):
             self.change_score_color = False
-            text = f"Lives: {self.player.health}  Score: {STATS['score']}  Record: {STATS['record']}"
+            text = f"Lives: {self.player.health + self.player.extra_life}  Score: {STATS['score']}  Record: {STATS['record']}"
             self.stats_text = self.fonts['stats'].render(text, True, text_color)
             self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats

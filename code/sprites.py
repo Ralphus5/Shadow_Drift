@@ -14,6 +14,7 @@ class Player(pygame.sprite.Sprite):
         self.is_alive = True
         self.facing_right = True
         self.health = 2
+        self.extra_life = 0
         self.speed = DEFAULT_PLAYER_SPEED
         self.iframes = False
         self.iframe_start = 0.0
@@ -428,7 +429,6 @@ class Apple(Fruit):
 
     def apply_effect(self):
         STATS['score'] += APPLE_POINTS
-        self.kill()
 
 class Blueberry(Fruit):
     """Blueberry collectable: restore 2nd life."""
@@ -439,7 +439,6 @@ class Blueberry(Fruit):
     def apply_effect(self):
         if self.game.player.health < 2:
             self.game.player.health += 1
-        self.kill()
 
 class Banana(Fruit):
     """Banana collectable: temporary speed boost."""
@@ -450,7 +449,6 @@ class Banana(Fruit):
     def apply_effect(self):
         self.game.player.banana_boosted = True
         self.game.player.banana_boost_start = self.game.play_time
-        self.kill()
 
 class Chili(Fruit):
     """Chili collectable: Grants temporary ability to shoot fire balls."""
@@ -461,7 +459,14 @@ class Chili(Fruit):
         self.game.player.fire_power = True
         self.game.player.fire_ball_ready = True
         self.game.player.fire_power_start = self.game.play_time
-        self.kill()
+
+class Grapes(Fruit):
+    """Grapes collectable: gain 1 extra life beyond base health."""
+    def __init__(self, game, groups, layer, speed):
+        super().__init__(game, groups, layer, speed)
+
+    def apply_effect(self):
+        self.game.player.extra_life = 1
 
 class Obstacle(pygame.sprite.Sprite):
     def __init__(self, game, groups, layer, kill_condition, speed):
