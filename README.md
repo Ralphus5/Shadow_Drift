@@ -38,10 +38,12 @@ The game ends when health reaches zero.
 
 | Item | Effect |
 |------|---------|
-| **Apple** | Gain 10 points |
+| **Apple** | Grants 10 points |
 | **Blueberry** | Restores health |
 | **Banana** | Temporary speed boost |
 | **Chili** | Grants temporary ability to shoot fireballs |
+| **Grapes** | Grants extra life beyond base health |
+| **Pear** | Kills all obstacles currently on screen, granting 1 point for each |
 
 ---
 

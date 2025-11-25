@@ -305,7 +305,8 @@ class Game:
             Blueberry(self,
                       (self.all_sprites, self.secret_fruits),
                       self.LAYERS['fruits'],
-                      random_of_spectrum(300,700))
+                      random_of_spectrum(300,700),
+                      None)
             self.show_blueberry = False
 
         if getattr(self, 'show_icicle', False):
@@ -456,14 +457,16 @@ class Game:
             Apple(self,
                   (self.all_sprites, self.secret_fruits),
                 self.LAYERS['fruits'],
-                random_of_spectrum(300,700))
+                random_of_spectrum(300,700),
+                None)
             self.show_apple = False
 
         if getattr(self, 'show_chili', False):
             Chili(self,
                   (self.all_sprites, self.secret_fruits),
                   self.LAYERS['fruits'],
-                  random_of_selection((300,700)))
+                  random_of_selection((300,700)),
+                  None)
             self.show_chili = False
 
         if hasattr(self, 'secret_fireballs') and self.secret_fireballs:
@@ -1067,13 +1070,13 @@ class Game:
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()       
-                self.spawn_fruit(dt)
+                self.spawn_fruit(dt, spawn_tendency=None)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt)
+                self.spawn_fruit(dt, spawn_tendency=0.5)
             case 'saw_blade':
                 self.saw_blade_phase()
-                self.spawn_fruit(dt)
+                self.spawn_fruit(dt, spawn_tendency=0.65)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1170,9 +1173,8 @@ class Game:
                     speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
-    def spawn_fruit(self, dt, chili_only=False):
+    def spawn_fruit(self, dt, spawn_tendency, chili_only=False):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
-            speed = random_of_spectrum(50,270,False)
             if chili_only:
                 new_fruit = Chili
             else:
@@ -1180,7 +1182,8 @@ class Game:
             new_fruit(self,
                     (self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
-                    speed)
+                    speed=random_of_spectrum(80,260,False),
+                    spawn_bias=spawn_tendency)
 
     def collisions(self):
         if not self.player.is_alive:
