@@ -16,6 +16,10 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_icicle_phase': "#FFFFFF",
          'score_saw_blade_phase': "#000000",
          'score_shadow_saw_blade_phase': "#FFFFFF",
+         'score_rocket_phase': "#0037FF",
+         'score_shadow_rocket_phase': "#FFFFFF",
+         'score_asteroid_phase': "#0037FF",
+         'score_shadow_asteroid_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
@@ -45,6 +49,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          '400_rectangle_shot_effect_text': '#ff0000',
          'icicle_shot_effect_text': '#70c4f5',
          'saw_blade_shot_effect_text': '#9996a2',
+         'rocket_shot_effect_text': '#ea0404',
+         'asteroid_shot_effect_text': '#857c73',
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
@@ -95,7 +101,9 @@ BACKGROUND_FRAME_INTERVALL: int = 70
 DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
 BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
                                               'icicle': False,
-                                              'saw_blade': False}
+                                              'saw_blade': False,
+                                              'rocket': False,
+                                              'asteroid': False}
 
 # ----- AUDIO -----
 # user volume settings
@@ -150,12 +158,12 @@ FRUIT_SPAWNS_PER_MINUTE: float = 5.00
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1, 'pear': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
-BANANA_BOOST_DURATION: float = 18.0
+BANANA_BOOST_DURATION: float = 20.0
 FIRE_POWER_DURATION: float = 25.0
 
 # phase probabilities
-START_PHASES: tuple[str] = ('rectangle', 'icicle', 'saw_blade')
-PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 1.0, 'icicle': 1.0, 'saw_blade': 1.0}
+START_PHASES: tuple[str] = ('rectangle', 'icicle')
+PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.8, 'asteroid': 1.0}
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
@@ -174,7 +182,7 @@ SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
 SECOND_ICICLE_PHASE_END: int = 25
 THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ICICLE_PHASE_END: int = 40
-THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
+FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 FOURTH_ICICLE_PHASE_END: int = 60
 
 # saw blade phase
@@ -186,6 +194,25 @@ THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
 THIRD_SAW_BLADE_PHASE_END: int = 40
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
 FOURTH_SAW_BLADE_PHASE_END: int = 60
+
+# rocket phase
+ROCKET_SPAWN_TIME: float = 0.27 # seconds
+FIRST_ROCKET_PHASE_END: int = 10
+SECOND_ROCKET_PHASE_SPAWN_FACTOR: float = 1.2
+SECOND_ROCKET_PHASE_END: int = 25
+THIRD_ROCKET_PHASE_SPAWN_FACTOR: float = 1.4
+THIRD_ROCKET_PHASE_END: int = 40
+FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
+FOURTH_ROCKET_PHASE_END: int = 60
+
+ROCKET_PHASE_END_POINTS: int = 25
+
+#asteroid phase
+ASTEROID_SPAWN_TIME: float = 0.35 # seconds
+FIRST_ASTEROID_PHASE_END: int = 10
+SECOND_ASTEROID_PHASE_END: int = 25
+THIRD_ASTEROID_PHASE_END: int = 40
+FOURTH_ASTEROID_PHASE_END: int = 60
 
 
 # --- DEFAULT KEY BINDINGS ---

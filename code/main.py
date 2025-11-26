@@ -899,7 +899,9 @@ class Game:
         self.backgrounds: dict = {
             'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
-            'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()]}
+            'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()],
+            'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
+            'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()]}
 
         # --- player images ---
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
@@ -916,6 +918,10 @@ class Game:
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
 
         self.saw_blade_image = pygame.image.load(join(self.IMG_DIR, 'saw_blade.png')).convert_alpha()
+
+        self.rocket_image = pygame.image.load(join(self.IMG_DIR, 'rocket.png')).convert_alpha()
+
+        self.asteroid_image = pygame.image.load(join(self.IMG_DIR, 'asteroid.png')).convert_alpha()
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
@@ -948,10 +954,12 @@ class Game:
         self.total_paused = 0.0
         self.is_paused = False
 
-        # obstacle timing
+        # --- spawn timerrs ---
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
+        self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
+        self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
 
         for attr in (# reset start secrets
                      'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
@@ -973,6 +981,8 @@ class Game:
         self.rectangle_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
         self.saw_blade_sprites = pygame.sprite.Group()
+        self.rocket_sprites = pygame.sprite.Group()
+        self.asteroid_sprites = pygame.sprite.Group()
         # animations and UI
         self.player_abilities = pygame.sprite.Group()
         self.UI_texts = pygame.sprite.Group()
@@ -1065,7 +1075,13 @@ class Game:
                                                      BACKGROUND_SCROLLABILITIES[self.current_phase])
             self.change_score_color = True
             self.phase_start = self.play_time
-            self.player.rect.center = WINDOW_CENTER
+            if self.current_phase == 'saw_blade':
+                self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1])
+                self.player.facing_right = False
+            elif self.current_phase == 'rocket':
+                self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
+            else:
+                self.player.rect.center = WINDOW_CENTER
             
         match(self.current_phase):
             case 'rectangle':
@@ -1077,6 +1093,12 @@ class Game:
             case 'saw_blade':
                 self.saw_blade_phase()
                 self.spawn_fruit(dt, spawn_tendency=0.65)
+            case 'rocket':
+                self.rocket_phase()
+                self.spawn_fruit(dt, spawn_tendency=None)
+            case 'asteroid':
+                self.asteroid_phase()
+                self.spawn_fruit(dt, spawn_tendency=None)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1128,7 +1150,7 @@ class Game:
             spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
         elif THIRD_ICICLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_ICICLE_PHASE_END:
             speed = 350
-            spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
+            spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_ICICLE_PHASE_END:
             self.phase_ended = True
             return
@@ -1157,7 +1179,7 @@ class Game:
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif THIRD_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < FOURTH_SAW_BLADE_PHASE_END:
             speed = 700
-            spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
+            spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_SAW_BLADE_PHASE_END:
             self.phase_ended = True
             return
@@ -1165,13 +1187,68 @@ class Game:
         # --- spawn saw blade ---
         if not hasattr(self, 'next_saw_blade_spawn_time'):
             self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
-        if self.play_time >= self.next_saw_blade_spawn_time:
+        if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 2:
             SawBlade(self,
                     (self.all_sprites, self.obstacle_sprites, self.saw_blade_sprites),
                     self.LAYERS['obstacles'],
                     "self.rect.left > WINDOW_WIDTH",
                     speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
+
+    def rocket_phase(self):
+        # --- choose speed and spawn rate of rocket ---
+        if self.play_time - self.phase_start < FIRST_ROCKET_PHASE_END:
+            speed = 700
+            spawn_rate_factor = 1
+        elif FIRST_ROCKET_PHASE_END <= self.play_time - self.phase_start < SECOND_ROCKET_PHASE_END:
+            speed = 800
+            spawn_rate_factor = SECOND_ROCKET_PHASE_SPAWN_FACTOR
+        elif SECOND_ROCKET_PHASE_END <= self.play_time - self.phase_start < THIRD_ROCKET_PHASE_END:
+            speed = 900
+            spawn_rate_factor = THIRD_ROCKET_PHASE_SPAWN_FACTOR
+        elif THIRD_ROCKET_PHASE_END <= self.play_time - self.phase_start < FOURTH_ROCKET_PHASE_END:
+            speed = 1000
+            spawn_rate_factor = FOURTH_ROCKET_PHASE_SPAWN_FACTOR
+        elif self.play_time - self.phase_start >= FOURTH_ROCKET_PHASE_END:
+            self.phase_ended = True
+            STATS['score'] += ROCKET_PHASE_END_POINTS
+            return
+
+        # --- spawn rocket ---
+        if not hasattr(self, 'next_rocket_spawn_time'):
+            self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
+        if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > 2.0:
+            Rocket(self,
+                   (self.all_sprites, self.obstacle_sprites, self.rocket_sprites),
+                   self.LAYERS['obstacles'],
+                   "self.rect.bottom < 0",
+                   speed)
+            self.next_rocket_spawn_time = self.play_time + ROCKET_SPAWN_TIME / spawn_rate_factor
+
+    def asteroid_phase(self):
+        # --- choose speed and spawn rate of asteroid ---
+        if self.play_time - self.phase_start < FIRST_ASTEROID_PHASE_END:
+            speed = 200
+        elif FIRST_ASTEROID_PHASE_END <= self.play_time - self.phase_start < SECOND_ASTEROID_PHASE_END:
+            speed = 230
+        elif SECOND_ASTEROID_PHASE_END <= self.play_time - self.phase_start < THIRD_ASTEROID_PHASE_END:
+            speed = 260
+        elif THIRD_ASTEROID_PHASE_END <= self.play_time - self.phase_start < FOURTH_ASTEROID_PHASE_END:
+            speed = 290
+        elif self.play_time - self.phase_start >= FOURTH_ASTEROID_PHASE_END:
+            self.phase_ended = True
+            return
+
+        # --- spawn rocket ---
+        if not hasattr(self, 'next_asteroid_spawn_time'):
+            self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
+        if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > 1.0:
+            Asteroid(self,
+                    (self.all_sprites, self.obstacle_sprites, self.asteroid_sprites),
+                    self.LAYERS['obstacles'],
+                    "self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT or self.rect.right < 0 or self.rect.left > WINDOW_WIDTH",
+                    speed)
+            self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
 
     def spawn_fruit(self, dt, spawn_tendency, chili_only=False):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:

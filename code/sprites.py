@@ -547,6 +547,39 @@ class SawBlade(Obstacle):
         self.rect = self.image.get_frect(center=old_center)
         self.mask = pygame.mask.from_surface(self.image)
 
+class Rocket(Obstacle):
+    def __init__(self, game, groups, layer, kill_condition, speed):
+        super().__init__(game, groups, layer, kill_condition, speed)
+        self.image = self.game.rocket_image
+        self.size = self.image.get_size()
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), WINDOW_HEIGHT+self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, -1)
+        self.effect_text_color = COLOR['rocket_shot_effect_text']
+
+class Asteroid(Obstacle):
+    def __init__(self, game, groups, layer, kill_condition, speed):
+        ASTEROID_ATTRIBUTES: dict = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
+        super().__init__(game, groups, layer, kill_condition, speed)
+        self.base_image = self.game.asteroid_image
+        self.angle = 0
+        self.rotation_speed = random_of_spectrum(-150,150)
+        self.image = self.base_image
+        self.size = self.image.get_size()
+        self.spawn_border = random_of_selection(ASTEROID_ATTRIBUTES.keys())
+        self.rect = self.image.get_frect(center=ASTEROID_ATTRIBUTES[self.spawn_border][0])
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(ASTEROID_ATTRIBUTES[self.spawn_border][1])
+        self.effect_text_color = COLOR['asteroid_shot_effect_text']
+
+    def update(self, dt):
+        super().update(dt)
+        self.angle = (self.angle + self.rotation_speed * dt) % 360
+        old_center = self.rect.center
+        self.image = pygame.transform.rotozoom(self.base_image, -self.angle, 1)
+        self.rect = self.image.get_frect(center=old_center)
+        self.mask = pygame.mask.from_surface(self.image)
+
 # --- effects ---
 class EffectText(pygame.sprite.Sprite):
     """Text that pops up after collecting a fruit, indicating the its effect"""
