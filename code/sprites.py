@@ -392,15 +392,20 @@ class AnimatedBackground(pygame.sprite.Sprite):
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""
 
-    def __init__(self, game, groups, layer, speed, spawn_bias=None):
+    def __init__(self, game, groups, layer, speed, spawn_bias=None, rotate=False):
         self.game = game
         self._layer = layer
         super().__init__(groups)
         self.speed = speed
+        self.rotate = rotate
         self.image = self.game.fruit_sprite_variants[self.__class__]
         self.rect = self.image.get_frect(center=(random_of_spectrum(60,WINDOW_WIDTH-60,bias=spawn_bias),-80))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0,1)
+        if self.rotate:
+            self.angle = 0
+            self.rotation_speed = random_of_spectrum(-150,150)
+            self.base_image = self.image
 
     def destroy(self):
         if self.rect.top > WINDOW_HEIGHT:
@@ -420,12 +425,15 @@ class Fruit(pygame.sprite.Sprite):
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
+        if self.rotate:
+            self.angle = (self.angle + self.rotation_speed * dt) % 360
+            old_center = self.rect.center
+            self.image = pygame.transform.rotozoom(self.base_image, -self.angle, 1)
+            self.rect = self.image.get_frect(center=old_center)
+            self.mask = pygame.mask.from_surface(self.image)
 
 class Apple(Fruit):
     """Apple collectable: gives 10 points."""
-
-    def __init__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
 
     def apply_effect(self):
         STATS['score'] += APPLE_POINTS
@@ -433,18 +441,11 @@ class Apple(Fruit):
 class Blueberry(Fruit):
     """Blueberry collectable: restore 2nd life."""
 
-    def __init__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
-
     def apply_effect(self):
-        if self.game.player.health < 2:
-            self.game.player.health += 1
+        self.game.player.health = 2
 
 class Banana(Fruit):
     """Banana collectable: temporary speed boost."""
-
-    def __init__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
 
     def apply_effect(self):
         self.game.player.banana_boosted = True
@@ -452,9 +453,6 @@ class Banana(Fruit):
 
 class Chili(Fruit):
     """Chili collectable: Grants temporary ability to shoot fire balls."""
-
-    def __int__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
 
     def apply_effect(self):
         self.game.player.fire_power = True
@@ -464,17 +462,11 @@ class Chili(Fruit):
 class Grapes(Fruit):
     """Grapes collectable: gain 1 extra life beyond base health."""
 
-    def __init__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
-
     def apply_effect(self):
         self.game.player.extra_life = 1
 
 class Pear(Fruit):
     """Pear collectable: clear all obstacles currently on screen and gain a point for each."""
-
-    def __init__(self, game, groups, layer, speed, spawn_bias):
-        super().__init__(game, groups, layer, speed, spawn_bias)
 
     def apply_effect(self):
         for sprite in self.game.obstacle_sprites:

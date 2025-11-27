@@ -944,6 +944,13 @@ class Game:
         self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
         self.prev_phase = self.current_phase
 
+        # --- spawn timerrs ---
+        self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
+        self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
+        self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
+        self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
+        self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
+
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
             self.absolute_start_time = perf_counter()
@@ -953,13 +960,6 @@ class Game:
         self.pause_start = 0.0
         self.total_paused = 0.0
         self.is_paused = False
-
-        # --- spawn timerrs ---
-        self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
-        self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
-        self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
-        self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
-        self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
 
         for attr in (# reset start secrets
                      'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
@@ -1086,19 +1086,19 @@ class Game:
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()       
-                self.spawn_fruit(dt, spawn_tendency=None)
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=None)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt, spawn_tendency=0.5)
+                self.spawn_fruit(dt, spawn_tendency=0.5, speed_tendency=None)
             case 'saw_blade':
                 self.saw_blade_phase()
-                self.spawn_fruit(dt, spawn_tendency=0.65)
+                self.spawn_fruit(dt, spawn_tendency=0.65, speed_tendency=None)
             case 'rocket':
                 self.rocket_phase()
-                self.spawn_fruit(dt, spawn_tendency=None)
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.3, rotation=True)
             case 'asteroid':
                 self.asteroid_phase()
-                self.spawn_fruit(dt, spawn_tendency=None)
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.3, rotation=True)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1123,6 +1123,7 @@ class Game:
             self.background.speed = 132
         elif self.play_time - self.phase_start >= FOURTH_RECTANGLE_PHASE_END:
             self.phase_ended = True
+            STATS['score'] = RECTANGLE_PHASE_END_POINTS
             return
 
         # --- spawn rectangle ---
@@ -1153,6 +1154,7 @@ class Game:
             spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_ICICLE_PHASE_END:
             self.phase_ended = True
+            STATS['score'] = ICICLE_PHASE_END_POINTS
             return
 
         # --- spawn icicle ---
@@ -1169,19 +1171,20 @@ class Game:
     def saw_blade_phase(self):
         # --- choose speed and spawn rate of saw blade ---
         if self.play_time - self.phase_start < FIRST_SAW_BLADE_PHASE_END:
-            speed = 400
+            speed = 350
             spawn_rate_factor = 1
         elif FIRST_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < SECOND_SAW_BLADE_PHASE_END:
-            speed = 500
+            speed = 450
             spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif SECOND_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < THIRD_SAW_BLADE_PHASE_END:
-            speed = 600
+            speed = 550
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif THIRD_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < FOURTH_SAW_BLADE_PHASE_END:
-            speed = 700
+            speed = 650
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_SAW_BLADE_PHASE_END:
             self.phase_ended = True
+            STATS['score'] += SAW_BLADE_PHASE_END_POINTS
             return
 
         # --- spawn saw blade ---
@@ -1198,16 +1201,16 @@ class Game:
     def rocket_phase(self):
         # --- choose speed and spawn rate of rocket ---
         if self.play_time - self.phase_start < FIRST_ROCKET_PHASE_END:
-            speed = 700
+            speed = 600
             spawn_rate_factor = 1
         elif FIRST_ROCKET_PHASE_END <= self.play_time - self.phase_start < SECOND_ROCKET_PHASE_END:
-            speed = 800
+            speed = 700
             spawn_rate_factor = SECOND_ROCKET_PHASE_SPAWN_FACTOR
         elif SECOND_ROCKET_PHASE_END <= self.play_time - self.phase_start < THIRD_ROCKET_PHASE_END:
-            speed = 900
+            speed = 800
             spawn_rate_factor = THIRD_ROCKET_PHASE_SPAWN_FACTOR
         elif THIRD_ROCKET_PHASE_END <= self.play_time - self.phase_start < FOURTH_ROCKET_PHASE_END:
-            speed = 1000
+            speed = 900
             spawn_rate_factor = FOURTH_ROCKET_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_ROCKET_PHASE_END:
             self.phase_ended = True
@@ -1237,6 +1240,7 @@ class Game:
             speed = 290
         elif self.play_time - self.phase_start >= FOURTH_ASTEROID_PHASE_END:
             self.phase_ended = True
+            STATS['score'] += ASTEROID_PHASE_END_POINTS
             return
 
         # --- spawn rocket ---
@@ -1250,7 +1254,7 @@ class Game:
                     speed)
             self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
 
-    def spawn_fruit(self, dt, spawn_tendency, chili_only=False):
+    def spawn_fruit(self, dt, spawn_tendency, speed_tendency, chili_only=False, rotation=False):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
             if chili_only:
                 new_fruit = Chili
@@ -1259,8 +1263,9 @@ class Game:
             new_fruit(self,
                     (self.all_sprites, self.fruit_sprites),
                     self.LAYERS['fruits'],
-                    speed=random_of_spectrum(80,260,False),
-                    spawn_bias=spawn_tendency)
+                    speed=random_of_spectrum(80,260,bias=speed_tendency),
+                    spawn_bias=spawn_tendency,
+                    rotate=rotation)
 
     def collisions(self):
         if not self.player.is_alive:

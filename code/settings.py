@@ -150,8 +150,6 @@ PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.3 # seconds
-FIREBALL_SHOOT_COOLDOWN: float = 0.8
-FIRE_BALL_SPEED: int = 600
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 5.00
@@ -160,10 +158,12 @@ APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 20.0
 FIRE_POWER_DURATION: float = 25.0
+FIREBALL_SHOOT_COOLDOWN: float = 0.7
+FIRE_BALL_SPEED: int = 600
 
 # phase probabilities
 START_PHASES: tuple[str] = ('rectangle', 'icicle')
-PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.8, 'asteroid': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0}
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
@@ -175,6 +175,8 @@ THIRD_RECTANGLE_PHASE_END: int = 40
 FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
 FOURTH_RECTANGLE_PHASE_END: int = 60
 
+RECTANGLE_PHASE_END_POINTS: int = 5
+
 # icicle phase
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
 FIRST_ICICLE_PHASE_END: int = 10
@@ -184,6 +186,8 @@ THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ICICLE_PHASE_END: int = 40
 FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 FOURTH_ICICLE_PHASE_END: int = 60
+
+ICICLE_PHASE_END_POINTS: int = 10
 
 # saw blade phase
 SAW_BLADE_SPAWN_TIME: float = 0.5 # seconds
@@ -195,6 +199,8 @@ THIRD_SAW_BLADE_PHASE_END: int = 40
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
 FOURTH_SAW_BLADE_PHASE_END: int = 60
 
+SAW_BLADE_PHASE_END_POINTS: int = 10
+
 # rocket phase
 ROCKET_SPAWN_TIME: float = 0.27 # seconds
 FIRST_ROCKET_PHASE_END: int = 10
@@ -205,7 +211,7 @@ THIRD_ROCKET_PHASE_END: int = 40
 FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
 FOURTH_ROCKET_PHASE_END: int = 60
 
-ROCKET_PHASE_END_POINTS: int = 25
+ROCKET_PHASE_END_POINTS: int = 20
 
 #asteroid phase
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
@@ -213,6 +219,8 @@ FIRST_ASTEROID_PHASE_END: int = 10
 SECOND_ASTEROID_PHASE_END: int = 25
 THIRD_ASTEROID_PHASE_END: int = 40
 FOURTH_ASTEROID_PHASE_END: int = 60
+
+ASTEROID_PHASE_END_POINTS: int = 15
 
 
 # --- DEFAULT KEY BINDINGS ---
