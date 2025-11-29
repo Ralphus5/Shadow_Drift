@@ -73,11 +73,28 @@ class Game:
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_start_hint = True
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON):
+                        title_flash(self)
+                        fade_to_black(self)
+                        self.requested_state = 'play'
+                    elif event.button == PAD_HOME_BUTTON:
+                        save_game(self)
+                        close_game()
 
             # --- play state ---
             elif self.state == 'play':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
+                        self.requested_state = 'stop'
+
+            # controller buttons
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button == PAD_B_BUTTON:
+                        self.player.want_dash = True
+                    elif event.button == PAD_A_BUTTON:
+                        self.player.want_ability = True
+                    elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
                         self.requested_state = 'stop'
 
                 elif event.type == self.score_event:
@@ -95,6 +112,10 @@ class Game:
                         elif getattr(self, 'quit_prompt', False): self.quit_prompt = False
                         else: self.requested_state = 'play'
 
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
+                        self.requested_state = 'play'
+                    
                 if event.type == self.credits_event and getattr(self, 'show_credits', False):
                     if not getattr(self, 'header_counter', False): self.header_counter = 1
                     else: self.header_counter += 1
@@ -140,12 +161,19 @@ class Game:
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_game_over_hint = True
+                
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON):
+                        save_game(self)
+                        self.requested_state = 'start'
+                    elif event.button == PAD_HOME_BUTTON:
+                        save_game(self)
+                        close_game()
 
             # --- settings state ---
             elif self.state == 'settings':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE and not self.waiting_for_key:
-                        # if inside a submenu, go back to main settings menu
                         if self.active_settings_tab:
                             self.active_settings_tab = None
                         else:
@@ -683,6 +711,14 @@ class Game:
         pygame.init()
         pygame.mixer.set_num_channels(128)
         self.clock = pygame.time.Clock()
+
+        # --- initialize controller ---
+        pygame.joystick.init()
+        self.controller = None
+        if pygame.joystick.get_count() > 0:
+            self.controller = pygame.joystick.Joystick(0)
+            self.controller.init()
+            print(f"Using {self.controller.get_name()}")
 
     def init_window(self):
         # --- open window ---

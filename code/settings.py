@@ -235,3 +235,27 @@ KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
                                'shoot_right': pygame.K_RIGHT,
                                'shoot_left': pygame.K_LEFT,
                                'fullscreen': pygame.K_F11}
+
+# --- CONTROLLER ---
+CONTROLLER_DEADZONE: float = 0.3
+
+PAD_AXIS_MOVE_X = 0    # left stick horizontal
+PAD_AXIS_MOVE_Y = 1    # left stick vertical
+PAD_AXIS_SHOOT_X = 2   # right stick horizontal
+PAD_AXIS_SHOOT_Y = 3   # right stick vertical
+
+PAD_A_BUTTON = 0
+PAD_B_BUTTON = 1
+PAD_X_BUTTON = 2
+PAD_Y_BUTTON = 3
+PAD_HOME_BUTTON = 5
+PAD_SELECT_BUTTON = 4
+PAD_START_BUTTON = 6
+PAD_LEFT_SHOULDER_BUTTON = 9
+PAD_RIGHT_SHOULDER_BUTTON = 10
+PAD_D_PAD_UP = 11
+PAD_D_PAD_DOWN = 12
+PAD_D_PAD_LEFT = 13
+PAD_D_PAD_RIGHT = 14
+PAD_LEFT_JOYSTICK = 7
+PAD_RIGHT_JOYSTICK = 8

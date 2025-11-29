@@ -26,6 +26,7 @@ class Player(pygame.sprite.Sprite):
         self.last_fireball = 0.0
 
         # --- ability system ---
+        self.want_ability = False
         self.can_collide = True
         self.ability_ready = True
         self.ability_start_time = 0.0
@@ -33,6 +34,7 @@ class Player(pygame.sprite.Sprite):
         self.ability_duration = PLAYER_ABILITY_DURATION
 
         # s--- dash system ---
+        self.want_dash = False
         self.dashing = False
         self.dash_ready = True
         self.dash_start_time = 0.0
@@ -101,8 +103,10 @@ class Player(pygame.sprite.Sprite):
         self.direction.y = int(keys[KEY_BINDINGS["move_down"]]) - int(keys[KEY_BINDINGS["move_up"]])
 
         # --- dash and ability---
-        self.want_dash = recent_keys[KEY_BINDINGS["dash"]]
-        self.want_ability = recent_keys[KEY_BINDINGS["ability"]]
+        if recent_keys[KEY_BINDINGS["dash"]]:
+            self.want_dash = True
+        if recent_keys[KEY_BINDINGS["ability"]]:
+            self.want_ability = True
 
         # --- shoot fireball ---
         self.shoot_dir = pygame.Vector2()
@@ -114,6 +118,25 @@ class Player(pygame.sprite.Sprite):
             self.shoot_dir = pygame.Vector2(1,0)
         elif recent_keys[KEY_BINDINGS['shoot_left']]:
             self.shoot_dir = pygame.Vector2(-1,0)
+
+    # ---------- CONTROLLER INPUT (NEW) ----------
+        pad = getattr(self.game, "controller", None)
+        if pad is not None:
+            # left stick movement
+            lx = pad.get_axis(PAD_AXIS_MOVE_X)
+            ly = pad.get_axis(PAD_AXIS_MOVE_Y)
+
+            if abs(lx) > CONTROLLER_DEADZONE or abs(ly) > CONTROLLER_DEADZONE:
+                # override keyboard if stick is moved
+                self.direction.x = lx
+                self.direction.y = ly
+
+            # right stick shooting direction (auto-fire style)
+            rx = pad.get_axis(PAD_AXIS_SHOOT_X)
+            ry = pad.get_axis(PAD_AXIS_SHOOT_Y)
+
+            if abs(rx) > CONTROLLER_DEADZONE or abs(ry) > CONTROLLER_DEADZONE:
+                self.shoot_dir = pygame.Vector2(rx, ry)
 
     def update_banana_boost(self):
         if self.banana_boosted and self.game.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
@@ -143,6 +166,7 @@ class Player(pygame.sprite.Sprite):
             self.dash_ready = True  
 
         if self.dash_ready and self.want_dash and self.direction.length_squared() != 0:
+            self.want_dash = False
             self.dash()
 
         if self.dashing and self.game.play_time - self.dash_start_time > self.dash_duration:
@@ -153,6 +177,7 @@ class Player(pygame.sprite.Sprite):
             self.ability_ready = True
 
         if self.ability_ready and self.want_ability:
+            self.want_ability = False
             self.activate_ability()
 
         if not self.can_collide and self.game.play_time - self.ability_start_time > self.ability_duration:
