@@ -736,7 +736,7 @@ class Game:
                              'game_over_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
                              'credits_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'credits_track.ogg')),
                              'game_track_1': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_1.ogg')),
-                             'game_track_2': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_2.ogg')),}
+                             'boss_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.ogg')),}
 
         # --- sound effects ---
         self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
@@ -751,6 +751,8 @@ class Game:
         self.dash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'dash_sound.wav'))
         self.phase_switch_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'phase_switch_sound.wav'))
         self.shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shoot_sound.wav'))
+        self.boss_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_growl_sound.wav'))
+        self.boss_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_hurt_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -758,7 +760,7 @@ class Game:
         self.tracks['game_over_track'].set_volume(GAME_OVER_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
         self.tracks['credits_track'].set_volume(CREDITS_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
         self.tracks['game_track_1'].set_volume(GAME_TRACK_1_VOLUME * MUSIC_VOLUME * MASTER_VOLUME) 
-        self.tracks['game_track_2'].set_volume(GAME_TRACK_2_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
+        self.tracks['boss_track'].set_volume(BOSS_TRACK_VOLUME * MUSIC_VOLUME * MASTER_VOLUME)
 
         # --- store base volumes ---
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items()}
@@ -776,6 +778,8 @@ class Game:
         self.dash_sound.set_volume(DASH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
         self.phase_switch_sound.set_volume(PHASE_SWITCH_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
         self.shoot_sound.set_volume(SHOOT_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.boss_growl_sound.set_volume(BOSS_GROWL_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
+        self.boss_hurt_sound.set_volume(BOSS_HURT_SOUND_VOLUME * SFX_VOLUME * MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -937,7 +941,8 @@ class Game:
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
             'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()],
             'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
-            'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()]}
+            'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
+            'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
 
         # --- player images ---
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
@@ -965,6 +970,8 @@ class Game:
                                       Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),
                                       Grapes: pygame.image.load(join(self.IMG_DIR, 'grapes.png')).convert_alpha(),
                                       Pear: pygame.image.load(join(self.IMG_DIR, 'pear.png')).convert_alpha()}
+        
+        self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
 
     def init_game_state(self):
         # --- Game starting conditions ---
@@ -1013,12 +1020,14 @@ class Game:
         self.player_group = pygame.sprite.GroupSingle()
         self.fireball_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
+        self.enemy_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
         self.saw_blade_sprites = pygame.sprite.Group()
         self.rocket_sprites = pygame.sprite.Group()
         self.asteroid_sprites = pygame.sprite.Group()
+        self.boss_sprites = pygame.sprite.Group()
         # animations and UI
         self.player_abilities = pygame.sprite.Group()
         self.UI_texts = pygame.sprite.Group()
@@ -1028,11 +1037,12 @@ class Game:
         self.secret_obstacles = pygame.sprite.Group()
 
         self.LAYERS = {'background': 1,
-                       'player_banana_trail': 2, 'player': 2.1, 'player_fire_outline': 2.2, 'player_glow': 2.3, 'player_death_animation': 2.4,
-                       'fruits': 3,
-                       'fireballs': 4,
-                       'obstacles': 5,
-                       'ui_texts': 6}
+                       'boss': 2,
+                       'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
+                       'fruits': 4,
+                       'fireballs': 5,
+                       'obstacles': 6,
+                       'ui_texts': 7}
 
         # --- instantiate background ---
         self.background = AnimatedBackground((self.all_sprites, self.background_sprites),
@@ -1099,16 +1109,21 @@ class Game:
             self.phase_switch_sound.play()
             fade_to_black(self)
             clear_input()
+            kill_sprites(self.enemy_sprites)
             kill_sprites(self.obstacle_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.fireball_sprites)
-            self.prev_phase = self.current_phase
-            while self.current_phase == self.prev_phase:
-                self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
+            if STATS['score'] >= BOSS_PHASE_START_POINTS and not getattr(self, 'had_boss', False):
+                self.current_phase = 'boss'
+                change_track(self, 'boss_track', fade_ms=2000, loop=True)
+            else:
+                self.prev_phase = self.current_phase
+                while self.current_phase == self.prev_phase:
+                    self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
             self.background = AnimatedBackground((self.all_sprites, self.background_sprites),
-                                                     self.LAYERS['background'],
-                                                     self.backgrounds[self.current_phase],
-                                                     BACKGROUND_SCROLLABILITIES[self.current_phase])
+                                                    self.LAYERS['background'],
+                                                    self.backgrounds[self.current_phase],
+                                                    BACKGROUND_SCROLLABILITIES[self.current_phase])
             self.change_score_color = True
             self.phase_start = self.play_time
             if self.current_phase == 'saw_blade':
@@ -1131,10 +1146,13 @@ class Game:
                 self.spawn_fruit(dt, spawn_tendency=0.65, speed_tendency=None)
             case 'rocket':
                 self.rocket_phase()
-                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.3, rotation=True)
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.25, rotation=True)
             case 'asteroid':
                 self.asteroid_phase()
-                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.3, rotation=True)
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.25, rotation=True)
+            case 'boss':
+                self.boss_phase()
+                self.spawn_fruit(dt, spawn_tendency=None, speed_tendency=0.35, chili_only=True)
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1159,7 +1177,7 @@ class Game:
             self.background.speed = 132
         elif self.play_time - self.phase_start >= FOURTH_RECTANGLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] = RECTANGLE_PHASE_END_POINTS
+            STATS['score'] += RECTANGLE_PHASE_END_POINTS
             return
 
         # --- spawn rectangle ---
@@ -1167,7 +1185,7 @@ class Game:
             self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         if self.play_time >= self.next_rectangle_spawn_time:
             Rectangle(self,
-                      (self.all_sprites, self.obstacle_sprites ,self.rectangle_sprites),
+                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.rectangle_sprites),
                       self.LAYERS['obstacles'],
                       "self.rect.right < 0",
                       speed,
@@ -1190,7 +1208,7 @@ class Game:
             spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_ICICLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] = ICICLE_PHASE_END_POINTS
+            STATS['score'] += ICICLE_PHASE_END_POINTS
             return
 
         # --- spawn icicle ---
@@ -1198,7 +1216,7 @@ class Game:
             self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         if self.play_time >= self.next_icicle_spawn_time:
             Icicle(self,
-                (self.all_sprites, self.obstacle_sprites, self.icicle_sprites),
+                (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.icicle_sprites),
                    self.LAYERS['obstacles'],
                    "self.rect.top > WINDOW_HEIGHT",
                    speed)
@@ -1228,7 +1246,7 @@ class Game:
             self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
         if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 2:
             SawBlade(self,
-                    (self.all_sprites, self.obstacle_sprites, self.saw_blade_sprites),
+                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.saw_blade_sprites),
                     self.LAYERS['obstacles'],
                     "self.rect.left > WINDOW_WIDTH",
                     speed)
@@ -1258,7 +1276,7 @@ class Game:
             self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
         if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > 2.0:
             Rocket(self,
-                   (self.all_sprites, self.obstacle_sprites, self.rocket_sprites),
+                   (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.rocket_sprites),
                    self.LAYERS['obstacles'],
                    "self.rect.bottom < 0",
                    speed)
@@ -1284,11 +1302,25 @@ class Game:
             self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
         if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > 1.0:
             Asteroid(self,
-                    (self.all_sprites, self.obstacle_sprites, self.asteroid_sprites),
+                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.asteroid_sprites),
                     self.LAYERS['obstacles'],
                     "self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT or self.rect.right < 0 or self.rect.left > WINDOW_WIDTH",
                     speed)
             self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
+
+    def boss_phase(self):
+        if not getattr(self, 'boss', False):
+            self.boss = Boss(self,
+                             (self.all_sprites, self.enemy_sprites, self.boss_sprites),
+                             self.LAYERS['boss'])
+            
+        if self.boss.is_defeated:
+            self.boss.kill()
+            self.had_boss = True
+            change_track(self, 'game_track_1', fade_ms=2000, loop=True)
+            STATS['score'] += BOSS_KILL_POINTS
+            self.phase_ended = True
+            return
 
     def spawn_fruit(self, dt, spawn_tendency, speed_tendency, chili_only=False, rotation=False):
         if random.random() < FRUIT_SPAWNS_PER_MINUTE/60 * dt:
@@ -1308,8 +1340,11 @@ class Game:
             return
         
         if not self.player.iframes and self.player.can_collide and not self.player.dashing:
-            hit = pygame.sprite.spritecollide(self.player, self.obstacle_sprites, True, pygame.sprite.collide_mask)
-            if hit:
+            hit_enemy = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
+            if hit_enemy:
+                for enemy in hit_enemy: 
+                    if enemy in self.obstacle_sprites:
+                        enemy.kill()
                 if self.player.extra_life:
                     self.player.extra_life -= 1
                 else:
@@ -1327,9 +1362,9 @@ class Game:
                         if getattr(sprite, "is_trail", False) or getattr(sprite, "is_effect_text", False):
                             sprite.kill()
 
-        eat = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
-        if eat:
-            for fruit in eat:
+        eaten_fruits = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
+        if eaten_fruits:
+            for fruit in eaten_fruits:
                 last_stats = [STATS['score'], self.player.health, self.player.banana_boost_start, self.player.fire_power_start, self.player.extra_life]
                 fruit.apply_effect()
                 new_stats = [STATS['score'], self.player.health, self.player.banana_boost_start, self.player.fire_power_start, self.player.extra_life]
@@ -1337,10 +1372,16 @@ class Game:
                     fruit.display_pickup_message(self.fonts['effect_texts'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
-        shoot = pygame.sprite.groupcollide(self.obstacle_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
-        if shoot:
-            for obstacle in shoot:
+        shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
+        if shot_obstacles:
+            for obstacle in shot_obstacles:
                 obstacle.handle_getting_shot()
+
+        shot_boss = pygame.sprite.groupcollide(self.boss_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
+        if shot_boss:
+            for boss in shot_boss:
+                self.boss_hurt_sound.play()
+                boss.health -= BOSS_DAMAGE_PER_SHOT
 
     def check_record(self):
         if STATS['score'] > STATS['record'] and not getattr(self, 'record_checked', False):

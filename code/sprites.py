@@ -597,6 +597,41 @@ class Asteroid(Obstacle):
         self.rect = self.image.get_frect(center=old_center)
         self.mask = pygame.mask.from_surface(self.image)
 
+class Boss(pygame.sprite.Sprite):
+    def __init__(self, game, groups, layer):
+        self.game = game
+        self._layer = layer
+        super().__init__(groups)
+        self.health = BOSS_HEALTH
+        self.speed = BOSS_SPEED
+        self.is_defeated = False
+        self.image = self.game.boss_image
+        self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2()
+
+        self.game.boss_growl_sound.play()
+
+    def update(self, dt):
+        # track player
+        self.direction = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        if self.direction.length_squared() != 0:
+            self.direction = self.direction.normalize()
+            
+        # adjust facing
+        base = self.game.boss_image
+        if self.direction.x < 0:
+            base = pygame.transform.flip(base, True, False)
+        self.image = base.copy()
+        self.mask = pygame.mask.from_surface(self.image)
+
+        # move
+        self.rect.center += dt * self.speed * self.direction
+
+        # check for death
+        if self.health <= 0:
+            self.is_defeated = True
+
 # --- effects ---
 class EffectText(pygame.sprite.Sprite):
     """Text that pops up after collecting a fruit, indicating the its effect"""

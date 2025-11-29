@@ -14,12 +14,14 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_rectangle_phase': "#000000",
          'score_icicle_phase': "#000000",
          'score_shadow_icicle_phase': "#FFFFFF",
-         'score_saw_blade_phase': "#000000",
-         'score_shadow_saw_blade_phase': "#FFFFFF",
+         'score_saw_blade_phase': "#0037FF",
+         'score_shadow_saw_blade_phase': "#000000",
          'score_rocket_phase': "#0037FF",
          'score_shadow_rocket_phase': "#FFFFFF",
          'score_asteroid_phase': "#0037FF",
          'score_shadow_asteroid_phase': "#FFFFFF",
+         'score_boss_phase': "#000000",
+         'score_shadow_boss_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
@@ -103,7 +105,8 @@ BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
                                               'icicle': False,
                                               'saw_blade': False,
                                               'rocket': False,
-                                              'asteroid': False}
+                                              'asteroid': False,
+                                              'boss': False}
 
 # ----- AUDIO -----
 # user volume settings
@@ -117,7 +120,7 @@ START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
 GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
-GAME_TRACK_2_VOLUME: Annotated[float, (0-1)] = 0.4
+BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -134,6 +137,8 @@ RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
 
 
 # ----- GAMEPLAY -----
@@ -142,7 +147,7 @@ SCORE_UPDATE_TIME: int = 3000 #ms
 POINTS_FOR_OBSTACLE_SHOOT: int = 3
 
 # player
-PLAYER_IFRAMES_DURATION: float = 1.0 # seconds
+PLAYER_IFRAMES_DURATION: float = 1.2 # seconds
 DEFAULT_PLAYER_SPEED: int = 250
 ONE_LIFE_PLAYER_SPEED: int = 300
 PLAYER_ABILITY_DURATION: float = 1.6 # seconds
@@ -213,7 +218,7 @@ FOURTH_ROCKET_PHASE_END: int = 60
 
 ROCKET_PHASE_END_POINTS: int = 20
 
-#asteroid phase
+# asteroid phase
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
 FIRST_ASTEROID_PHASE_END: int = 10
 SECOND_ASTEROID_PHASE_END: int = 25
@@ -222,6 +227,12 @@ FOURTH_ASTEROID_PHASE_END: int = 60
 
 ASTEROID_PHASE_END_POINTS: int = 15
 
+# boss phase
+BOSS_PHASE_START_POINTS: int = 100
+BOSS_KILL_POINTS: int = 150
+BOSS_DAMAGE_PER_SHOT: int = 3
+BOSS_HEALTH: int = 100
+BOSS_SPEED: int = 150
 
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
@@ -238,12 +249,10 @@ KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
 
 # --- CONTROLLER ---
 CONTROLLER_DEADZONE: float = 0.3
-
 PAD_AXIS_MOVE_X = 0    # left stick horizontal
 PAD_AXIS_MOVE_Y = 1    # left stick vertical
 PAD_AXIS_SHOOT_X = 2   # right stick horizontal
 PAD_AXIS_SHOOT_Y = 3   # right stick vertical
-
 PAD_A_BUTTON = 0
 PAD_B_BUTTON = 1
 PAD_X_BUTTON = 2
