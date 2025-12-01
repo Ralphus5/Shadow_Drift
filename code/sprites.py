@@ -1,13 +1,13 @@
 from utils import *
 
-# --- player related sprites ---
+# --- player related ---
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
-    def __init__(self, game, groups, layer):
+    def __init__(self, game, groups):
         # --- parameters ---
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['player']
         super().__init__(groups)
         
         # --- gameplay attributes ---
@@ -48,13 +48,11 @@ class Player(pygame.sprite.Sprite):
 
         # --- glow sprite ---
         self.glow_sprite = PlayerGlow(self.game,
-                   (self.game.all_sprites, self.game.player_abilities),
-                   self.game.LAYERS['player_glow'])
+                   (self.game.all_sprites, self.game.player_abilities))
         
         # --- fire outline ---
         self.fire_outline_sprite = PlayerFireOutline(self.game,
-                                                     (self.game.all_sprites, self.game.player_abilities),
-                                                     self.game.LAYERS['player_fire_outline'])
+                                                     (self.game.all_sprites, self.game.player_abilities))
 
         # --- motion setup ---
         self.direction = pygame.Vector2()
@@ -90,7 +88,6 @@ class Player(pygame.sprite.Sprite):
         self.last_fireball = self.game.play_time
         Fireball(self.game,
                 (self.game.all_sprites, self.game.fireball_sprites),
-                self.game.LAYERS['fireballs'],
                 shoot_direction,
                 origin=self.rect.center)
 
@@ -217,7 +214,7 @@ class Player(pygame.sprite.Sprite):
             shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
             pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
             shadow.set_alpha(100)
-            PlayerBananaTrail((self.game.all_sprites, self.game.player_abilities), self.game.LAYERS['player_banana_trail'], shadow, self.rect.center)
+            PlayerBananaTrail(self.game, (self.game.all_sprites, self.game.player_abilities), shadow, self.rect.center)
 
         # --- ability and iframes ---
         if not self.can_collide or (self.game.play_time - self.dash_start_time < self.dash_duration and self.game.play_time > 1):
@@ -228,7 +225,7 @@ class Player(pygame.sprite.Sprite):
             overlay.fill((darkness, darkness, darkness))
             self.image.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
         elif self.iframes:
-            flicker = 150 + int(105 * abs(sin(self.game.play_time * 20)))
+            flicker = 100 + int(105 * abs(sin(self.game.play_time * 20)))
             self.image.set_alpha(flicker)
         else:
             self.image.set_alpha(255)
@@ -245,9 +242,9 @@ class Player(pygame.sprite.Sprite):
         self.rect.clamp_ip(pygame.Rect(-10, -7, WINDOW_WIDTH + 19, WINDOW_HEIGHT + 14))
 
 class PlayerGlow(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer):
+    def __init__(self, game, groups):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['player_glow']
         super().__init__(groups)
 
         self.variations = {"blue": pygame.Surface((80, 80), pygame.SRCALPHA),
@@ -274,9 +271,9 @@ class PlayerGlow(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.game.player.rect.center)
 
 class PlayerFireOutline(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer):
+    def __init__(self, game, groups):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['player_fire_outline']
         super().__init__(groups)
 
         self.image = pygame.Surface((1,1), pygame.SRCALPHA)
@@ -315,9 +312,9 @@ class PlayerFireOutline(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.game.player.rect.center)
 
 class PlayerDeathAnimation(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer):
+    def __init__(self, game, groups):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['player_death_animation']
         super().__init__(groups)
         self.frame_index = 0
         self.image = self.game.death_animation_frames[0]
@@ -334,8 +331,9 @@ class PlayerDeathAnimation(pygame.sprite.Sprite):
             self.kill()
 
 class PlayerBananaTrail(pygame.sprite.Sprite):
-    def __init__(self, groups, layer, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
-        self._layer = layer
+    def __init__(self, game, groups, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
+        self.game = game
+        self._layer = self.game.LAYERS['player_banana_trail']
         super().__init__(groups)
         self.image = image.copy()
         self.rect = self.image.get_rect(center=pos)
@@ -351,9 +349,9 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
             self.kill()
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer, direction: pygame.Vector2, origin=None, spawn_offset=40):
+    def __init__(self, game, groups, direction: pygame.Vector2, origin=None, spawn_offset=40):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['fireballs']
         super().__init__(*groups)
         self.game.shoot_sound.play()
         self.speed = FIRE_BALL_SPEED
@@ -385,12 +383,13 @@ class Fireball(pygame.sprite.Sprite):
             self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT):
             self.kill()
 
-# --- background and decoration related sprites ---
+# --- background and decoration related ---
 class AnimatedBackground(pygame.sprite.Sprite):
     """Animated background sprite cycling through frames."""
 
-    def __init__(self, groups, layer, frames, scroll, interval=BACKGROUND_FRAME_INTERVALL):
-        self._layer = layer
+    def __init__(self, game, groups, frames, scroll, interval=BACKGROUND_FRAME_INTERVALL):
+        self.game = game
+        self._layer = self.game.LAYERS['backgrounds']
         super().__init__(groups)
         self.frames = frames
         self.index = 0
@@ -413,13 +412,13 @@ class AnimatedBackground(pygame.sprite.Sprite):
             if self.rect.centerx <= 0:
                 self.rect.topleft = (0,0)
 
-# --- entities ---
+# --- fruits ---
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""
 
-    def __init__(self, game, groups, layer, speed, spawn_bias=None, rotate=False):
+    def __init__(self, game, groups, speed, spawn_bias=None, rotate=False):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['fruits']
         super().__init__(groups)
         self.speed = speed
         self.rotate = rotate
@@ -440,8 +439,8 @@ class Fruit(pygame.sprite.Sprite):
         key = self.__class__
         if key in messages:
             text, color_key = messages[key]
-            EffectText((self.game.all_sprites, self.game.UI_texts),
-                       self.game.LAYERS['ui_texts'],
+            EffectText(self.game,
+                       (self.game.all_sprites, self.game.UI_texts),
                        text,
                        font,
                        COLOR[color_key],
@@ -495,27 +494,28 @@ class Pear(Fruit):
 
     def apply_effect(self):
         for sprite in self.game.obstacle_sprites:
-            EffectText((self.game.all_sprites, self.game.UI_texts), self.game.LAYERS['ui_texts'], "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
+            EffectText(self.game, (self.game.all_sprites, self.game.UI_texts), "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
             self.kill()
             sprite.kill()
             STATS['score'] += 1
 
+# --- obstacles ---
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer, kill_condition, speed):
+    def __init__(self, game, groups, speed):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['obstacles']
         super().__init__(groups)
-        self.kill_condition = kill_condition
         self.speed = speed
 
     def handle_getting_shot(self):
-        EffectText((self.game.all_sprites, self.game.UI_texts), self.game.LAYERS['ui_texts'], f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
-        self.kill()
+        if self not in self.game.boss_obstacle_sprites:
+            EffectText(self.game, (self.game.all_sprites, self.game.UI_texts), f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
+            STATS['score'] += POINTS_FOR_OBSTACLE_SHOOT
         self.game.eat_fruit_sound.play()
-        STATS['score'] += POINTS_FOR_OBSTACLE_SHOOT
+        self.kill()
 
     def destroy(self):
-        if eval(self.kill_condition):
+        if self.rect.left > WINDOW_WIDTH + 1000 or self.rect.right < -1000 or self.rect.top > WINDOW_WIDTH + 1000 or self.rect.bottom < -1000:
             self.kill()
 
     def update(self, dt):
@@ -523,8 +523,8 @@ class Obstacle(pygame.sprite.Sprite):
         self.destroy()
 
 class Rectangle(Obstacle):
-    def __init__(self, game, groups, layer, kill_condition, speed, width):
-        super().__init__(game, groups, layer, kill_condition, speed)
+    def __init__(self, game, groups, speed, width):
+        super().__init__(game, groups, speed)
         self.width = width
         self.image = self.game.rectangle_sprite_variants[self.width]
         self.size = self.image.get_size()
@@ -534,8 +534,8 @@ class Rectangle(Obstacle):
         self.effect_text_color = COLOR[f'{self.width}_rectangle_shot_effect_text']
 
 class Icicle(Obstacle):
-    def __init__(self, game, groups, layer, kill_condition, speed):
-        super().__init__(game, groups, layer, kill_condition, speed)
+    def __init__(self, game, groups, speed):
+        super().__init__(game, groups, speed)
         self.image = self.game.icicle_image
         self.size = self.image.get_size()
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), 0-self.size[1]))
@@ -544,29 +544,30 @@ class Icicle(Obstacle):
         self.effect_text_color = COLOR['icicle_shot_effect_text']
 
 class SawBlade(Obstacle):
-    def __init__(self, game, groups, layer, kill_condition, speed):
-        super().__init__(game, groups, layer, kill_condition, speed)
-        self.base_image = self.game.saw_blade_image
+    def __init__(self, game, groups, speed, spawn):
+        super().__init__(game, groups, speed)
+        self.spawn = spawn
+        self.base_image = self.game.saw_blade_image if self.spawn == 'left' else pygame.transform.flip(self.game.saw_blade_image, True, False)
         self.angle = 0
         self.rotation_speed = 180
         self.image = self.base_image
         self.size = self.image.get_size()
-        self.rect = self.image.get_frect(center=(-self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
+        self.rect = self.image.get_frect(center=(-self.size[0]/2 if self.spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(1, 0)
+        self.direction = pygame.Vector2(1, 0) if self.spawn == 'left' else pygame.Vector2(-1, 0)
         self.effect_text_color = COLOR['saw_blade_shot_effect_text']
 
     def update(self, dt):
         super().update(dt)
         self.angle = (self.angle + self.rotation_speed * dt) % 360
         old_center = self.rect.center
-        self.image = pygame.transform.rotozoom(self.base_image, -self.angle, 1)
+        self.image = pygame.transform.rotozoom(self.base_image, -self.angle if self.spawn == 'left' else self.angle, 1)
         self.rect = self.image.get_frect(center=old_center)
         self.mask = pygame.mask.from_surface(self.image)
 
 class Rocket(Obstacle):
-    def __init__(self, game, groups, layer, kill_condition, speed):
-        super().__init__(game, groups, layer, kill_condition, speed)
+    def __init__(self, game, groups, speed):
+        super().__init__(game, groups, speed)
         self.image = self.game.rocket_image
         self.size = self.image.get_size()
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), WINDOW_HEIGHT+self.size[1]/2))
@@ -575,19 +576,19 @@ class Rocket(Obstacle):
         self.effect_text_color = COLOR['rocket_shot_effect_text']
 
 class Asteroid(Obstacle):
-    def __init__(self, game, groups, layer, kill_condition, speed):
+    def __init__(self, game, groups, speed, rotation_speed=random_of_spectrum(-180,180)):
         ASTEROID_ATTRIBUTES: dict = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
-        super().__init__(game, groups, layer, kill_condition, speed)
+        super().__init__(game, groups, speed)
+        self.rotation_speed = rotation_speed
+        self.effect_text_color = COLOR['asteroid_shot_effect_text']
         self.base_image = self.game.asteroid_image
-        self.angle = 0
-        self.rotation_speed = random_of_spectrum(-150,150)
         self.image = self.base_image
         self.size = self.image.get_size()
+        self.angle = random_of_spectrum(0,360)
         self.spawn_border = random_of_selection(ASTEROID_ATTRIBUTES.keys())
         self.rect = self.image.get_frect(center=ASTEROID_ATTRIBUTES[self.spawn_border][0])
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(ASTEROID_ATTRIBUTES[self.spawn_border][1])
-        self.effect_text_color = COLOR['asteroid_shot_effect_text']
 
     def update(self, dt):
         super().update(dt)
@@ -597,10 +598,13 @@ class Asteroid(Obstacle):
         self.rect = self.image.get_frect(center=old_center)
         self.mask = pygame.mask.from_surface(self.image)
 
+# --- boss related ---
 class Boss(pygame.sprite.Sprite):
-    def __init__(self, game, groups, layer):
+    STATE_DURATIONS = BOSS_STATE_DURATIONS
+
+    def __init__(self, game, groups):
         self.game = game
-        self._layer = layer
+        self._layer = self.game.LAYERS['bosses']
         super().__init__(groups)
         self.health = BOSS_HEALTH
         self.speed = BOSS_SPEED
@@ -608,36 +612,158 @@ class Boss(pygame.sprite.Sprite):
         self.image = self.game.boss_image
         self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
         self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2()
-
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
+        self.direction.normalize()
+        self.hurting = False
+        self.hurting_start = 0.0
+        self.current_state = 'follow_player'
+        self.select_next_state = False
+        self.state_start = 0.0
         self.game.boss_growl_sound.play()
 
-    def update(self, dt):
-        # track player
-        self.direction = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+    def track_player(self):
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
         if self.direction.length_squared() != 0:
             self.direction = self.direction.normalize()
-            
+
+    # states/phases
+    def set_state(self, dt):
+        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
+        if self.select_next_state:
+            self.game.boss_growl_sound.play()
+            prev_state = self.current_state
+            while prev_state is self.current_state:
+                self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+            self.state_start = self.game.play_time
+            self.select_next_state = False
+
+        match(self.current_state):
+            case 'follow_player':
+                self.follow_player(dt)
+            case 'summon_saw_blades':
+                self.summon_saw_blades()
+            case 'summon_asteroids':
+                self.summon_asteroids()
+            case 'shoot_energy_ball':
+                self.shoot_energy_ball()
+
+    def follow_player(self, dt):
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed * self.direction
+
+    def summon_saw_blades(self):
+        if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= BOSS_SAW_BLADE_SPAWN_DURATION:
+            SawBlade(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), BOSS_SAW_BLADE_SPEED, (random_of_selection(('left', 'right'))))
+            self.last_saw_blade_summon = self.game.play_time
+
+    def summon_asteroids(self):
+        if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= BOSS_ASTEROID_SPAWN_DURATION:
+            Asteroid(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), BOSS_ASTEROID_SPEED, rotation_speed=0)
+            self.last_asteroid_summon = self.game.play_time
+
+    def shoot_energy_ball(self):
+        if not getattr(self, 'energy_ball', None):
+            self.energy_ball = DarkEnergyBall(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.rect.center)
+
+    def take_damage(self):
+        self.game.boss_hurt_sound.play()
+        self.health -= BOSS_DAMAGE_PER_SHOT
+        self.hurting = True
+        self.hurting_start = self.game.play_time
+
+    def update_appearance(self):
         # adjust facing
         base = self.game.boss_image
-        if self.direction.x < 0:
+        if self.distance_to_player[0] < 0:
             base = pygame.transform.flip(base, True, False)
         self.image = base.copy()
         self.mask = pygame.mask.from_surface(self.image)
 
-        # move
-        self.rect.center += dt * self.speed * self.direction
+        # flash red after taking damage
+        if self.game.play_time - self.hurting_start > 0.5:
+            self.hurting = False
+        if self.hurting:
+            duration = 0.5
+            t = (self.game.play_time - self.hurting_start) / duration
+            t = max(0.0, min(t, 1.0))
 
-        # check for death
+            # strong at start, then fades out
+            intensity = int(255 * (1.0 - t) ** 2)
+            if intensity <= 0:
+                return
+
+            # refresh mask for current frame (image may be flipped)
+            self.mask = pygame.mask.from_surface(self.image)
+
+            # build a surface in the exact shape of the boss
+            flash_surf = self.mask.to_surface(
+                setcolor=(255, 80, 80, 0),   
+                unsetcolor=(0, 0, 0, 0)
+            ).convert_alpha()
+
+            flash_surf.set_alpha(intensity)
+
+            # additively brighten only the masked area
+            self.image.blit(flash_surf, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+    def handle_death(self):
         if self.health <= 0:
             self.is_defeated = True
+
+    def update(self, dt):
+        self.track_player()
+        self.set_state(dt)
+        self.update_appearance()
+        self.handle_death()
+
+class DarkEnergyBall(pygame.sprite.Sprite):
+    def __init__(self, game, groups, pos):
+        self.game = game
+        self._layer = self.game.LAYERS['boss_projectiles']
+        super().__init__(groups)
+        self.creation_time = self.game.play_time
+        self.health = 2
+        self.speed = DARK_ENERGY_BALL_SPEED
+        self.image = self.game.dark_energy_ball_image
+        self.rect = self.image.get_frect(center=pos)
+        self.mask = pygame.mask.from_surface(self.image)
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
+        self.direction.normalize()
+    
+    def handle_getting_shot(self):
+        self.game.energy_ball_shot_sound.play()
+        self.health -= 1
+        if self.health <= 0:
+            self.game.boss.energy_ball = None
+            self.kill()
+
+    def home_in_on_player(self, dt):
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
+        if self.direction.length_squared() != 0:
+            self.direction = self.direction.normalize()
+        self.rect.center += dt * self.speed * self.direction
+
+    def destroy(self):
+        if self.game.play_time - self.creation_time > 8:
+            self.game.boss.energy_ball = None
+            self.game.energy_ball_shot_sound.play()
+            self.kill()
+
+    def update(self, dt):
+        self.home_in_on_player(dt)
+        self.destroy()
 
 # --- effects ---
 class EffectText(pygame.sprite.Sprite):
     """Text that pops up after collecting a fruit, indicating the its effect"""
 
-    def __init__(self, groups, layer, text, font, color, pos, lifetime=EFFECT_TEXT_DURATION, rise=EFFECT_TEXT_RISE_SPEED):
-        self._layer = layer
+    def __init__(self, game, groups, text, font, color, pos, lifetime=EFFECT_TEXT_DURATION, rise=EFFECT_TEXT_RISE_SPEED):
+        self.game = game
+        self._layer = self.game.LAYERS['ui_texts']
         super().__init__(groups)
         base = font.render(text, True, color)
         shadow = font.render(text, True, (COLOR['effect_text_shadow']))

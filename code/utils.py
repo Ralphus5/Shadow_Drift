@@ -1,4 +1,5 @@
 from settings import *
+import settings
 
 # --- essential game utilities ---
 def clear_input():
@@ -18,8 +19,9 @@ def close_game():
     sys.exit()
 
 def save_settings(game):
-    save_data = {}
+    global MASTER_VOLUME, MUSIC_VOLUME, SFX_VOLUME
 
+    save_data = {}
     try:
         with open(game.SETTINGS_FILE) as f:
             save_data = json.load(f)
@@ -29,9 +31,9 @@ def save_settings(game):
     # controls
     save_data['key_bindings'] = {action: pygame.key.name(key) for action, key in KEY_BINDINGS.items()}
     # audio
-    save_data['audio'] = {'master': MASTER_VOLUME,
-                            'music': MUSIC_VOLUME,
-                            'sfx': SFX_VOLUME,}
+    save_data['audio'] = {'master': settings.MASTER_VOLUME,
+                            'music': settings.MUSIC_VOLUME,
+                            'sfx': settings.SFX_VOLUME,}
 
     with open(game.SETTINGS_FILE, "w") as f:
         json.dump(save_data, f, indent=2)
