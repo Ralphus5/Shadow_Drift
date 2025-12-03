@@ -501,10 +501,12 @@ class Pear(Fruit):
 
 # --- obstacles ---
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, game, groups, speed):
+    def __init__(self, game, layer, groups, image, speed):
         self.game = game
-        self._layer = self.game.LAYERS['obstacles']
+        self._layer = layer
         super().__init__(groups)
+        self.image = image
+        self.size = self.image.get_size()
         self.speed = speed
 
     def handle_getting_shot(self):
@@ -522,81 +524,77 @@ class Obstacle(pygame.sprite.Sprite):
         self.rect.center += self.direction * self.speed * dt
         self.destroy()
 
-class Rectangle(Obstacle):
-    def __init__(self, game, groups, speed, width):
-        super().__init__(game, groups, speed)
-        self.width = width
-        self.image = self.game.rectangle_sprite_variants[self.width]
-        self.size = self.image.get_size()
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH+self.width, random_of_spectrum(0, WINDOW_HEIGHT)))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(-1, 0)
-        self.effect_text_color = COLOR[f'{self.width}_rectangle_shot_effect_text']
-
-class Icicle(Obstacle):
-    def __init__(self, game, groups, speed):
-        super().__init__(game, groups, speed)
-        self.image = self.game.icicle_image
-        self.size = self.image.get_size()
-        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), 0-self.size[1]))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(0, 1)
-        self.effect_text_color = COLOR['icicle_shot_effect_text']
-
-class SawBlade(Obstacle):
-    def __init__(self, game, groups, speed, spawn):
-        super().__init__(game, groups, speed)
-        self.spawn = spawn
-        self.base_image = self.game.saw_blade_image if self.spawn == 'left' else pygame.transform.flip(self.game.saw_blade_image, True, False)
-        self.angle = 0
-        self.rotation_speed = 180
+class RotatingObstacle(Obstacle):
+    def __init__(self, game, layer, groups, image, speed, angle, rotation_speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.angle = angle
+        self.rotation_speed = rotation_speed
+        self.base_image = image
         self.image = self.base_image
-        self.size = self.image.get_size()
-        self.rect = self.image.get_frect(center=(-self.size[0]/2 if self.spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(1, 0) if self.spawn == 'left' else pygame.Vector2(-1, 0)
-        self.effect_text_color = COLOR['saw_blade_shot_effect_text']
 
     def update(self, dt):
         super().update(dt)
         self.angle = (self.angle + self.rotation_speed * dt) % 360
         old_center = self.rect.center
-        self.image = pygame.transform.rotozoom(self.base_image, -self.angle if self.spawn == 'left' else self.angle, 1)
+        self.image = pygame.transform.rotozoom(self.base_image, self.angle, 1)
         self.rect = self.image.get_frect(center=old_center)
         self.mask = pygame.mask.from_surface(self.image)
 
+class Rectangle(Obstacle):
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.size[0]/2, random_of_spectrum(0, WINDOW_HEIGHT)))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(-1, 0)
+        self.effect_text_color = COLOR[f'{self.size[0]}_rectangle_shot_effect_text']
+
+class Icicle(Obstacle):
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), 0-self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, 1)
+        self.effect_text_color = COLOR['icicle_shot_effect_text']
+
 class Rocket(Obstacle):
-    def __init__(self, game, groups, speed):
-        super().__init__(game, groups, speed)
-        self.image = self.game.rocket_image
-        self.size = self.image.get_size()
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), WINDOW_HEIGHT+self.size[1]/2))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, -1)
         self.effect_text_color = COLOR['rocket_shot_effect_text']
 
-class Asteroid(Obstacle):
-    def __init__(self, game, groups, speed, rotation_speed=random_of_spectrum(-180,180)):
-        ASTEROID_ATTRIBUTES: dict = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
-        super().__init__(game, groups, speed)
-        self.rotation_speed = rotation_speed
-        self.effect_text_color = COLOR['asteroid_shot_effect_text']
-        self.base_image = self.game.asteroid_image
+class SawBlade(RotatingObstacle):
+    def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):
+        super().__init__(game, layer, groups, image, speed, angle, rotation_speed)
+        if spawn == 'right': self.base_image = pygame.transform.flip(self.game.saw_blade_image, True, False)
+        if spawn == 'right': self.rotation_speed = -self.rotation_speed 
         self.image = self.base_image
-        self.size = self.image.get_size()
-        self.angle = random_of_spectrum(0,360)
+        self.rect = self.image.get_frect(center=(-self.size[0]/2 if spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(1, 0) if spawn == 'left' else pygame.Vector2(-1, 0)
+        self.effect_text_color = COLOR['saw_blade_shot_effect_text']
+
+class Asteroid(RotatingObstacle):
+    def __init__(self, game, layer, groups, image, speed, angle=random_of_spectrum(0,360), rotation_speed=random_of_spectrum(-180,180)):
+        ASTEROID_ATTRIBUTES: dict = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
+        super().__init__(game, layer, groups, image, speed, angle, rotation_speed)
         self.spawn_border = random_of_selection(ASTEROID_ATTRIBUTES.keys())
         self.rect = self.image.get_frect(center=ASTEROID_ATTRIBUTES[self.spawn_border][0])
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(ASTEROID_ATTRIBUTES[self.spawn_border][1])
+        self.effect_text_color = COLOR['asteroid_shot_effect_text']
 
-    def update(self, dt):
-        super().update(dt)
-        self.angle = (self.angle + self.rotation_speed * dt) % 360
-        old_center = self.rect.center
-        self.image = pygame.transform.rotozoom(self.base_image, -self.angle, 1)
-        self.rect = self.image.get_frect(center=old_center)
+class SpikeBall(RotatingObstacle):
+    def __init__(self, game, layer, groups, image, speed, angle, rotation_speed, spawn):
+        super().__init__(game, layer, groups, image, speed, angle, rotation_speed)
+        if spawn == 'right': self.base_image = pygame.transform.flip(self.game.spike_ball_image, True, False)
+        if spawn == 'left': self.rotation_speed = -self.rotation_speed 
+        self.image = self.base_image
+        self.rect = self.image.get_frect(center=(-self.size[0]/2 if spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(1, 0) if spawn == 'left' else pygame.Vector2(-1, 0)
+        self.effect_text_color = COLOR['spike_ball_shot_effect_text']
 
 # --- boss related ---
 class Boss(pygame.sprite.Sprite):
@@ -619,7 +617,7 @@ class Boss(pygame.sprite.Sprite):
         self.hurting_start = 0.0
         self.current_state = 'follow_player'
         self.select_next_state = False
-        self.state_start = 0.0
+        self.state_start = self.game.play_time
         self.game.boss_growl_sound.play()
 
     def track_player(self):
@@ -627,45 +625,6 @@ class Boss(pygame.sprite.Sprite):
         self.direction = self.distance_to_player
         if self.direction.length_squared() != 0:
             self.direction = self.direction.normalize()
-
-    # states/phases
-    def set_state(self, dt):
-        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
-        if self.select_next_state:
-            self.game.boss_growl_sound.play()
-            prev_state = self.current_state
-            while prev_state is self.current_state:
-                self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
-            self.state_start = self.game.play_time
-            self.select_next_state = False
-
-        match(self.current_state):
-            case 'follow_player':
-                self.follow_player(dt)
-            case 'summon_saw_blades':
-                self.summon_saw_blades()
-            case 'summon_asteroids':
-                self.summon_asteroids()
-            case 'shoot_energy_ball':
-                self.shoot_energy_ball()
-
-    def follow_player(self, dt):
-        if self.distance_to_player.length_squared() > 5:
-            self.rect.center += dt * self.speed * self.direction
-
-    def summon_saw_blades(self):
-        if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= BOSS_SAW_BLADE_SPAWN_DURATION:
-            SawBlade(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), BOSS_SAW_BLADE_SPEED, (random_of_selection(('left', 'right'))))
-            self.last_saw_blade_summon = self.game.play_time
-
-    def summon_asteroids(self):
-        if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= BOSS_ASTEROID_SPAWN_DURATION:
-            Asteroid(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), BOSS_ASTEROID_SPEED, rotation_speed=0)
-            self.last_asteroid_summon = self.game.play_time
-
-    def shoot_energy_ball(self):
-        if not getattr(self, 'energy_ball', None):
-            self.energy_ball = DarkEnergyBall(self.game, (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.rect.center)
 
     def take_damage(self):
         self.game.boss_hurt_sound.play()
@@ -718,10 +677,49 @@ class Boss(pygame.sprite.Sprite):
         self.update_appearance()
         self.handle_death()
 
+    # states/phases
+    def set_state(self, dt):
+        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
+        if self.select_next_state:
+            self.game.boss_growl_sound.play()
+            prev_state = self.current_state
+            while prev_state is self.current_state:
+                self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+            self.state_start = self.game.play_time
+            self.select_next_state = False
+
+        match(self.current_state):
+            case 'follow_player':
+                self.follow_player(dt)
+            case 'summon_saw_blades':
+                self.summon_saw_blades()
+            case 'summon_asteroids':
+                self.summon_asteroids()
+            case 'shoot_energy_ball':
+                self.shoot_energy_ball()
+
+    def follow_player(self, dt):
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed * self.direction
+
+    def summon_saw_blades(self):
+        if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= BOSS_SAW_BLADE_SPAWN_DURATION:
+            SawBlade(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.saw_blade_image, BOSS_SAW_BLADE_SPEED, spawn=(random_of_selection(('left', 'right'))))
+            self.last_saw_blade_summon = self.game.play_time
+
+    def summon_asteroids(self):
+        if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= BOSS_ASTEROID_SPAWN_DURATION:
+            Asteroid(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.asteroid_image, BOSS_ASTEROID_SPEED, rotation_speed=0)
+            self.last_asteroid_summon = self.game.play_time
+
+    def shoot_energy_ball(self):
+        if not getattr(self, 'energy_ball', None):
+            self.energy_ball = DarkEnergyBall(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.energy_ball_sprites), self.rect.center)
+
 class DarkEnergyBall(pygame.sprite.Sprite):
-    def __init__(self, game, groups, pos):
+    def __init__(self, game, layer, groups, pos):
         self.game = game
-        self._layer = self.game.LAYERS['boss_projectiles']
+        self._layer = layer
         super().__init__(groups)
         self.creation_time = self.game.play_time
         self.health = 2

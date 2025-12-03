@@ -2,7 +2,6 @@ from sprites import *
 import settings
 
 class Game:
-    """Encapsulates the main game logic, event handling, and rendering loop."""
 
 # --- Define game modes ---
     def __init__(self):
@@ -338,7 +337,9 @@ class Game:
 
         if getattr(self, 'show_icicle', False):
             Icicle(self,
+                   self.LAYERS['obstacles'],
                    (self.all_sprites, self.secret_obstacles),
+                   self.icicle_image,
                    random_of_spectrum(250,400))
             self.show_icicle = False
 
@@ -505,9 +506,10 @@ class Game:
 
         if getattr(self, 'show_rectangle', False):
             Rectangle(self,
+                      self.LAYERS['obstacles'],
                       (self.all_sprites, self.secret_obstacles),
-                      random_of_spectrum(300, 500),
-                      400)
+                      self.rectangle_sprite_variants[3],
+                      random_of_spectrum(300, 500))
             self.show_rectangle = False
 
         if getattr(self, 'secret_obstacles', False):
@@ -933,6 +935,7 @@ class Game:
             'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()],
             'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
             'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
+            'spike_ball': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_ball_phase', 'bg_spike_ball_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
 
         # --- player images ---
@@ -945,7 +948,7 @@ class Game:
         self.fireball_image = pygame.image.load(join(self.IMG_DIR, 'fireball.png')).convert_alpha()
 
         # --- other entities ---
-        self.rectangle_sprite_variants: dict = {width: pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)}
+        self.rectangle_sprite_variants: list = [pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)]
 
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
 
@@ -954,6 +957,8 @@ class Game:
         self.rocket_image = pygame.image.load(join(self.IMG_DIR, 'rocket.png')).convert_alpha()
 
         self.asteroid_image = pygame.image.load(join(self.IMG_DIR, 'asteroid.png')).convert_alpha()
+
+        self.spike_ball_image = pygame.image.load(join(self.IMG_DIR, 'spike_ball.png')).convert_alpha()
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
@@ -980,12 +985,13 @@ class Game:
         self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
         self.prev_phase = self.current_phase
 
-        # --- spawn timerrs ---
+        # --- spawn timers ---
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
         self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
         self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
+        self.next_spike_ball_spawn_time = SPIKE_BALL_SPAWN_TIME
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -1020,7 +1026,9 @@ class Game:
         self.saw_blade_sprites = pygame.sprite.Group()
         self.rocket_sprites = pygame.sprite.Group()
         self.asteroid_sprites = pygame.sprite.Group()
+        self.spike_ball_sprites = pygame.sprite.Group()
         self.boss_sprites = pygame.sprite.Group()
+        self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
         # animations and UI
         self.player_abilities = pygame.sprite.Group()
@@ -1145,154 +1153,182 @@ class Game:
             case 'asteroid':
                 self.asteroid_phase()
                 self.spawn_fruit(dt, speed_tendency=0.25, rotation=True)
+            case 'spike_ball':
+                self.spike_ball_phase()
+                self.spawn_fruit(dt)
             case 'boss':
                 self.boss_phase()
                 self.spawn_fruit(dt, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
-        if self.play_time - self.phase_start < FIRST_RECTANGLE_PHASE_END:
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 250
             weight = (1, 0.8, 0.6, 0.4)
             spawn_rate_factor = 1
-        elif FIRST_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < SECOND_RECTANGLE_PHASE_END:
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 350
             weight = (0.8, 0.7, 0.7, 0.6)
             spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
             self.background.speed = 84
-        elif SECOND_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < THIRD_RECTANGLE_PHASE_END:
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 450
             weight = (0.6, 0.6, 0.8, 0.8)
             spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
             self.background.speed = 108
-        elif THIRD_RECTANGLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_RECTANGLE_PHASE_END:
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 550
             weight = (0.4, 0.5, 0.9, 1)
             spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
             self.background.speed = 132
-        elif self.play_time - self.phase_start >= FOURTH_RECTANGLE_PHASE_END:
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += RECTANGLE_PHASE_END_POINTS
             return
 
         # --- spawn rectangle ---
-        if not hasattr(self, 'next_rectangle_spawn_time'):
-            self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         if self.play_time >= self.next_rectangle_spawn_time:
             Rectangle(self,
+                      self.LAYERS['obstacles'],
                       (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.rectangle_sprites),
-                      speed,
-                      random_of_selection((250, 300, 350, 400), weights=weight))
+                      random_of_selection(self.rectangle_sprite_variants, weights=weight),
+                      speed)
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
     def icicle_phase(self):
         # --- choose speed and spawn rate of icicle ---
-        if self.play_time - self.phase_start < FIRST_ICICLE_PHASE_END:
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 200
             spawn_rate_factor = 1
-        elif FIRST_ICICLE_PHASE_END <= self.play_time - self.phase_start < SECOND_ICICLE_PHASE_END:
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 250
             spawn_rate_factor = SECOND_ICICLE_PHASE_SPAWN_FACTOR
-        elif SECOND_ICICLE_PHASE_END <= self.play_time - self.phase_start < THIRD_ICICLE_PHASE_END:
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 300
             spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
-        elif THIRD_ICICLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_ICICLE_PHASE_END:
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 350
             spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_ICICLE_PHASE_END:
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += ICICLE_PHASE_END_POINTS
             return
 
         # --- spawn icicle ---
-        if not hasattr(self, 'next_icicle_spawn_time'):
-            self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         if self.play_time >= self.next_icicle_spawn_time:
             Icicle(self,
+                   self.LAYERS['obstacles'],
                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.icicle_sprites),
+                   self.icicle_image,
                    speed)
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
     def saw_blade_phase(self):
         # --- choose speed and spawn rate of saw blade ---
-        if self.play_time - self.phase_start < FIRST_SAW_BLADE_PHASE_END:
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 350
             spawn_rate_factor = 1
-        elif FIRST_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < SECOND_SAW_BLADE_PHASE_END:
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 450
             spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif SECOND_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < THIRD_SAW_BLADE_PHASE_END:
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 550
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif THIRD_SAW_BLADE_PHASE_END <= self.play_time - self.phase_start < FOURTH_SAW_BLADE_PHASE_END:
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 650
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_SAW_BLADE_PHASE_END:
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += SAW_BLADE_PHASE_END_POINTS
             return
 
         # --- spawn saw blade ---
-        if not hasattr(self, 'next_saw_blade_spawn_time'):
-            self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
         if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 2:
             SawBlade(self,
+                     self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.saw_blade_sprites),
-                     speed,
-                     'left')
+                     self.saw_blade_image,
+                     speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
     def rocket_phase(self):
         # --- choose speed and spawn rate of rocket ---
-        if self.play_time - self.phase_start < FIRST_ROCKET_PHASE_END:
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 600
             spawn_rate_factor = 1
-        elif FIRST_ROCKET_PHASE_END <= self.play_time - self.phase_start < SECOND_ROCKET_PHASE_END:
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 700
             spawn_rate_factor = SECOND_ROCKET_PHASE_SPAWN_FACTOR
-        elif SECOND_ROCKET_PHASE_END <= self.play_time - self.phase_start < THIRD_ROCKET_PHASE_END:
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 800
             spawn_rate_factor = THIRD_ROCKET_PHASE_SPAWN_FACTOR
-        elif THIRD_ROCKET_PHASE_END <= self.play_time - self.phase_start < FOURTH_ROCKET_PHASE_END:
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 900
             spawn_rate_factor = FOURTH_ROCKET_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_ROCKET_PHASE_END:
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += ROCKET_PHASE_END_POINTS
             return
 
         # --- spawn rocket ---
-        if not hasattr(self, 'next_rocket_spawn_time'):
-            self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
         if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > 2.0:
             Rocket(self,
+                   self.LAYERS['obstacles'],
                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.rocket_sprites),
+                   self.rocket_image,
                    speed)
             self.next_rocket_spawn_time = self.play_time + ROCKET_SPAWN_TIME / spawn_rate_factor
 
     def asteroid_phase(self):
         # --- choose speed and spawn rate of asteroid ---
-        if self.play_time - self.phase_start < FIRST_ASTEROID_PHASE_END:
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 200
-        elif FIRST_ASTEROID_PHASE_END <= self.play_time - self.phase_start < SECOND_ASTEROID_PHASE_END:
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 230
-        elif SECOND_ASTEROID_PHASE_END <= self.play_time - self.phase_start < THIRD_ASTEROID_PHASE_END:
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 260
-        elif THIRD_ASTEROID_PHASE_END <= self.play_time - self.phase_start < FOURTH_ASTEROID_PHASE_END:
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 290
-        elif self.play_time - self.phase_start >= FOURTH_ASTEROID_PHASE_END:
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += ASTEROID_PHASE_END_POINTS
             return
 
         # --- spawn rocket ---
-        if not hasattr(self, 'next_asteroid_spawn_time'):
-            self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
         if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > 1.0:
             Asteroid(self,
+                     self.LAYERS['obstacles'],
                     (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.asteroid_sprites),
+                    self.asteroid_image,
                     speed)
             self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
+
+    def spike_ball_phase(self):
+        # --- choose speed and spawn rate of spike ball ---
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = 250
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = 300
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = 350
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = 400
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            STATS['score'] += SPIKE_BALL_PHASE_END_POINTS
+            return
+
+        # --- spawn spike ball ---
+        if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > 2:
+            SpikeBall(self,
+                      self.LAYERS['obstacles'],
+                     (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_ball_sprites),
+                     self.spike_ball_image,
+                     speed,
+                     0,
+                     230,
+                     random_of_selection(('right', 'left')))
+            self.next_spike_ball_spawn_time = self.play_time + SPIKE_BALL_SPAWN_TIME
 
     def boss_phase(self):
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
@@ -1338,7 +1374,7 @@ class Game:
             hit_enemy = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
             if hit_enemy:
                 for enemy in hit_enemy: 
-                    if enemy in self.boss_obstacle_sprites:
+                    if enemy in self.energy_ball_sprites:
                         self.boss.energy_ball = None
                     if enemy in self.obstacle_sprites:
                         enemy.kill()

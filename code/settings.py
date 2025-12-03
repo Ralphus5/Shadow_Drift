@@ -20,7 +20,9 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_rocket_phase': "#FFFFFF",
          'score_asteroid_phase': "#0037FF",
          'score_shadow_asteroid_phase': "#FFFFFF",
-         'score_boss_phase': "#000000",
+         'score_spike_ball_phase': "#0037FF",
+         'score_shadow_spike_ball_phase': "#FFFFFF",
+         'score_boss_phase': "#0037FF",
          'score_shadow_boss_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
@@ -53,6 +55,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'saw_blade_shot_effect_text': '#9996a2',
          'rocket_shot_effect_text': '#ea0404',
          'asteroid_shot_effect_text': '#857c73',
+         'spike_ball_shot_effect_text': '#131312',
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
@@ -106,6 +109,7 @@ BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
                                               'saw_blade': False,
                                               'rocket': False,
                                               'asteroid': False,
+                                              'spike_ball': False,
                                               'boss': False}
 
 # ----- AUDIO -----
@@ -139,7 +143,7 @@ DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
-ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
 
 
 # ----- GAMEPLAY -----
@@ -169,62 +173,52 @@ POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # phase probabilities
 START_PHASES: tuple[str] = ('rectangle', 'icicle')
-PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 0.9}
+
+# sub-phase durations
+FIRST_OBSTACLE_PHASE_END: int = 10
+SECOND_OBSTACLE_PHASE_END: int = 25
+THIRD_OBSTACLE_PHASE_END: int = 40
+FOURTH_OBSTACLE_PHASE_END: int = 60
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
-FIRST_RECTANGLE_PHASE_END: int = 10
 SECOND_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.2
-SECOND_RECTANGLE_PHASE_END: int = 25
 THIRD_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.4
-THIRD_RECTANGLE_PHASE_END: int = 40
 FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
-FOURTH_RECTANGLE_PHASE_END: int = 60
 RECTANGLE_PHASE_END_POINTS: int = 5
 
 # icicle phase
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
-FIRST_ICICLE_PHASE_END: int = 10
 SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
-SECOND_ICICLE_PHASE_END: int = 25
 THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
-THIRD_ICICLE_PHASE_END: int = 40
 FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
-FOURTH_ICICLE_PHASE_END: int = 60
 ICICLE_PHASE_END_POINTS: int = 10
 
 # saw blade phase
-SAW_BLADE_SPAWN_TIME: float = 0.5 # seconds
-FIRST_SAW_BLADE_PHASE_END: int = 10
+SAW_BLADE_SPAWN_TIME: float = 0.48 # seconds
 SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.2
-SECOND_SAW_BLADE_PHASE_END: int = 25
 THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
-THIRD_SAW_BLADE_PHASE_END: int = 40
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
-FOURTH_SAW_BLADE_PHASE_END: int = 60
 SAW_BLADE_PHASE_END_POINTS: int = 10
 
 # rocket phase
 ROCKET_SPAWN_TIME: float = 0.27 # seconds
-FIRST_ROCKET_PHASE_END: int = 10
 SECOND_ROCKET_PHASE_SPAWN_FACTOR: float = 1.2
-SECOND_ROCKET_PHASE_END: int = 25
 THIRD_ROCKET_PHASE_SPAWN_FACTOR: float = 1.4
-THIRD_ROCKET_PHASE_END: int = 40
 FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
-FOURTH_ROCKET_PHASE_END: int = 60
 ROCKET_PHASE_END_POINTS: int = 20
 
 # asteroid phase
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
-FIRST_ASTEROID_PHASE_END: int = 10
-SECOND_ASTEROID_PHASE_END: int = 25
-THIRD_ASTEROID_PHASE_END: int = 40
-FOURTH_ASTEROID_PHASE_END: int = 60
 ASTEROID_PHASE_END_POINTS: int = 15
 
+# spike ball phase
+SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
+SPIKE_BALL_PHASE_END_POINTS: int = 15
+
 # boss phase
-BOSS_PHASE_START_POINTS: int = 250
+BOSS_PHASE_START_POINTS: int = 500
 BOSS_KILL_POINTS: int = 150
 BOSS_DAMAGE_PER_SHOT: int = 3
 BOSS_HEALTH: int = 100
