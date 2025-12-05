@@ -12,6 +12,8 @@ FPS: Annotated[int, (25-120)] = 60
 # colors
 COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_rectangle_phase': "#000000",
+         'score_arrow_phase': "#000000",
+         'score_shadow_arrow_phase': "#FFFFFF",
          'score_icicle_phase': "#000000",
          'score_shadow_icicle_phase': "#FFFFFF",
          'score_saw_blade_phase': "#0037FF",
@@ -51,6 +53,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          '300_rectangle_shot_effect_text': '#d700ff',
          '350_rectangle_shot_effect_text': '#fff200',
          '400_rectangle_shot_effect_text': '#ff0000',
+         'arrow_shot_effect_text': '#6d423a',
          'icicle_shot_effect_text': '#70c4f5',
          'saw_blade_shot_effect_text': '#9996a2',
          'rocket_shot_effect_text': '#ea0404',
@@ -105,6 +108,7 @@ BANANA_TRAIL_LIFETIME: float = 0.4
 BACKGROUND_FRAME_INTERVALL: int = 70
 DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
 BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
+                                              'arrow': False,
                                               'icicle': False,
                                               'saw_blade': False,
                                               'rocket': False,
@@ -172,8 +176,8 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # phase probabilities
-START_PHASES: tuple[str] = ('rectangle', 'icicle')
-PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 0.6, 'icicle': 0.6, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 0.9}
+START_PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 1.0, 'arrow': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'icicle': 1.0, 'saw_blade': 1.0, 'rocket': 1.0, 'asteroid': 1.0, 'spike_ball': 1.0}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -188,6 +192,16 @@ THIRD_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
 RECTANGLE_PHASE_END_POINTS: int = 5
 
+# arrow phase
+ARROW_SUB_PHASE_DURATION: int = 10
+ARROW_SINGLES_SPAWN_TIME: float = 0.3
+ARROW_COLUMN_SPAWN_TIME: float = 2.5
+ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 50, 230, 260)
+SECOND_ARROW_PHASE_SPAWN_FACTOR: float = 1.2
+THIRD_ARROW_PHASE_SPAWN_FACTOR: float = 1.4
+FOURTH_ARROW_PHASE_SPAWN_FACTOR: float = 1.6
+ARROW_PHASE_END_POINTS: float = 10
+
 # icicle phase
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
 SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
@@ -196,7 +210,7 @@ FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 ICICLE_PHASE_END_POINTS: int = 10
 
 # saw blade phase
-SAW_BLADE_SPAWN_TIME: float = 0.48 # seconds
+SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
 SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
@@ -222,13 +236,13 @@ BOSS_PHASE_START_POINTS: int = 500
 BOSS_KILL_POINTS: int = 150
 BOSS_DAMAGE_PER_SHOT: int = 3
 BOSS_HEALTH: int = 100
-BOSS_SPEED: int = 175
+BOSS_SPEED: int = 170
 BOSS_STATE_DURATIONS: dict[str:int] = {'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 5}
-BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.3
+BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.35
 BOSS_SAW_BLADE_SPEED: int = 400
-BOSS_ASTEROID_SPAWN_DURATION: int =  0.3
+BOSS_ASTEROID_SPAWN_DURATION: int =  0.35
 BOSS_ASTEROID_SPEED: int = 300
-DARK_ENERGY_BALL_SPEED: int = 250
+DARK_ENERGY_BALL_SPEED: int = 230
 
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
@@ -244,7 +258,7 @@ KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
                                'fullscreen': pygame.K_F11}
 
 # --- CONTROLLER ---
-CONTROLLER_DEADZONE: float = 0.3
+CONTROLLER_DEADZONE: float = 0.35
 PAD_AXIS_MOVE_X = 0    # left stick horizontal
 PAD_AXIS_MOVE_Y = 1    # left stick vertical
 PAD_AXIS_SHOOT_X = 2   # right stick horizontal

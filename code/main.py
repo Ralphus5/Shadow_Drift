@@ -708,7 +708,6 @@ class Game:
         self.controller = None
         if pygame.joystick.get_count() > 0:
             self.controller = pygame.joystick.Joystick(0)
-            self.controller.init()
             print(f"Using {self.controller.get_name()}")
 
     def init_window(self):
@@ -931,6 +930,7 @@ class Game:
         # --- animated backgrounds ---
         self.backgrounds: dict = {
             'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
+            'arrow': [pygame.image.load(join(self.IMG_DIR, 'bg_arrow_phase', 'bg_arrow_phase.png')).convert_alpha()],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
             'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()],
             'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
@@ -949,6 +949,8 @@ class Game:
 
         # --- other entities ---
         self.rectangle_sprite_variants: list = [pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)]
+
+        self.arrow_image = pygame.image.load(join(self.IMG_DIR, 'arrow.png')).convert_alpha()
 
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
 
@@ -982,11 +984,12 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = random_of_selection(START_PHASES, (PHASE_PROBABILITIES[i] for i in START_PHASES)) # always start with one of these
+        self.current_phase = random_of_selection(START_PHASE_PROBABILITIES.keys(), START_PHASE_PROBABILITIES.values())
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
+        self.next_arrow_spawn_time = ARROW_COLUMN_SPAWN_TIME
         self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
         self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
         self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
@@ -1022,6 +1025,7 @@ class Game:
         self.enemy_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
         self.rectangle_sprites = pygame.sprite.Group()
+        self.arrow_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
         self.saw_blade_sprites = pygame.sprite.Group()
         self.rocket_sprites = pygame.sprite.Group()
@@ -1132,7 +1136,7 @@ class Game:
                 self.player.facing_right = False
             elif self.current_phase == 'rocket':
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
-            elif self.current_phase == 'boss':
+            elif self.current_phase in ('boss', 'icicle'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] + 200)
             else:
                 self.player.rect.center = WINDOW_CENTER
@@ -1141,6 +1145,9 @@ class Game:
             case 'rectangle':
                 self.rectangle_phase()       
                 self.spawn_fruit(dt)
+            case 'arrow':
+                self.arrow_phase()
+                self.spawn_fruit(dt, spawn_tendency=0.6)
             case 'icicle':
                 self.icicle_phase()
                 self.spawn_fruit(dt, spawn_tendency=0.5)
@@ -1195,6 +1202,52 @@ class Game:
                       speed)
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
+    def arrow_phase(self):
+        if self.play_time - getattr(self, 'arrow_sub_phase_start', -ARROW_SUB_PHASE_DURATION) >= ARROW_SUB_PHASE_DURATION:
+            self.prev_arrow_sub_phase = getattr(self, 'arrow_sub_phase', None)
+            while self.prev_arrow_sub_phase == getattr(self, 'arrow_sub_phase', None):
+                self.arrow_sub_phase = random_of_selection(('columns', 'singles'))
+            self.arrow_sub_phase_start = self.play_time
+
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = 250
+            spawn_rate_factor = 1
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = 300
+            spawn_rate_factor = SECOND_ARROW_PHASE_SPAWN_FACTOR
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = 350
+            spawn_rate_factor = THIRD_ARROW_PHASE_SPAWN_FACTOR
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = 400
+            spawn_rate_factor = FOURTH_ARROW_PHASE_SPAWN_FACTOR
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            STATS['score'] += ARROW_PHASE_END_POINTS
+            return
+
+        if self.play_time >= self.next_arrow_spawn_time:
+            match(self.arrow_sub_phase):
+                    case 'columns':
+                        height = random_of_selection(ARROW_COLUMN_SPAWN_HEIGHTS)
+                        for i in range(0, 480, 40):
+                            Arrow(self,
+                                self.LAYERS['obstacles'],
+                                (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.arrow_sprites),
+                                self.arrow_image,
+                                speed,
+                                i + height)
+                        self.next_arrow_spawn_time = self.play_time + ARROW_COLUMN_SPAWN_TIME / spawn_rate_factor
+
+                    case 'singles':
+                        Arrow(self,
+                              self.LAYERS['obstacles'],
+                              (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.arrow_sprites),
+                              self.arrow_image,
+                              speed,
+                              random_of_spectrum(0,WINDOW_HEIGHT))
+                        self.next_arrow_spawn_time = self.play_time + ARROW_SINGLES_SPAWN_TIME / spawn_rate_factor
+
     def icicle_phase(self):
         # --- choose speed and spawn rate of icicle ---
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
@@ -1227,15 +1280,19 @@ class Game:
         # --- choose speed and spawn rate of saw blade ---
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 350
+            rotation_speed = -180
             spawn_rate_factor = 1
         elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 450
+            rotation_speed = -220
             spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 550
+            rotation_speed = -270
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 650
+            rotation_speed = -320
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1248,7 +1305,8 @@ class Game:
                      self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.saw_blade_sprites),
                      self.saw_blade_image,
-                     speed)
+                     speed,
+                     rotation_speed=rotation_speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
     def rocket_phase(self):
@@ -1422,7 +1480,15 @@ class Game:
             self.stats_text = self.fonts['stats'].render(text, True, text_color)
             self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats
-        
+
+        # change opacity if player is behind score text
+        if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 20:
+            self.stats_text.set_alpha(100)
+            self.stats_text_shadow.set_alpha(0)
+        else:
+            self.stats_text.set_alpha(255)
+            self.stats_text_shadow.set_alpha(255)
+
         # draw
         self.screen.blit(self.stats_text_shadow, (22, 22))
         self.screen.blit(self.stats_text, (20, 20))

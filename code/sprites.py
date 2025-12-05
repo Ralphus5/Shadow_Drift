@@ -12,7 +12,7 @@ class Player(pygame.sprite.Sprite):
         
         # --- gameplay attributes ---
         self.is_alive = True
-        self.facing_right = True
+        self.facing_right = False if self.game.current_phase == 'arrow' else True
         self.health = 2
         self.extra_life = 0
         self.speed = DEFAULT_PLAYER_SPEED
@@ -163,8 +163,8 @@ class Player(pygame.sprite.Sprite):
             self.dash_ready = True  
 
         if self.dash_ready and self.want_dash and self.direction.length_squared() != 0:
-            self.want_dash = False
             self.dash()
+        self.want_dash = False
 
         if self.dashing and self.game.play_time - self.dash_start_time > self.dash_duration:
             self.dashing = False
@@ -174,8 +174,8 @@ class Player(pygame.sprite.Sprite):
             self.ability_ready = True
 
         if self.ability_ready and self.want_ability:
-            self.want_ability = False
             self.activate_ability()
+        self.want_ability = False
 
         if not self.can_collide and self.game.play_time - self.ability_start_time > self.ability_duration:
             self.can_collide = True
@@ -547,6 +547,14 @@ class Rectangle(Obstacle):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(-1, 0)
         self.effect_text_color = COLOR[f'{self.size[0]}_rectangle_shot_effect_text']
+
+class Arrow(Obstacle):
+    def __init__(self, game, layer, groups, image, speed, spawn_height):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(0 - self.size[0]/2, spawn_height))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(1, 0)
+        self.effect_text_color = COLOR['arrow_shot_effect_text']
 
 class Icicle(Obstacle):
     def __init__(self, game, layer, groups, image, speed):
