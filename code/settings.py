@@ -9,6 +9,9 @@ WINDOW_CENTER = (WINDOW_WIDTH/2, WINDOW_HEIGHT/2)
 BASE_RESOLUTION = (WINDOW_WIDTH, WINDOW_HEIGHT)
 FPS: Annotated[int, (25-120)] = 60
 
+# menu
+MENU_GRAVITY: int = 981
+
 # colors
 COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_rectangle_phase': "#000000",
@@ -98,7 +101,7 @@ MIN_FLICKER_INT: Annotated[int, (60-160)] = 100
 FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
 GAME_OVER_FADE_DURATION: float = 1.6
-PLAYER_EXPLOSION_SPEED: float = 0.9
+PLAYER_EXPLOSION_SPEED: float = 0.85
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
@@ -258,7 +261,7 @@ KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
                                'fullscreen': pygame.K_F11}
 
 # --- CONTROLLER ---
-CONTROLLER_DEADZONE: float = 0.35
+CONTROLLER_DEADZONE: float = 0.3
 PAD_AXIS_MOVE_X = 0    # left stick horizontal
 PAD_AXIS_MOVE_Y = 1    # left stick vertical
 PAD_AXIS_SHOOT_X = 2   # right stick horizontal

@@ -1,6 +1,7 @@
 """This file implements libraries for core scripting functionalities."""
 
 import pygame
+import pymunk
 import os
 import sys
 import json

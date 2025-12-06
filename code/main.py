@@ -7,6 +7,7 @@ class Game:
     def __init__(self):
         self.init_paths()
         self.init_pygame()
+        self.init_menu_physics()
         self.load_settings()
         self.init_window()
         self.load_sounds()
@@ -228,6 +229,8 @@ class Game:
         # --- enter actions ---
         if new == 'start':
             if old == 'game_over':
+                for sprite in self.all_sprites:
+                    if hasattr(sprite, 'body') and hasattr(sprite, 'shape'): self.menu_space.remove(sprite.body, sprite.shape) 
                 kill_sprites(self.all_sprites)
                 self.init_game_state()
                 self.init_sprites()
@@ -235,6 +238,8 @@ class Game:
 
         elif new == 'play':
             if old == 'start':
+                for sprite in self.all_sprites:
+                    if hasattr(sprite, 'body') and hasattr(sprite, 'shape'): self.menu_space.remove(sprite.body, sprite.shape) 
                 kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background])
                 self.play_start = perf_counter()
                 change_track(self, 'game_track_1')
@@ -250,6 +255,8 @@ class Game:
 
         elif new == 'stop':
             if old != 'settings':
+                self.stats_text.set_alpha(255)
+                self.stats_text_shadow.set_alpha(255)
                 pause_play_time(self)
                 if self.music_channel and self.music_channel.get_busy() and self.current_track:
                     if not getattr(self, 'music_dimmed', False):
@@ -271,6 +278,7 @@ class Game:
             self.prev_state = old
 
     def start_screen(self, dt):
+        self.menu_space.step(dt)
         self.screen.fill(COLOR['start_screen_bg'])
         scaled_pos = get_scaled_mouse_pos(self)
 
@@ -329,18 +337,19 @@ class Game:
             self.screen.blit(img, rect)
 
         if getattr(self, 'show_blueberry', False):
-            Blueberry(self,
-                      (self.all_sprites, self.secret_fruits),
-                      random_of_spectrum(300,700),
-                      None)
+            StartBlueberry(self,
+                          (self.all_sprites, self.secret_fruits),
+                          self.menu_space,
+                          pos=(random_of_spectrum(30,1250), -25))
             self.show_blueberry = False
 
         if getattr(self, 'show_icicle', False):
-            Icicle(self,
+            StartIcicle(self,
                    self.LAYERS['obstacles'],
                    (self.all_sprites, self.secret_obstacles),
                    self.icicle_image,
-                   random_of_spectrum(250,400))
+                   self.menu_space,
+                   (random_of_spectrum(50,1230), -60))
             self.show_icicle = False
 
         if getattr(self, 'secret_fruits', False):
@@ -350,6 +359,7 @@ class Game:
                 for fruit in self.secret_fruits.sprites():
                     offset = (fruit.rect.x - rect.x, fruit.rect.y - rect.y)
                     if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(fruit.image), offset):
+                        self.menu_space.remove(fruit.body, fruit.shape)
                         fruit.kill()
                         self.eat_fruit_sound.play()
 
@@ -360,9 +370,9 @@ class Game:
                 for obstacle in self.secret_obstacles.sprites():
                     offset = (obstacle.rect.x - rect.x, obstacle.rect.y - rect.y)
                     if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(obstacle.image), offset):
+                        self.menu_space.remove(obstacle.body, obstacle.shape)
                         obstacle.kill()
                         self.damage_sound.play()
-                        self.show_start_player = False
 
     def play_loop(self, dt):
         # update dt
@@ -453,6 +463,7 @@ class Game:
                     instance.draw(self.screen)
 
     def game_over_screen(self, dt):
+        self.menu_space.step(dt)
         self.screen.fill('black')
         self.screen.blit(self.text_surfaces['game_over'], self.text_rects['game_over'])
         self.game_over_secrets(dt)
@@ -479,15 +490,17 @@ class Game:
             self.show_fireball = False
             
         if getattr(self, 'show_apple', False):
-            Apple(self,
-                  (self.all_sprites, self.secret_fruits),
-                  random_of_spectrum(300,700))
+            GameOverApple(self,
+                          (self.all_sprites, self.secret_fruits),
+                          self.menu_space,
+                          (random_of_spectrum(20,1260), -25))
             self.show_apple = False
 
         if getattr(self, 'show_chili', False):
-            Chili(self,
-                  (self.all_sprites, self.secret_fruits),
-                  random_of_selection((300,700)))
+            GameOverChili(self,
+                          (self.all_sprites, self.secret_fruits),
+                          self.menu_space,
+                          (random_of_spectrum(30, 1250), -25))
             self.show_chili = False
 
         if hasattr(self, 'secret_fireballs') and self.secret_fireballs:
@@ -501,6 +514,7 @@ class Game:
                 for fruit in self.secret_fruits.sprites():
                     offset = (fruit.rect.x - self.dead_player_rect.x, fruit.rect.y - self.dead_player_rect.y)
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(fruit.image), offset):
+                        self.menu_space.remove(fruit.body, fruit.shape)
                         fruit.kill()
                         self.eat_fruit_sound.play()
 
@@ -709,6 +723,32 @@ class Game:
         if pygame.joystick.get_count() > 0:
             self.controller = pygame.joystick.Joystick(0)
             print(f"Using {self.controller.get_name()}")
+
+    def init_menu_physics(self):
+        self.menu_space = pymunk.Space()
+        self.menu_space.gravity = (0, MENU_GRAVITY)
+        
+        # --- menu floor ---
+        static = self.menu_space.static_body
+        floor_y = WINDOW_HEIGHT + 10
+        self.menu_floor = pymunk.Segment(
+            static,
+            (0, floor_y),
+            (WINDOW_WIDTH, floor_y),
+            10   # thickness of the collision edge
+        )
+        self.menu_floor.elasticity = 0.3
+        self.menu_floor.friction = 1.0
+        self.menu_space.add(self.menu_floor)
+
+        # --- walls ---
+        left_wall  = pymunk.Segment(static, (0, 0), (0, WINDOW_HEIGHT), 1)
+        right_wall = pymunk.Segment(static, (WINDOW_WIDTH, 0), (WINDOW_WIDTH, WINDOW_HEIGHT), 1)
+
+        left_wall.elasticity = right_wall.elasticity = 0.3
+        left_wall.friction = right_wall.friction = 0.7
+
+        self.menu_space.add(left_wall, right_wall)
 
     def init_window(self):
         # --- open window ---
@@ -968,6 +1008,9 @@ class Game:
                                       Chili: pygame.image.load(join(self.IMG_DIR, 'chili.png')).convert_alpha(),
                                       Grapes: pygame.image.load(join(self.IMG_DIR, 'grapes.png')).convert_alpha(),
                                       Pear: pygame.image.load(join(self.IMG_DIR, 'pear.png')).convert_alpha()}
+        self.fruit_sprite_variants[StartBlueberry] = self.fruit_sprite_variants[Blueberry]
+        self.fruit_sprite_variants[GameOverApple] = self.fruit_sprite_variants[Apple]
+        self.fruit_sprite_variants[GameOverChili] = self.fruit_sprite_variants[Chili]
         
         self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
 
@@ -1482,12 +1525,13 @@ class Game:
             self.prev_stats = self.current_stats
 
         # change opacity if player is behind score text
-        if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 20:
-            self.stats_text.set_alpha(100)
-            self.stats_text_shadow.set_alpha(0)
-        else:
-            self.stats_text.set_alpha(255)
-            self.stats_text_shadow.set_alpha(255)
+        if self.state == 'play':
+            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 20:
+                self.stats_text.set_alpha(100)
+                self.stats_text_shadow.set_alpha(0)
+            else:
+                self.stats_text.set_alpha(255)
+                self.stats_text_shadow.set_alpha(255)
 
         # draw
         self.screen.blit(self.stats_text_shadow, (22, 22))

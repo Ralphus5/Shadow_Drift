@@ -797,3 +797,117 @@ class EffectText(pygame.sprite.Sprite):
         self.image.set_alpha(max(0, min(255, alpha)))
         if t >= 1.0:
             self.kill()
+
+# --- physics objects ---
+class StartBlueberry(Blueberry):
+    def __init__(self, game, groups, space, pos):
+        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+        self.rect.center = pos
+
+        # ---- Pymunk body/shape ----     
+        mass = 1.0
+        moment = pymunk.moment_for_circle(mass, 0, 20)
+        self.body = pymunk.Body(mass, moment)
+        self.body.position = pos
+
+        self.shape = pymunk.Circle(self.body, 20)
+        self.shape.elasticity = 0.75
+        self.shape.friction = 0.4
+        self.shape.sprite_ref = self   # so handlers can find the sprite
+        space.add(self.body, self.shape)
+
+    def update(self, dt):
+        self.rect.center = self.body.position
+    
+class StartIcicle(Icicle):
+    def __init__(self, game, layer, groups, image, space, pos):
+        super().__init__(game, layer, groups, image, speed=0)
+        self.rect.center = pos
+        self.base_image = image
+        mass = 6.0
+        moment = pymunk.moment_for_poly(mass, [(-33, -60), (33, -60), (0, 70)])
+
+        self.body = pymunk.Body(mass, moment)
+        self.body.position = pos
+
+        self.shape = pymunk.Poly(self.body, [(-33, -60), (33, -60), (0, 70)])
+        self.shape.elasticity = 0.1
+        self.shape.friction = 0.6
+        self.shape.sprite_ref = self
+        space.add(self.body, self.shape)
+
+    def update(self, dt):
+        pos = self.body.position
+        angle_deg = -degrees(self.body.angle)  # minus to match screen rotation
+        rotated = pygame.transform.rotozoom(self.base_image, angle_deg, 1.0)
+
+        self.image = rotated
+        self.rect = self.image.get_frect(center=pos)
+        self.mask = pygame.mask.from_surface(self.image)
+
+class GameOverApple(Apple):
+    def __init__(self, game, groups, space, pos):
+        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+        self.rect.center = pos
+
+        # ---- Pymunk body/shape ----     
+        mass = 1.0
+        moment = pymunk.moment_for_circle(mass, 0, 17)
+        self.body = pymunk.Body(mass, moment)
+        self.body.position = pos
+
+        self.shape = pymunk.Circle(self.body, 17)
+        self.shape.elasticity = 0.6
+        self.shape.friction = 0.4
+        self.shape.sprite_ref = self   # so handlers can find the sprite
+        space.add(self.body, self.shape)
+
+    def update(self, dt):
+        self.rect.center = self.body.position
+
+class GameOverChili(Chili):
+    def __init__(self, game, groups, space, pos):
+        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+        self.rect.center = pos
+        self.base_image = self.image
+
+        # ---- Pymunk body/shape ----     
+        mass = 1.0
+        moment = pymunk.moment_for_poly(mass, [
+    (25, -35),   # top-left of chili body
+    (26, -35),    # top-right under stem
+    (10, -25),   # right shoulder
+    (8, -10),   # right mid
+    (8,  10),    # right lower curve
+    (0, 25),    # right-bottom curve
+    (-20, 30),    # bottom-left bend
+    (-6, 15),    # left lower-mid
+    (20, -10)   # left upper-mid
+])
+        self.body = pymunk.Body(mass, moment)
+        self.body.position = pos
+
+        self.shape = pymunk.Poly(self.body,[
+    (25, -35),   # top-left of chili body
+    (26, -35),    # top-right under stem
+    (10, -25),   # right shoulder
+    (8, -10),   # right mid
+    (8,  10),    # right lower curve
+    (0,  25),    # right-bottom curve
+    (-20, 30),    # bottom-left bend
+    (-6, 15),    # left lower-mid
+    (20, -10)   # left upper-mid
+])
+        self.shape.elasticity = 0.6
+        self.shape.friction = 0.4
+        self.shape.sprite_ref = self   # so handlers can find the sprite
+        space.add(self.body, self.shape)
+
+    def update(self, dt):
+        pos = self.body.position
+        angle_deg = -degrees(self.body.angle)  # minus to match screen rotation
+        rotated = pygame.transform.rotozoom(self.base_image, angle_deg, 1.0)
+
+        self.image = rotated
+        self.rect = self.image.get_frect(center=pos)
+        self.mask = pygame.mask.from_surface(self.image)
