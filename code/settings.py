@@ -151,6 +151,7 @@ SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+BUFF_END_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 
 
 # ----- GAMEPLAY -----

@@ -70,6 +70,11 @@ class Game:
                         self.show_blueberry = True
                     elif event.key == pygame.K_3:
                         self.show_icicle = True
+                    elif event.key == pygame.K_4:
+                        if not self.start_ability and getattr(self, 'show_start_player', False):
+                            self.ability_sound.play()
+                            self.start_ability = True
+                            self.start_ability_time = perf_counter()
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_start_hint = True
@@ -182,7 +187,8 @@ class Game:
 
                     if self.waiting_for_key:
                         # assign new key to the selected action
-                        KEY_BINDINGS[self.waiting_for_key] = event.key
+                        if event.key != pygame.K_ESCAPE:
+                            KEY_BINDINGS[self.waiting_for_key] = event.key
                         self.waiting_for_key = None
                         pygame.event.clear()
                         # rebuild control texts
@@ -255,6 +261,10 @@ class Game:
 
         elif new == 'stop':
             if old != 'settings':
+                self.empty_heart.set_alpha(255)
+                self.red_heart.set_alpha(255)
+                self.blue_heart.set_alpha(255)
+                self.purple_heart.set_alpha(255)
                 self.stats_text.set_alpha(255)
                 self.stats_text_shadow.set_alpha(255)
                 pause_play_time(self)
@@ -329,10 +339,23 @@ class Game:
             rect.clamp_ip(pygame.Rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT))
             self.start_player_pos = pygame.Vector2(rect.center)
 
-            # --- draw with correct facing ---
-            img = self.player_sprite_variants[2]
+            # --- adjust facing ---
+            img = self.player_sprite_variants[2].copy()
             if not self.start_player_facing_right:
                 img = pygame.transform.flip(img, True, False)
+
+            # --- use ability ---
+            if self.start_ability:
+                progress = (perf_counter() - self.start_ability_time) / self.start_ability_duration
+                progress = max(0.0, min(progress, 1.0))
+                darkness = 255 - int(255 * min(progress * PLAYER_BLACK_FADE_SPEED, 1))
+                overlay = pygame.Surface(self.player_sprite_variants[2].get_size(), pygame.SRCALPHA)
+                overlay.fill((darkness, darkness, darkness))
+                img.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+                if perf_counter() - self.start_ability_time > self.start_ability_duration:
+                    self.start_ability = False
+
+            # --- draw ---
             rect = img.get_rect(center=self.start_player_pos)
             self.screen.blit(img, rect)
 
@@ -366,7 +389,7 @@ class Game:
         if getattr(self, 'secret_obstacles', False):
             self.secret_obstacles.update(dt)
             self.secret_obstacles.draw(self.screen)
-            if getattr(self, 'show_start_player', False):
+            if getattr(self, 'show_start_player', False) and not self.start_ability:
                 for obstacle in self.secret_obstacles.sprites():
                     offset = (obstacle.rect.x - rect.x, obstacle.rect.y - rect.y)
                     if pygame.mask.from_surface(img).overlap(pygame.mask.from_surface(obstacle.image), offset):
@@ -384,6 +407,7 @@ class Game:
         self.collisions()
         self.check_record()
         self.all_sprites.draw(self.screen)
+        self.draw_hearts()
         self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
 
@@ -401,6 +425,7 @@ class Game:
 
             if not getattr(self, 'quit_prompt', False):
                 # --- display main pause menu ---
+                self.draw_hearts()
                 self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
                 self.credits_btn.update(mouse_pos, mouse_click)
                 self.credits_btn.draw(self.screen)
@@ -535,7 +560,6 @@ class Game:
                     if self.dead_player_mask.overlap(pygame.mask.from_surface(obstacle.image), offset):
                         obstacle.kill()
                         self.damage_sound.play()
-                        self.show_dead_player = False
             if getattr(self, 'secret_fireballs', False):
                 for obstacle in self.secret_obstacles.sprites():
                     if pygame.sprite.groupcollide(self.secret_obstacles, self.secret_fireballs, True, True, pygame.sprite.collide_mask):
@@ -784,6 +808,7 @@ class Game:
         self.boss_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_growl_sound.wav'))
         self.boss_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_hurt_sound.wav'))
         self.energy_ball_shot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'energy_ball_shot_sound.wav'))
+        self.buff_end_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'buff_end_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -812,6 +837,7 @@ class Game:
         self.boss_growl_sound.set_volume(BOSS_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.boss_hurt_sound.set_volume(BOSS_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.energy_ball_shot_sound.set_volume(ENERGY_BALL_SHOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.buff_end_sound.set_volume(BUFF_END_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -977,6 +1003,12 @@ class Game:
             'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
             'spike_ball': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_ball_phase', 'bg_spike_ball_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
+        
+        # --- heart images ---
+        self.empty_heart = pygame.image.load(join(self.IMG_DIR, 'empty_heart.png')).convert_alpha()
+        self.red_heart = pygame.image.load(join(self.IMG_DIR, 'red_heart.png')).convert_alpha()
+        self.blue_heart = pygame.image.load(join(self.IMG_DIR, 'blue_heart.png')).convert_alpha()
+        self.purple_heart = pygame.image.load(join(self.IMG_DIR, 'purple_heart.png')).convert_alpha()
 
         # --- player images ---
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
@@ -1048,6 +1080,11 @@ class Game:
         self.pause_start = 0.0
         self.total_paused = 0.0
         self.is_paused = False
+
+        # start player#
+        self.start_ability_time = 0.0
+        self.start_ability_duration = PLAYER_ABILITY_DURATION
+        self.start_ability = False
 
         for attr in (# reset start secrets
                      'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
@@ -1512,21 +1549,33 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
+    def draw_hearts(self):
+        self.screen.blit(self.red_heart if self.player.health > 0 else self.empty_heart, (25, 16))
+        self.screen.blit(self.blue_heart if self.player.health > 1 else self.empty_heart, (75, 16))
+        self.screen.blit(self.purple_heart if self.player.extra_life else self.empty_heart, (125, 16))
+
+        if self.state == 'play':
+            alpha = 100 if self.player.rect.top < 50 and self.player.rect.left < 200 else 255
+            self.empty_heart.set_alpha(alpha)
+            self.red_heart.set_alpha(alpha)
+            self.blue_heart.set_alpha(alpha)
+            self.purple_heart.set_alpha(alpha)
+
     def draw_score_text(self, text_color, text_shadow_color):
         '''Render text surfaces only when stats change.'''
 
         #render
-        self.current_stats = (self.player.health + self.player.extra_life, STATS['score'], STATS['record'])
+        self.current_stats = (STATS['score'], STATS['record'])
         if self.current_stats != getattr(self, 'prev_stats', None) or getattr(self, 'change_score_color', False):
             self.change_score_color = False
-            text = f"Lives: {self.player.health + self.player.extra_life}  Score: {STATS['score']}  Record: {STATS['record']}"
+            text = f"Score: {STATS['score']}  Record: {STATS['record']}"
             self.stats_text = self.fonts['stats'].render(text, True, text_color)
             self.stats_text_shadow = self.fonts['stats'].render(text, True, text_shadow_color)
             self.prev_stats = self.current_stats
 
         # change opacity if player is behind score text
         if self.state == 'play':
-            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 20:
+            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 200 and self.player.rect.right > 205:
                 self.stats_text.set_alpha(100)
                 self.stats_text_shadow.set_alpha(0)
             else:
@@ -1534,8 +1583,8 @@ class Game:
                 self.stats_text_shadow.set_alpha(255)
 
         # draw
-        self.screen.blit(self.stats_text_shadow, (22, 22))
-        self.screen.blit(self.stats_text, (20, 20))
+        self.screen.blit(self.stats_text_shadow, (200, 22))
+        self.screen.blit(self.stats_text, (200, 20))
 
 # --- Execute Lifecycle ---
 def main():

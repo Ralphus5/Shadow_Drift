@@ -138,6 +138,7 @@ class Player(pygame.sprite.Sprite):
     def update_banana_boost(self):
         if self.banana_boosted and self.game.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
             self.banana_boosted = False
+            self.game.buff_end_sound.play()
 
         if self.banana_boosted:
             self.speed = DEFAULT_PLAYER_SPEED + BANANA_SPEED_BOOST if self.health > 1 else ONE_LIFE_PLAYER_SPEED + BANANA_SPEED_BOOST
@@ -150,6 +151,7 @@ class Player(pygame.sprite.Sprite):
         
         if self.game.play_time - self.fire_power_start > FIRE_POWER_DURATION:
             self.fire_power = False
+            self.game.buff_end_sound.play()
             return
 
         if self.game.play_time - self.last_fireball > FIREBALL_SHOOT_COOLDOWN:
@@ -811,7 +813,7 @@ class StartBlueberry(Blueberry):
         self.body.position = pos
 
         self.shape = pymunk.Circle(self.body, 20)
-        self.shape.elasticity = 0.75
+        self.shape.elasticity = 0.9
         self.shape.friction = 0.4
         self.shape.sprite_ref = self   # so handlers can find the sprite
         space.add(self.body, self.shape)
@@ -849,9 +851,10 @@ class GameOverApple(Apple):
     def __init__(self, game, groups, space, pos):
         super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
         self.rect.center = pos
+        self.base_image = self.image
 
         # ---- Pymunk body/shape ----     
-        mass = 1.0
+        mass = 2.0
         moment = pymunk.moment_for_circle(mass, 0, 17)
         self.body = pymunk.Body(mass, moment)
         self.body.position = pos
@@ -863,7 +866,12 @@ class GameOverApple(Apple):
         space.add(self.body, self.shape)
 
     def update(self, dt):
-        self.rect.center = self.body.position
+        angle_deg = -degrees(self.body.angle)  # minus to match screen rotation
+        rotated = pygame.transform.rotozoom(self.base_image, angle_deg, 1.0)
+
+        self.image = rotated
+        self.rect = self.image.get_frect(center=self.body.position)
+        self.mask = pygame.mask.from_surface(self.image)
 
 class GameOverChili(Chili):
     def __init__(self, game, groups, space, pos):
@@ -872,31 +880,33 @@ class GameOverChili(Chili):
         self.base_image = self.image
 
         # ---- Pymunk body/shape ----     
-        mass = 1.0
+        mass = 0.5
         moment = pymunk.moment_for_poly(mass, [
-    (25, -35),   # top-left of chili body
-    (26, -35),    # top-right under stem
-    (10, -25),   # right shoulder
-    (8, -10),   # right mid
-    (8,  10),    # right lower curve
-    (0, 25),    # right-bottom curve
-    (-20, 30),    # bottom-left bend
-    (-6, 15),    # left lower-mid
-    (20, -10)   # left upper-mid
+    (17, -29),   # top stem
+    (15, -25),
+    (14, -10),
+    (10,  10),
+    (-3, 15),
+    (-22, 25),
+    (3, 24),
+    (14, 10),
+    (17, -10),
+    (19, -25)
 ])
         self.body = pymunk.Body(mass, moment)
         self.body.position = pos
 
         self.shape = pymunk.Poly(self.body,[
-    (25, -35),   # top-left of chili body
-    (26, -35),    # top-right under stem
-    (10, -25),   # right shoulder
-    (8, -10),   # right mid
-    (8,  10),    # right lower curve
-    (0,  25),    # right-bottom curve
-    (-20, 30),    # bottom-left bend
-    (-6, 15),    # left lower-mid
-    (20, -10)   # left upper-mid
+    (17, -29),   # top stem
+    (15, -25),
+    (14, -10),
+    (10,  10),
+    (-3, 15),
+    (-22, 25),
+    (3, 24),
+    (14, 10),
+    (17, -10),
+    (19, -25)
 ])
         self.shape.elasticity = 0.6
         self.shape.friction = 0.4
