@@ -67,14 +67,18 @@ class Game:
                             delattr(self, 'show_start_player')
                         else: self.show_start_player = True
                     elif event.key == pygame.K_2:
-                        self.show_blueberry = True
-                    elif event.key == pygame.K_3:
-                        self.show_icicle = True
-                    elif event.key == pygame.K_4:
                         if not self.start_ability and getattr(self, 'show_start_player', False):
                             self.ability_sound.play()
                             self.start_ability = True
                             self.start_ability_time = perf_counter()
+                    elif event.key == pygame.K_3:
+                        self.show_blueberry = True
+                    elif event.key == pygame.K_4:
+                        self.show_icicle = True
+                    elif event.key == pygame.K_5:
+                        kill_sprites(self.secret_fruits, space=self.menu_space)
+                    elif event.key == pygame.K_6:
+                        kill_sprites(self.secret_obstacles, space=self.menu_space)
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_start_hint = True
@@ -90,7 +94,7 @@ class Game:
             # --- play state ---
             elif self.state == 'play':
                 if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
+                    if event.key == pygame.K_ESCAPE and self.player.is_alive and self.requested_state != 'game_over':
                         self.requested_state = 'stop'
 
             # controller buttons
@@ -99,7 +103,7 @@ class Game:
                         self.player.want_dash = True
                     elif event.button == PAD_A_BUTTON:
                         self.player.want_ability = True
-                    elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
+                    elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON) and self.player.is_alive and self.requested_state != 'game_over':
                         self.requested_state = 'stop'
 
                 elif event.type == self.score_event:
@@ -155,14 +159,16 @@ class Game:
                             self.show_dead_player = False
                         else: self.show_dead_player = True
                     elif event.key == pygame.K_2:
-                        self.show_apple = True
-                    elif event.key == pygame.K_3:
-                        self.show_chili = True
-                    elif event.key == pygame.K_4:
-                        self.show_rectangle = True
-                    elif event.key == pygame.K_5:
                         if getattr(self, 'show_dead_player', False):
-                            self.show_fireball = True                    
+                            self.show_fireball = True 
+                    elif event.key == pygame.K_3:
+                        self.show_apple = True
+                    elif event.key == pygame.K_4:
+                        self.show_chili = True
+                    elif event.key == pygame.K_5:
+                        self.show_rectangle = True
+                    elif event.key == pygame.K_6:
+                        kill_sprites(self.secret_fruits, space=self.menu_space)
                     else:
                         if event.key != KEY_BINDINGS['fullscreen']:
                             self.show_game_over_hint = True
@@ -235,18 +241,14 @@ class Game:
         # --- enter actions ---
         if new == 'start':
             if old == 'game_over':
-                for sprite in self.all_sprites:
-                    if hasattr(sprite, 'body') and hasattr(sprite, 'shape'): self.menu_space.remove(sprite.body, sprite.shape) 
-                kill_sprites(self.all_sprites)
+                kill_sprites(self.all_sprites, space=self.menu_space)
                 self.init_game_state()
                 self.init_sprites()
             change_track(self, 'start_track')
 
         elif new == 'play':
             if old == 'start':
-                for sprite in self.all_sprites:
-                    if hasattr(sprite, 'body') and hasattr(sprite, 'shape'): self.menu_space.remove(sprite.body, sprite.shape) 
-                kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background])
+                kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
                 self.play_start = perf_counter()
                 change_track(self, 'game_track_1')
                 pygame.key.get_pressed()
@@ -809,6 +811,7 @@ class Game:
         self.boss_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_hurt_sound.wav'))
         self.energy_ball_shot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'energy_ball_shot_sound.wav'))
         self.buff_end_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'buff_end_sound.wav'))
+        self.boss_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_death_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -838,6 +841,7 @@ class Game:
         self.boss_hurt_sound.set_volume(BOSS_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.energy_ball_shot_sound.set_volume(ENERGY_BALL_SHOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.buff_end_sound.set_volume(BUFF_END_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.boss_death_sound.set_volume(BOSS_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -1014,7 +1018,7 @@ class Game:
         self.player_sprite_variants: dict = {1: pygame.image.load(join(self.IMG_DIR, 'player_1.png')).convert_alpha(),
                                              2: pygame.image.load(join(self.IMG_DIR, 'player_2.png')).convert_alpha(),}
         
-        self.death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'death_animation', f'explosion{i}.png')).convert_alpha() for i in range(16)]
+        self.player_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'player_death_animation', f'explosion{i}.png')).convert_alpha() for i in range(17)]
 
         # --- fireball ---
         self.fireball_image = pygame.image.load(join(self.IMG_DIR, 'fireball.png')).convert_alpha()
@@ -1046,6 +1050,8 @@ class Game:
         
         self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
 
+        self.boss_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'boss_death_animation', f'boss_death_frame{i}.png')).convert_alpha() for i in range(23)]
+
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
     def init_game_state(self):
@@ -1059,7 +1065,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = random_of_selection(START_PHASE_PROBABILITIES.keys(), START_PHASE_PROBABILITIES.values())
+        self.current_phase = 'rectangle'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1081,7 +1087,7 @@ class Game:
         self.total_paused = 0.0
         self.is_paused = False
 
-        # start player#
+        # start player
         self.start_ability_time = 0.0
         self.start_ability_duration = PLAYER_ABILITY_DURATION
         self.start_ability = False
@@ -1091,7 +1097,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'had_boss', 'boss', 'last_chili_drop'):
+                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'had_boss', 'boss', 'boss_phase_end_start', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1115,15 +1121,16 @@ class Game:
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
         # animations and UI
-        self.player_abilities = pygame.sprite.Group()
-        self.UI_texts = pygame.sprite.Group()
+        self.player_effect_sprites = pygame.sprite.Group()
+        self.boss_effect_sprites = pygame.sprite.Group()
+        self.UI_text_sprites = pygame.sprite.Group()
         self.background_sprites = pygame.sprite.Group()
         self.secret_fireballs = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
         self.secret_obstacles = pygame.sprite.Group()
 
         self.LAYERS = {'backgrounds': 1,
-                       'bosses': 2,
+                       'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
                        'fruits': 4,
                        'fireballs': 5,
@@ -1193,6 +1200,7 @@ class Game:
             self.phase_switch_sound.play()
             fade_to_black(self)
             clear_input()
+            kill_sprites(self.background_sprites)
             kill_sprites(self.enemy_sprites)
             kill_sprites(self.obstacle_sprites)
             kill_sprites(self.boss_sprites)
@@ -1211,7 +1219,7 @@ class Game:
                                                  BACKGROUND_SCROLLABILITIES[self.current_phase])
             self.change_score_color = True
             self.phase_start = self.play_time
-            if self.current_phase == 'saw_blade':
+            if self.current_phase in ('arrow', 'saw_blade'):
                 self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1])
                 self.player.facing_right = False
             elif self.current_phase == 'rocket':
@@ -1245,7 +1253,7 @@ class Game:
                 self.spawn_fruit(dt)
             case 'boss':
                 self.boss_phase()
-                self.spawn_fruit(dt, fruits=(Blueberry, Banana, Grapes))
+                self.spawn_fruit(dt, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1290,17 +1298,20 @@ class Game:
             self.arrow_sub_phase_start = self.play_time
 
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 250
+            speed = 280
             spawn_rate_factor = 1
         elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
             speed = 300
             spawn_rate_factor = SECOND_ARROW_PHASE_SPAWN_FACTOR
+            self.background.speed = 95
         elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 350
+            speed = 320
             spawn_rate_factor = THIRD_ARROW_PHASE_SPAWN_FACTOR
+            self.background.speed = 115
         elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 400
+            speed = 370
             spawn_rate_factor = FOURTH_ARROW_PHASE_SPAWN_FACTOR
+            self.background.speed = 125
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             STATS['score'] += ARROW_PHASE_END_POINTS
@@ -1312,11 +1323,11 @@ class Game:
                         height = random_of_selection(ARROW_COLUMN_SPAWN_HEIGHTS)
                         for i in range(0, 480, 40):
                             Arrow(self,
-                                self.LAYERS['obstacles'],
-                                (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.arrow_sprites),
-                                self.arrow_image,
-                                speed,
-                                i + height)
+                                  self.LAYERS['obstacles'],
+                                  (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.arrow_sprites),
+                                  self.arrow_image,
+                                  speed,
+                                  i + height)
                         self.next_arrow_spawn_time = self.play_time + ARROW_COLUMN_SPAWN_TIME / spawn_rate_factor
 
                     case 'singles':
@@ -1359,19 +1370,19 @@ class Game:
     def saw_blade_phase(self):
         # --- choose speed and spawn rate of saw blade ---
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 350
+            speed = 360
             rotation_speed = -180
             spawn_rate_factor = 1
         elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 450
+            speed = 460
             rotation_speed = -220
             spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 550
+            speed = 560
             rotation_speed = -270
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 650
+            speed = 660
             rotation_speed = -320
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
@@ -1469,19 +1480,28 @@ class Game:
             self.next_spike_ball_spawn_time = self.play_time + SPIKE_BALL_SPAWN_TIME
 
     def boss_phase(self):
+        if getattr(self, 'init_boss_phase_end', False):
+            if self.play_time - self.boss_phase_end_start > BOSS_PHASE_END_DURATION:
+                self.init_boss_phase_end = False
+                self.phase_ended = True
+                change_track(self, 'game_track_1', fade_ms=3000, loop=True)
+            return
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
-            Chili(self, (self.all_sprites, self.fruit_sprites), 200)
+            Chili(self, (self.all_sprites, self.fruit_sprites), random_of_spectrum(100,200))
             self.last_chili_drop = self.play_time
         if not getattr(self, 'boss', False):
             self.boss = Boss(self,
                              (self.all_sprites, self.enemy_sprites, self.boss_sprites))
             
-        if self.boss.is_defeated:
-            self.boss.kill()
+        if getattr(self, 'boss_defeated', False):
+            self.boss_defeated = False
             self.had_boss = True
-            change_track(self, 'game_track_1', fade_ms=2000, loop=True)
+            self.music_channel.stop()
             STATS['score'] += BOSS_KILL_POINTS
-            self.phase_ended = True
+            self.init_boss_phase_end = True
+            self.boss_phase_end_start = self.play_time
+            kill_sprites(self.boss_obstacle_sprites)
+            kill_sprites(self.obstacle_sprites)
             return
 
     def spawn_fruit(self, dt, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
@@ -1526,7 +1546,7 @@ class Game:
                 else:
                     self.player.is_alive = False
                     self.death_sound.play()
-                    PlayerDeathAnimation(self, (self.all_sprites, self.player_abilities))
+                    PlayerDeathAnimation(self, (self.all_sprites, self.player_effect_sprites))
                     self.player.kill()
 
                     for sprite in list(self.all_sprites):
@@ -1555,7 +1575,7 @@ class Game:
         self.screen.blit(self.purple_heart if self.player.extra_life else self.empty_heart, (125, 16))
 
         if self.state == 'play':
-            alpha = 100 if self.player.rect.top < 50 and self.player.rect.left < 200 else 255
+            alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 else 255
             self.empty_heart.set_alpha(alpha)
             self.red_heart.set_alpha(alpha)
             self.blue_heart.set_alpha(alpha)
@@ -1575,7 +1595,7 @@ class Game:
 
         # change opacity if player is behind score text
         if self.state == 'play':
-            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 200 and self.player.rect.right > 205:
+            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 190 and self.player.rect.right > 190:
                 self.stats_text.set_alpha(100)
                 self.stats_text_shadow.set_alpha(0)
             else:
@@ -1583,8 +1603,8 @@ class Game:
                 self.stats_text_shadow.set_alpha(255)
 
         # draw
-        self.screen.blit(self.stats_text_shadow, (200, 22))
-        self.screen.blit(self.stats_text, (200, 20))
+        self.screen.blit(self.stats_text_shadow, (190, 22))
+        self.screen.blit(self.stats_text, (190, 20))
 
 # --- Execute Lifecycle ---
 def main():

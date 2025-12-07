@@ -9,9 +9,11 @@ def clear_input():
     pygame.key.get_pressed()
     pygame.mouse.get_pressed()
 
-def kill_sprites(group, exceptions: tuple = ()):
+def kill_sprites(group, exceptions: tuple = (), space=None):
     for sprite in group:
         if sprite not in exceptions:
+            if hasattr(sprite, 'body') and hasattr(sprite, 'shape'):
+                space.remove(sprite.body, sprite.shape)
             sprite.kill()
 
 def close_game():
@@ -298,7 +300,7 @@ def print_track_volume(game):
 def print_sprite_counts(game):
     """DEBUGGING TOOL: Show count of sprites for every sprite group."""
 
-    print(f"Total Sprites: {len(game.all_sprites)} | Fruit Sprites: {len(game.fruit_sprites)} | Obstacle Sprites: {len(game.obstacle_sprites)} | Fireball Sprites: {len(game.fireball_sprites)} | UI Texts: {len(game.UI_texts)} | Player Abilities: {len(game.player_abilities)} | Background: {len(game.background_sprites)} | Player Sprite: {len(game.player_group)}")
+    print(f"Total Sprites: {len(game.all_sprites)} | Fruit Sprites: {len(game.fruit_sprites)} | Obstacle Sprites: {len(game.obstacle_sprites)} | Fireball Sprites: {len(game.fireball_sprites)} | UI Texts: {len(game.UI_text_sprites)} | Player Abilities: {len(game.player_effect_sprites)} | Background: {len(game.background_sprites)} | Player Sprite: {len(game.player_group)}")
 
 def show_rects(sprites, surf):
     """DEBUGGING TOOL: Show rectangles of sprites."""

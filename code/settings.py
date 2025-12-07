@@ -102,6 +102,7 @@ FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.85
+BOSS_EXPLOSION_SPEED: float = 0.7
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
@@ -110,14 +111,14 @@ BANANA_TRAIL_LIFETIME: float = 0.4
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
 DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
-BACKGROUND_SCROLLABILITIES: dict[str:bool] = {'rectangle': True,
-                                              'arrow': False,
-                                              'icicle': False,
-                                              'saw_blade': False,
-                                              'rocket': False,
-                                              'asteroid': False,
-                                              'spike_ball': False,
-                                              'boss': False}
+BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
+                                              'arrow': 'left',
+                                              'icicle': None,
+                                              'saw_blade': None,
+                                              'rocket': None,
+                                              'asteroid': None,
+                                              'spike_ball': None,
+                                              'boss': None}
 
 # ----- AUDIO -----
 # user volume settings
@@ -131,7 +132,7 @@ START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
 GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
-BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
+BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -152,6 +153,7 @@ BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
 BUFF_END_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+BOSS_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 
 # ----- GAMEPLAY -----
@@ -166,22 +168,21 @@ PLAYER_ABILITY_DURATION: float = 1.6 # seconds
 PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
-DASH_COOLDOWN: float = 0.3 # seconds
+DASH_COOLDOWN: float = 0.25 # seconds
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 5.00
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1, 'pear': 0.1}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
-BANANA_BOOST_DURATION: float = 20.0
+BANANA_BOOST_DURATION: float = 25.0
 FIRE_POWER_DURATION: float = 25.0
 FIREBALL_SHOOT_COOLDOWN: float = 0.6
 FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # phase probabilities
-START_PHASE_PROBABILITIES: dict[str:float] = {'rectangle': 1.0, 'arrow': 1.0}
-PHASE_PROBABILITIES: dict[str:float] = {'icicle': 1.0, 'saw_blade': 1.0, 'rocket': 1.0, 'asteroid': 1.0, 'spike_ball': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -200,7 +201,7 @@ RECTANGLE_PHASE_END_POINTS: int = 5
 ARROW_SUB_PHASE_DURATION: int = 10
 ARROW_SINGLES_SPAWN_TIME: float = 0.3
 ARROW_COLUMN_SPAWN_TIME: float = 2.5
-ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 50, 230, 260)
+ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 SECOND_ARROW_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ARROW_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_ARROW_PHASE_SPAWN_FACTOR: float = 1.6
@@ -238,15 +239,18 @@ SPIKE_BALL_PHASE_END_POINTS: int = 15
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500
 BOSS_KILL_POINTS: int = 150
-BOSS_DAMAGE_PER_SHOT: int = 3
-BOSS_HEALTH: int = 100
-BOSS_SPEED: int = 170
+BOSS_DAMAGE_PER_SHOT: int = 1
+BOSS_HEALTH: int = 35
+BOSS_SPEED: int = 180
 BOSS_STATE_DURATIONS: dict[str:int] = {'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 5}
-BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.35
-BOSS_SAW_BLADE_SPEED: int = 400
-BOSS_ASTEROID_SPAWN_DURATION: int =  0.35
-BOSS_ASTEROID_SPEED: int = 300
-DARK_ENERGY_BALL_SPEED: int = 230
+BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.4
+BOSS_SAW_BLADE_SPEED: int = 380
+BOSS_ASTEROID_SPAWN_DURATION: int =  0.4
+BOSS_ASTEROID_SPEED: int = 280
+DARK_ENERGY_BALL_SPEED: int = 220
+DART_ENERGY_BALL_LIFE_TIME: float = 6.0 # seconds
+BOSS_PHASE_END_DURATION: float = 3.0 # seconds
+
 
 # --- DEFAULT KEY BINDINGS ---
 KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,

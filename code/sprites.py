@@ -48,11 +48,11 @@ class Player(pygame.sprite.Sprite):
 
         # --- glow sprite ---
         self.glow_sprite = PlayerGlow(self.game,
-                   (self.game.all_sprites, self.game.player_abilities))
+                   (self.game.all_sprites, self.game.player_effect_sprites))
         
         # --- fire outline ---
         self.fire_outline_sprite = PlayerFireOutline(self.game,
-                                                     (self.game.all_sprites, self.game.player_abilities))
+                                                     (self.game.all_sprites, self.game.player_effect_sprites))
 
         # --- motion setup ---
         self.direction = pygame.Vector2()
@@ -216,7 +216,7 @@ class Player(pygame.sprite.Sprite):
             shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
             pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
             shadow.set_alpha(100)
-            PlayerBananaTrail(self.game, (self.game.all_sprites, self.game.player_abilities), shadow, self.rect.center)
+            PlayerBananaTrail(self.game, (self.game.all_sprites, self.game.player_effect_sprites), shadow, self.rect.center)
 
         # --- ability and iframes ---
         if not self.can_collide or (self.game.play_time - self.dash_start_time < self.dash_duration and self.game.play_time > 1):
@@ -319,12 +319,12 @@ class PlayerDeathAnimation(pygame.sprite.Sprite):
         self._layer = self.game.LAYERS['player_death_animation']
         super().__init__(groups)
         self.frame_index = 0
-        self.image = self.game.death_animation_frames[0]
+        self.image = self.game.player_death_animation_frames[0]
         self.rect = self.image.get_frect(center=self.game.player.rect.center)
 
     def update(self, dt):
-        if self.frame_index < len(self.game.death_animation_frames):
-            self.image = self.game.death_animation_frames[int(self.frame_index)]
+        if self.frame_index <= len(self.game.player_death_animation_frames):
+            self.image = self.game.player_death_animation_frames[int(self.frame_index)]
             if not self.game.player.facing_right:
                 self.image = pygame.transform.flip(self.image, True, False)
             self.frame_index += PLAYER_EXPLOSION_SPEED 
@@ -394,13 +394,13 @@ class AnimatedBackground(pygame.sprite.Sprite):
         self._layer = self.game.LAYERS['backgrounds']
         super().__init__(groups)
         self.frames = frames
+        self.scroll = scroll
         self.index = 0
         self.timer = 0
         self.interval = interval
         self.image = self.frames[self.index]
-        self.rect = self.image.get_rect(topleft=(0, 0))
+        self.rect = self.image.get_rect(topleft=(-WINDOW_WIDTH,0) if self.scroll == 'right' else (0, 0))
         self.speed = DEFAULT_BACKGROUND_SCROLL_SPEED
-        self.scroll = scroll
 
     def update(self, dt):
         self.timer += dt * 1000
@@ -409,10 +409,14 @@ class AnimatedBackground(pygame.sprite.Sprite):
             self.index = (self.index + 1) % len(self.frames)
             self.image = self.frames[self.index]
 
-        if self.scroll:
-            self.rect.centerx += dt * self.speed * -1
+        if self.scroll == 'right':
+            self.rect.centerx -= dt * self.speed
             if self.rect.centerx <= 0:
                 self.rect.topleft = (0,0)
+        elif self.scroll == 'left':
+            self.rect.centerx += dt * self.speed
+            if self.rect.centerx >= WINDOW_WIDTH:
+                self.rect.topright = (WINDOW_WIDTH,0)
 
 # --- fruits ---
 class Fruit(pygame.sprite.Sprite):
@@ -442,7 +446,7 @@ class Fruit(pygame.sprite.Sprite):
         if key in messages:
             text, color_key = messages[key]
             EffectText(self.game,
-                       (self.game.all_sprites, self.game.UI_texts),
+                       (self.game.all_sprites, self.game.UI_text_sprites),
                        text,
                        font,
                        COLOR[color_key],
@@ -496,7 +500,7 @@ class Pear(Fruit):
 
     def apply_effect(self):
         for sprite in self.game.obstacle_sprites:
-            EffectText(self.game, (self.game.all_sprites, self.game.UI_texts), "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
+            EffectText(self.game, (self.game.all_sprites, self.game.UI_text_sprites), "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
             self.kill()
             sprite.kill()
             STATS['score'] += 1
@@ -513,7 +517,7 @@ class Obstacle(pygame.sprite.Sprite):
 
     def handle_getting_shot(self):
         if self not in self.game.boss_obstacle_sprites:
-            EffectText(self.game, (self.game.all_sprites, self.game.UI_texts), f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
+            EffectText(self.game, (self.game.all_sprites, self.game.UI_text_sprites), f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
             STATS['score'] += POINTS_FOR_OBSTACLE_SHOOT
         self.game.eat_fruit_sound.play()
         self.kill()
@@ -616,7 +620,7 @@ class Boss(pygame.sprite.Sprite):
         super().__init__(groups)
         self.health = BOSS_HEALTH
         self.speed = BOSS_SPEED
-        self.is_defeated = False
+        self.speed_during_summon = 80
         self.image = self.game.boss_image
         self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
         self.mask = pygame.mask.from_surface(self.image)
@@ -639,8 +643,10 @@ class Boss(pygame.sprite.Sprite):
     def take_damage(self):
         self.game.boss_hurt_sound.play()
         self.health -= BOSS_DAMAGE_PER_SHOT
-        self.hurting = True
-        self.hurting_start = self.game.play_time
+        if self.health > 0:
+            self.hurting = True
+            self.hurting_start = self.game.play_time
+        else: self.game.boss_death_sound.play(); BossDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()
 
     def update_appearance(self):
         # adjust facing
@@ -677,15 +683,10 @@ class Boss(pygame.sprite.Sprite):
             # additively brighten only the masked area
             self.image.blit(flash_surf, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
 
-    def handle_death(self):
-        if self.health <= 0:
-            self.is_defeated = True
-
     def update(self, dt):
         self.track_player()
         self.set_state(dt)
         self.update_appearance()
-        self.handle_death()
 
     # states/phases
     def set_state(self, dt):
@@ -702,9 +703,9 @@ class Boss(pygame.sprite.Sprite):
             case 'follow_player':
                 self.follow_player(dt)
             case 'summon_saw_blades':
-                self.summon_saw_blades()
+                self.summon_saw_blades(dt)
             case 'summon_asteroids':
-                self.summon_asteroids()
+                self.summon_asteroids(dt)
             case 'shoot_energy_ball':
                 self.shoot_energy_ball()
 
@@ -712,15 +713,19 @@ class Boss(pygame.sprite.Sprite):
         if self.distance_to_player.length_squared() > 5:
             self.rect.center += dt * self.speed * self.direction
 
-    def summon_saw_blades(self):
+    def summon_saw_blades(self, dt):
         if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= BOSS_SAW_BLADE_SPAWN_DURATION:
             SawBlade(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.saw_blade_image, BOSS_SAW_BLADE_SPEED, spawn=(random_of_selection(('left', 'right'))))
             self.last_saw_blade_summon = self.game.play_time
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed_during_summon * self.direction
 
-    def summon_asteroids(self):
+    def summon_asteroids(self, dt):
         if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= BOSS_ASTEROID_SPAWN_DURATION:
             Asteroid(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.asteroid_image, BOSS_ASTEROID_SPEED, rotation_speed=0)
             self.last_asteroid_summon = self.game.play_time
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed_during_summon * self.direction
 
     def shoot_energy_ball(self):
         if not getattr(self, 'energy_ball', None):
@@ -756,7 +761,7 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         self.rect.center += dt * self.speed * self.direction
 
     def destroy(self):
-        if self.game.play_time - self.creation_time > 8:
+        if self.game.play_time - self.creation_time > DART_ENERGY_BALL_LIFE_TIME:
             self.game.boss.energy_ball = None
             self.game.energy_ball_shot_sound.play()
             self.kill()
@@ -764,6 +769,25 @@ class DarkEnergyBall(pygame.sprite.Sprite):
     def update(self, dt):
         self.home_in_on_player(dt)
         self.destroy()
+
+class BossDeathAnimation(pygame.sprite.Sprite):
+    def __init__(self, game, groups):
+        self.game = game
+        self._layer = self.game.LAYERS['boss_death_animation']
+        super().__init__(groups)
+        self.frame_index = 0
+        self.image = self.game.boss_death_animation_frames[0]
+        self.rect = self.image.get_frect(center=self.game.boss.rect.center)
+
+    def update(self, dt):
+        if self.frame_index <= len(self.game.boss_death_animation_frames):
+            self.image = self.game.boss_death_animation_frames[int(self.frame_index)]
+            if self.game.boss.distance_to_player[0] < 0:
+                self.image = pygame.transform.flip(self.image, True, False)
+            self.frame_index += BOSS_EXPLOSION_SPEED
+        else:
+            self.game.boss_defeated = True
+            self.kill()
 
 # --- effects ---
 class EffectText(pygame.sprite.Sprite):
