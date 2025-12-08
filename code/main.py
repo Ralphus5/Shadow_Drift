@@ -90,6 +90,7 @@ class Game:
                     elif event.button == PAD_HOME_BUTTON:
                         save_game(self)
                         close_game()
+                    else: self.show_start_hint = True
 
             # --- play state ---
             elif self.state == 'play':
@@ -180,6 +181,7 @@ class Game:
                     elif event.button == PAD_HOME_BUTTON:
                         save_game(self)
                         close_game()
+                    else: self.show_game_over_hint = True
 
             # --- settings state ---
             elif self.state == 'settings':
@@ -263,12 +265,6 @@ class Game:
 
         elif new == 'stop':
             if old != 'settings':
-                self.empty_heart.set_alpha(255)
-                self.red_heart.set_alpha(255)
-                self.blue_heart.set_alpha(255)
-                self.purple_heart.set_alpha(255)
-                self.stats_text.set_alpha(255)
-                self.stats_text_shadow.set_alpha(255)
                 pause_play_time(self)
                 if self.music_channel and self.music_channel.get_busy() and self.current_track:
                     if not getattr(self, 'music_dimmed', False):
@@ -409,6 +405,7 @@ class Game:
         self.collisions()
         self.check_record()
         self.all_sprites.draw(self.screen)
+        self.draw_boss_health_bar()
         self.draw_hearts()
         self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
@@ -418,12 +415,12 @@ class Game:
             mouse_pos = get_scaled_mouse_pos(self)
             mouse_click = pygame.mouse.get_pressed()[0]
             self.all_sprites.draw(self.screen)
+            self.draw_boss_health_bar()
 
             # --- dim effect ---
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
             dim.fill((0, 0, 0, 140))
             self.screen.blit(dim, (0, 0))
-            
 
             if not getattr(self, 'quit_prompt', False):
                 # --- display main pause menu ---
@@ -755,26 +752,20 @@ class Game:
         self.menu_space.gravity = (0, MENU_GRAVITY)
         
         # --- menu floor ---
-        static = self.menu_space.static_body
         floor_y = WINDOW_HEIGHT + 10
         self.menu_floor = pymunk.Segment(
-            static,
+            self.menu_space.static_body,
             (0, floor_y),
             (WINDOW_WIDTH, floor_y),
-            10   # thickness of the collision edge
-        )
-        self.menu_floor.elasticity = 0.3
-        self.menu_floor.friction = 1.0
-        self.menu_space.add(self.menu_floor)
-
+            10)   # thickness of the collision edge
+        
         # --- walls ---
-        left_wall  = pymunk.Segment(static, (0, 0), (0, WINDOW_HEIGHT), 1)
-        right_wall = pymunk.Segment(static, (WINDOW_WIDTH, 0), (WINDOW_WIDTH, WINDOW_HEIGHT), 1)
+        left_wall  = pymunk.Segment(self.menu_space.static_body, (0, 0), (0, WINDOW_HEIGHT), 1)
+        right_wall = pymunk.Segment(self.menu_space.static_body, (WINDOW_WIDTH, 0), (WINDOW_WIDTH, WINDOW_HEIGHT), 1)
 
-        left_wall.elasticity = right_wall.elasticity = 0.3
-        left_wall.friction = right_wall.friction = 0.7
-
-        self.menu_space.add(left_wall, right_wall)
+        self.menu_floor.elasticity = left_wall.elasticity = right_wall.elasticity = 0.3
+        self.menu_floor.friction = left_wall.friction = right_wall.friction = 0.7
+        self.menu_space.add(self.menu_floor, left_wall, right_wall)
 
     def init_window(self):
         # --- open window ---
@@ -862,13 +853,14 @@ class Game:
                             'credits_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), CREDITS_NAME_FONT_SIZE),
                             'quit_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
                             'play_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
-                            'settings_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE)}
+                            'settings_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
+                            'boss_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), BOSS_NAME_FONT_SIZE)}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
-                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: ENTER\nClose game: ESC", True, COLOR['game_over_text']),
-                                    'start_hint': self.fonts['start_hint'].render("Start game: RETURN\nClose game: ESC", True, COLOR['start_hint']),
+                                    'game_over_hint': self.fonts['game_over_hint'].render("Play again: " + ("START" if self.controller else "ENTER") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['game_over_text']),
+                                    'start_hint': self.fonts['start_hint'].render("Start game: " + ("START" if self.controller else "RETURN") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['start_hint']),
                                     'credits_hint': self.fonts['credits_hint'].render("Press ESC or RETURN", True, COLOR['credits_hint']),
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
@@ -876,10 +868,13 @@ class Game:
                                     'quit_prompt_heading': self.fonts['quit_prompt_heading'].render("Close the game without saving?", True, COLOR['quit_prompt_heading']),
                                     'quit_icon_text': self.fonts['quit_icon_text'].render("Quit", True, COLOR['quit_icon_text']),
                                     'play_icon_text': self.fonts['quit_icon_text'].render("Continue", True, COLOR['play_icon_text']),
-                                    'settings_icon_text': self.fonts['quit_icon_text'].render("Settings", True, COLOR['settings_icon_text'])}
+                                    'settings_icon_text': self.fonts['quit_icon_text'].render("Settings", True, COLOR['settings_icon_text']),
+                                    'boss_name': self.fonts['boss_name'].render("Shadow Guardian", True, COLOR['boss_name']),
+                                    'boss_name_shadow': self.fonts['boss_name'].render("Shadow Guardian", True, COLOR['boss_name_shadow'])}
         
         # credits title
         self.credits_title_surf = self.text_surfaces['title'].copy()
+
 
         # --- define non-clickable texts positions ---
         self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
@@ -893,7 +888,9 @@ class Game:
                                  'quit_prompt_heading': self.text_surfaces['quit_prompt_heading'].get_rect(center=(QUIT_RECT_WIDTH/2, QUIT_RECT_HEIGHT/8)),
                                  'quit_icon_text': self.text_surfaces['quit_icon_text'].get_rect(center=(WINDOW_WIDTH - 70, 130)),
                                  'play_icon_text': self.text_surfaces['play_icon_text'].get_rect(center=(WINDOW_WIDTH - 170, 130)),
-                                 'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130))}
+                                 'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130)),
+                                 'boss_name': self.text_surfaces['boss_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 52 - BOSS_HEALTH_BAR_HEIGHT)),
+                                 'boss_name_shadow': self.text_surfaces['boss_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 50 - BOSS_HEALTH_BAR_HEIGHT))}
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
@@ -1490,8 +1487,7 @@ class Game:
             Chili(self, (self.all_sprites, self.fruit_sprites), random_of_spectrum(100,200))
             self.last_chili_drop = self.play_time
         if not getattr(self, 'boss', False):
-            self.boss = Boss(self,
-                             (self.all_sprites, self.enemy_sprites, self.boss_sprites))
+            self.boss = ShadowGuardian(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
             
         if getattr(self, 'boss_defeated', False):
             self.boss_defeated = False
@@ -1569,17 +1565,106 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
+    def draw_boss_health_bar(self):
+        if self.current_phase != 'boss':
+            return
+
+        # --- animate display health ---
+        if self.boss.current_health > self.boss.target_health:
+            self.boss.current_health = max(self.boss.target_health,
+                self.boss.current_health - BOSS_HEALTH_CHANGE_SPEED)
+                
+        # shorthand
+        current = self.boss.current_health
+        target  = self.boss.target_health
+        ratio   = self.boss.health_ratio
+
+        current_width = current / ratio
+        target_width  = target / ratio
+
+        bar_x = WINDOW_CENTER[0] - BOSS_HEALTH_BAR_LENGTH / 2
+        bar_y = WINDOW_HEIGHT - 50
+
+        # --- create surface for the whole bar ---
+        bar_surface = pygame.Surface((BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT),
+            pygame.SRCALPHA)
+
+        # --- base bar: REAL health ---
+        health_bar_rect = pygame.Rect(
+            0,
+            0,
+            target_width,
+            BOSS_HEALTH_BAR_HEIGHT)
+            
+        pygame.draw.rect(
+            bar_surface,
+            COLOR['boss_health_bar'],
+            health_bar_rect,
+            border_radius=2)
+
+        # --- damage/transition bar ---
+        if current_width > target_width:
+            transition_width = current_width - target_width
+            transition_rect = pygame.Rect(
+                target_width,
+                0,
+                transition_width,
+                BOSS_HEALTH_BAR_HEIGHT)
+            
+            pygame.draw.rect(
+                bar_surface,
+                COLOR['boss_health_bar_damage'],
+                transition_rect,
+                border_radius=2)
+
+        # --- bar border ---
+        border_rect = pygame.Rect(
+            0,
+            0,
+            BOSS_HEALTH_BAR_LENGTH,
+            BOSS_HEALTH_BAR_HEIGHT)
+        
+        pygame.draw.rect(
+            bar_surface,
+            COLOR['boss_health_bar_border'],
+            border_rect,
+            width=4,
+            border_radius=2)
+
+        # --- adjust transparency ---
+        bar_world_rect = pygame.Rect(
+            bar_x,
+            bar_y,
+            BOSS_HEALTH_BAR_LENGTH,
+            BOSS_HEALTH_BAR_HEIGHT)
+        
+        # boss name
+        boss_name_shadow_surf = self.text_surfaces['boss_name_shadow'].copy()
+        boss_name_surf = self.text_surfaces['boss_name'].copy()
+
+        if self.player.rect.colliderect(bar_world_rect):
+            bar_surface.set_alpha(100) 
+        else: bar_surface.set_alpha(255)
+        if self.player.rect.colliderect(self.text_rects['boss_name']):
+            boss_name_shadow_surf.set_alpha(100)
+            boss_name_surf.set_alpha(100)
+        else: boss_name_shadow_surf.set_alpha(255); boss_name_surf.set_alpha(255)
+
+        # --- draw bar surface and name ---
+        self.screen.blit(bar_surface, (bar_x, bar_y))
+        self.screen.blit(boss_name_shadow_surf, self.text_rects['boss_name_shadow'])
+        self.screen.blit(boss_name_surf, self.text_rects['boss_name'])
+
     def draw_hearts(self):
+        alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 and self.state == 'play' else 255
+        self.empty_heart.set_alpha(alpha)
+        self.red_heart.set_alpha(alpha)
+        self.blue_heart.set_alpha(alpha)
+        self.purple_heart.set_alpha(alpha)
+
         self.screen.blit(self.red_heart if self.player.health > 0 else self.empty_heart, (25, 16))
         self.screen.blit(self.blue_heart if self.player.health > 1 else self.empty_heart, (75, 16))
         self.screen.blit(self.purple_heart if self.player.extra_life else self.empty_heart, (125, 16))
-
-        if self.state == 'play':
-            alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 else 255
-            self.empty_heart.set_alpha(alpha)
-            self.red_heart.set_alpha(alpha)
-            self.blue_heart.set_alpha(alpha)
-            self.purple_heart.set_alpha(alpha)
 
     def draw_score_text(self, text_color, text_shadow_color):
         '''Render text surfaces only when stats change.'''
@@ -1594,13 +1679,12 @@ class Game:
             self.prev_stats = self.current_stats
 
         # change opacity if player is behind score text
-        if self.state == 'play':
-            if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 190 and self.player.rect.right > 190:
-                self.stats_text.set_alpha(100)
-                self.stats_text_shadow.set_alpha(0)
-            else:
-                self.stats_text.set_alpha(255)
-                self.stats_text_shadow.set_alpha(255)
+        if self.player.rect.top < self.stats_text.get_height() + 20 and self.player.rect.left < self.stats_text.get_width() + 190 and self.player.rect.right > 190 and self.state == 'play':
+            self.stats_text.set_alpha(100)
+            self.stats_text_shadow.set_alpha(0)
+        else:
+            self.stats_text.set_alpha(255)
+            self.stats_text_shadow.set_alpha(255)
 
         # draw
         self.screen.blit(self.stats_text_shadow, (190, 22))

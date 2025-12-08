@@ -611,14 +611,17 @@ class SpikeBall(RotatingObstacle):
         self.effect_text_color = COLOR['spike_ball_shot_effect_text']
 
 # --- boss related ---
-class Boss(pygame.sprite.Sprite):
+class ShadowGuardian(pygame.sprite.Sprite):
     STATE_DURATIONS = BOSS_STATE_DURATIONS
 
     def __init__(self, game, groups):
         self.game = game
         self._layer = self.game.LAYERS['bosses']
         super().__init__(groups)
-        self.health = BOSS_HEALTH
+        self.max_health = BOSS_HEALTH
+        self.current_health = self.max_health
+        self.target_health = self.max_health
+        self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
         self.speed = BOSS_SPEED
         self.speed_during_summon = 80
         self.image = self.game.boss_image
@@ -642,8 +645,8 @@ class Boss(pygame.sprite.Sprite):
 
     def take_damage(self):
         self.game.boss_hurt_sound.play()
-        self.health -= BOSS_DAMAGE_PER_SHOT
-        if self.health > 0:
+        self.target_health -= BOSS_DAMAGE_PER_SHOT
+        if self.target_health > 0:
             self.hurting = True
             self.hurting_start = self.game.play_time
         else: self.game.boss_death_sound.play(); BossDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()

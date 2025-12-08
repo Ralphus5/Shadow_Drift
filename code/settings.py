@@ -68,7 +68,12 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'credits_name': "#FFFFFF",
          'quit_icon_text': "#FB0000",
          'play_icon_text': "#00D512",
-         'settings_icon_text':"#7E7E7E",}
+         'settings_icon_text':"#7E7E7E",
+         'boss_health_bar': "#DD00FF",
+         'boss_health_bar_damage': "#FFF700",
+         'boss_health_bar_border': "#444444",
+         'boss_name': "#7B2087",
+         'boss_name_shadow': "#DD00FF"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -87,11 +92,12 @@ FRUIT_PICKUP_MESSAGES_FONT_SIZE: int = 35
 CREDITS_HEADER_FONT_SIZE: int = 70
 CREDITS_NAME_FONT_SIZE: int = 45
 ICON_TEXTS_FONT_SIZE: int = 20
+BOSS_NAME_FONT_SIZE: int = 50
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
 QUIT_RECT_HEIGHT: int = 330
-QUIT_RECT_ROUNDING: int = 8
+QUIT_RECT_ROUNDING: int = 5
 QUIT_RECT_OUTLINE_THICKNESS: int = 4
 
 # animations
@@ -238,18 +244,21 @@ SPIKE_BALL_PHASE_END_POINTS: int = 15
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500
-BOSS_KILL_POINTS: int = 150
+BOSS_KILL_POINTS: int = 200
 BOSS_DAMAGE_PER_SHOT: int = 1
 BOSS_HEALTH: int = 35
 BOSS_SPEED: int = 180
 BOSS_STATE_DURATIONS: dict[str:int] = {'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 5}
 BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.4
-BOSS_SAW_BLADE_SPEED: int = 380
+BOSS_SAW_BLADE_SPEED: int = 360
 BOSS_ASTEROID_SPAWN_DURATION: int =  0.4
-BOSS_ASTEROID_SPEED: int = 280
+BOSS_ASTEROID_SPEED: int = 240
 DARK_ENERGY_BALL_SPEED: int = 220
 DART_ENERGY_BALL_LIFE_TIME: float = 6.0 # seconds
 BOSS_PHASE_END_DURATION: float = 3.0 # seconds
+BOSS_HEALTH_BAR_HEIGHT: int = 30
+BOSS_HEALTH_BAR_LENGTH: int = 900
+BOSS_HEALTH_CHANGE_SPEED: float = 0.06
 
 
 # --- DEFAULT KEY BINDINGS ---
