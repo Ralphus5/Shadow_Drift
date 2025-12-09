@@ -996,9 +996,10 @@ class Game:
 
         # --- animated backgrounds ---
         self.backgrounds: dict = {
-            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(11)],
+            'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(12)],
             'arrow': [pygame.image.load(join(self.IMG_DIR, 'bg_arrow_phase', 'bg_arrow_phase.png')).convert_alpha()],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
+            'jellyfish': [pygame.image.load(join(self.IMG_DIR, 'bg_jellyfish_phase', 'bg_jellyfish_phase.png')).convert_alpha()],
             'saw_blade': [pygame.image.load(join(self.IMG_DIR, 'bg_saw_blade_phase', 'bg_saw_blade_phase.png')).convert_alpha()],
             'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
             'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
@@ -1026,6 +1027,8 @@ class Game:
         self.arrow_image = pygame.image.load(join(self.IMG_DIR, 'arrow.png')).convert_alpha()
 
         self.icicle_image = pygame.image.load(join(self.IMG_DIR, 'icicle.png')).convert_alpha()
+
+        self.jellyfish_frames = [pygame.image.load(join(self.IMG_DIR, 'jellyfish', f'jellyfish{i}.png')).convert_alpha() for i in range(21)]
 
         self.saw_blade_image = pygame.image.load(join(self.IMG_DIR, 'saw_blade.png')).convert_alpha()
 
@@ -1069,6 +1072,7 @@ class Game:
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
         self.next_arrow_spawn_time = ARROW_COLUMN_SPAWN_TIME
         self.next_icicle_spawn_time = ICICLE_SPAWN_TIME
+        self.next_jellyfish_spawn_time = JELLYFISH_SPAWN_TIME
         self.next_saw_blade_spawn_time = SAW_BLADE_SPAWN_TIME
         self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
         self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
@@ -1110,6 +1114,7 @@ class Game:
         self.rectangle_sprites = pygame.sprite.Group()
         self.arrow_sprites = pygame.sprite.Group()
         self.icicle_sprites = pygame.sprite.Group()
+        self.jellyfish_sprites = pygame.sprite.Group()
         self.saw_blade_sprites = pygame.sprite.Group()
         self.rocket_sprites = pygame.sprite.Group()
         self.asteroid_sprites = pygame.sprite.Group()
@@ -1219,9 +1224,9 @@ class Game:
             if self.current_phase in ('arrow', 'saw_blade'):
                 self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1])
                 self.player.facing_right = False
-            elif self.current_phase == 'rocket':
+            elif self.current_phase in ('rocket', 'jellyfish'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
-            elif self.current_phase in ('boss', 'icicle'):
+            elif self.current_phase in ('boss', 'icicle', ):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] + 200)
             else:
                 self.player.rect.center = WINDOW_CENTER
@@ -1236,6 +1241,9 @@ class Game:
             case 'icicle':
                 self.icicle_phase()
                 self.spawn_fruit(dt, spawn_tendency=0.5)
+            case 'jellyfish':
+                self.jellyfish_phase()
+                self.spawn_fruit(dt, speed_tendency=0.05)
             case 'saw_blade':
                 self.saw_blade_phase()
                 self.spawn_fruit(dt, spawn_tendency=0.65)
@@ -1356,13 +1364,35 @@ class Game:
             return
 
         # --- spawn icicle ---
-        if self.play_time >= self.next_icicle_spawn_time:
+        if self.play_time >= self.next_icicle_spawn_time and self.play_time - self.phase_start > 1:
             Icicle(self,
                    self.LAYERS['obstacles'],
                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.icicle_sprites),
                    self.icicle_image,
                    speed)
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
+
+    def jellyfish_phase(self):
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = 150
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = 180
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = 210
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = 240
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            STATS['score'] += JELLYFISH_PHASE_END_POINTS
+            return
+
+        if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > 1:
+            Jellyfish(self,
+                      self.LAYERS['obstacles'],
+                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.jellyfish_sprites),
+                      self.jellyfish_frames,
+                      speed)
+            self.next_jellyfish_spawn_time = self.play_time + JELLYFISH_SPAWN_TIME
 
     def saw_blade_phase(self):
         # --- choose speed and spawn rate of saw blade ---
@@ -1388,7 +1418,7 @@ class Game:
             return
 
         # --- spawn saw blade ---
-        if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 2:
+        if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 1.5:
             SawBlade(self,
                      self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.saw_blade_sprites),
@@ -1465,7 +1495,7 @@ class Game:
             return
 
         # --- spawn spike ball ---
-        if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > 2:
+        if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > 1:
             SpikeBall(self,
                       self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_ball_sprites),

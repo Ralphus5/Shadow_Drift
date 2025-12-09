@@ -212,11 +212,12 @@ class Player(pygame.sprite.Sprite):
 
         # --- banana trail ---
         if self.banana_boosted and self.direction.length_squared() > 0:
-            w, h = self.image.get_size()
-            shadow = pygame.Surface((w-25, h-25), pygame.SRCALPHA)
-            pygame.draw.rect(shadow, COLOR['blue_banana_trail' if self.health > 1 else 'red_banana_trail'], shadow.get_rect(), border_radius=18)
-            shadow.set_alpha(100)
-            PlayerBananaTrail(self.game, (self.game.all_sprites, self.game.player_effect_sprites), shadow, self.rect.center)
+            PlayerBananaTrail(
+                self.game,
+                (self.game.all_sprites, self.game.player_effect_sprites),
+                self.rect.center,
+            )
+
 
         # --- ability and iframes ---
         if not self.can_collide or (self.game.play_time - self.dash_start_time < self.dash_duration and self.game.play_time > 1):
@@ -333,20 +334,76 @@ class PlayerDeathAnimation(pygame.sprite.Sprite):
             self.kill()
 
 class PlayerBananaTrail(pygame.sprite.Sprite):
-    def __init__(self, game, groups, image, pos, lifetime=BANANA_TRAIL_LIFETIME):
+    BLUE_SURF = None
+    RED_SURF = None
+
+    def __init__(self, game, groups, pos, lifetime=BANANA_TRAIL_LIFETIME):
         self.game = game
         self._layer = self.game.LAYERS['player_banana_trail']
         super().__init__(groups)
-        self.image = image.copy()
-        self.rect = self.image.get_rect(center=pos)
+
         self._spawn = perf_counter()
         self._lifetime = lifetime
         self.is_trail = True
 
+        # --- build cached gradient surfaces once ---
+        radius = 35
+
+        if PlayerBananaTrail.BLUE_SURF is None:
+            PlayerBananaTrail.BLUE_SURF = self._build_radial_glow(
+                radius, COLOR['blue_banana_trail']
+            )
+        if PlayerBananaTrail.RED_SURF is None:
+            PlayerBananaTrail.RED_SURF = self._build_radial_glow(
+                radius, COLOR['red_banana_trail']
+            )
+
+        base = (
+            PlayerBananaTrail.RED_SURF
+            if self.game.player.health == 1
+            else PlayerBananaTrail.BLUE_SURF
+        )
+
+        self.base_image = base
+        self.image = base.copy()
+        self.rect = self.image.get_rect(center=pos)
+
+    def _build_radial_glow(self, radius, color_hex):
+        size = radius * 2
+        surf = pygame.Surface((size, size), pygame.SRCALPHA)
+        cx = cy = radius
+
+        base_col = pygame.Color(color_hex)
+        r0, g0, b0 = base_col.r, base_col.g, base_col.b
+
+        # brightest inside, darker outside (like jellyfish glow)
+        for r in range(radius, 0, -1):
+            t = r / radius          # 1 at edge → 0 at center
+            alpha = int(220 * (1 - t) ** 1.9)
+            col = (r0, g0, b0, alpha)
+            pygame.draw.circle(surf, col, (cx, cy), r)
+
+        return surf
+
     def update(self, dt):
+        # normalized lifetime 0 → 1
         t = (perf_counter() - self._spawn) / max(self._lifetime, 1e-6)
-        alpha = max(0, int(120 * (1.0 - t**2)))
-        self.image.set_alpha(alpha)
+        t = max(0.0, min(1.0, t))
+
+        # fade out smoothly (quadratic)
+        alpha = int(255 * (1.0 - t) ** 2)
+        img = self.base_image.copy()
+        img.set_alpha(alpha)
+
+        # optional very slight growth over lifetime
+        scale = 1.0 + 0.1 * t
+        w, h = img.get_size()
+        img = pygame.transform.smoothscale(img, (int(w * scale), int(h * scale)))
+
+        center = self.rect.center
+        self.image = img
+        self.rect = self.image.get_rect(center=center)
+
         if t >= 1.0:
             self.kill()
 
@@ -514,6 +571,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.image = image
         self.size = self.image.get_size()
         self.speed = speed
+        self.effect_text_color = COLOR[(f'{self.size[0]}_' if self.__class__ == Rectangle else '') + f'{str(self.__class__.__name__).lower()}_shot_effect_text']
 
     def handle_getting_shot(self):
         if self not in self.game.boss_obstacle_sprites:
@@ -552,7 +610,6 @@ class Rectangle(Obstacle):
         self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.size[0]/2, random_of_spectrum(0, WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(-1, 0)
-        self.effect_text_color = COLOR[f'{self.size[0]}_rectangle_shot_effect_text']
 
 class Arrow(Obstacle):
     def __init__(self, game, layer, groups, image, speed, spawn_height):
@@ -560,7 +617,6 @@ class Arrow(Obstacle):
         self.rect = self.image.get_frect(center=(0 - self.size[0]/2, spawn_height))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(1, 0)
-        self.effect_text_color = COLOR['arrow_shot_effect_text']
 
 class Icicle(Obstacle):
     def __init__(self, game, layer, groups, image, speed):
@@ -568,7 +624,6 @@ class Icicle(Obstacle):
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), 0-self.size[1]/2))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, 1)
-        self.effect_text_color = COLOR['icicle_shot_effect_text']
 
 class Rocket(Obstacle):
     def __init__(self, game, layer, groups, image, speed):
@@ -576,7 +631,69 @@ class Rocket(Obstacle):
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), WINDOW_HEIGHT+self.size[1]/2))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, -1)
-        self.effect_text_color = COLOR['rocket_shot_effect_text']
+
+class Jellyfish(Obstacle):
+    def __init__(self, game, layer, groups, frames, speed):
+        super().__init__(game, layer, groups, frames[0], speed)
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH), WINDOW_HEIGHT+self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2((0,-1))
+        self.frames = frames
+        self.index = 0
+        self.timer = 0
+        self.interval = JELLYFISH_FRAME_INTERVALL
+        self.image = self.frames[self.index]
+        JellyfishGlow(self.game,
+              (self.game.all_sprites, self.game.jellyfish_sprites),
+              self)
+        
+    def update(self, dt):
+        self.timer += dt * 1000
+        if self.timer >= self.interval:
+            self.timer = 0
+            self.index = (self.index + 1) % len(self.frames)
+            self.image = self.frames[self.index]
+        super().update(dt)
+  
+class JellyfishGlow(pygame.sprite.Sprite):
+    GLOW_SURF = None   # cache so we only build once
+
+    def __init__(self, game, groups, jellyfish):
+        self.game = game
+        self.jellyfish = jellyfish
+        self._layer = self.game.LAYERS['player_glow']  # just above background
+        super().__init__(groups)
+
+        # build cached radial gradient
+        if JellyfishGlow.GLOW_SURF is None:
+            radius = LIGHT_RADIUS
+            size = radius * 2
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            cx, cy = radius, radius
+
+            for r in range(radius, 0, -1):
+                t = r / radius               # 1 at edge → 0 at center
+                alpha = int(255 * (1 - t) ** 2)
+                color = (180, 220, 255, alpha)
+                pygame.draw.circle(surf, color, (cx, cy), r)
+
+            JellyfishGlow.GLOW_SURF = surf
+
+        self.image = JellyfishGlow.GLOW_SURF.copy()
+        self.rect = self.image.get_rect(center=(jellyfish.rect.centerx, jellyfish.rect.centery-60))
+
+    def update(self, dt):
+        if not self.jellyfish.alive():
+            self.kill()
+            return
+
+        # optional tiny pulse (comment out if not wanted)
+        t = self.game.runtime
+        pulse = 0.65 + 0.35 * abs(sin(t * JELLYFISH_GLOW_FREQUENCY))
+        self.image = JellyfishGlow.GLOW_SURF.copy()
+        self.image.set_alpha(int(255 * pulse))
+
+        self.rect.center = (self.jellyfish.rect.centerx, self.jellyfish.rect.centery-60)
 
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):
@@ -587,7 +704,6 @@ class SawBlade(RotatingObstacle):
         self.rect = self.image.get_frect(center=(-self.size[0]/2 if spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(1, 0) if spawn == 'left' else pygame.Vector2(-1, 0)
-        self.effect_text_color = COLOR['saw_blade_shot_effect_text']
 
 class Asteroid(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=random_of_spectrum(0,360), rotation_speed=random_of_spectrum(-180,180)):
@@ -597,7 +713,6 @@ class Asteroid(RotatingObstacle):
         self.rect = self.image.get_frect(center=ASTEROID_ATTRIBUTES[self.spawn_border][0])
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(ASTEROID_ATTRIBUTES[self.spawn_border][1])
-        self.effect_text_color = COLOR['asteroid_shot_effect_text']
 
 class SpikeBall(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle, rotation_speed, spawn):
@@ -608,7 +723,6 @@ class SpikeBall(RotatingObstacle):
         self.rect = self.image.get_frect(center=(-self.size[0]/2 if spawn == 'left' else WINDOW_WIDTH+self.size[0]/2, random_of_spectrum(0,WINDOW_HEIGHT)))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(1, 0) if spawn == 'left' else pygame.Vector2(-1, 0)
-        self.effect_text_color = COLOR['spike_ball_shot_effect_text']
 
 # --- boss related ---
 class ShadowGuardian(pygame.sprite.Sprite):
@@ -850,6 +964,7 @@ class StartBlueberry(Blueberry):
     
 class StartIcicle(Icicle):
     def __init__(self, game, layer, groups, image, space, pos):
+        self.__class__.__name__ = 'Icicle'
         super().__init__(game, layer, groups, image, speed=0)
         self.rect.center = pos
         self.base_image = image
@@ -867,7 +982,7 @@ class StartIcicle(Icicle):
 
     def update(self, dt):
         pos = self.body.position
-        angle_deg = -degrees(self.body.angle)  # minus to match screen rotation
+        angle_deg = -degrees(self.body.angle)
         rotated = pygame.transform.rotozoom(self.base_image, angle_deg, 1.0)
 
         self.image = rotated

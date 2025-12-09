@@ -19,6 +19,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_arrow_phase': "#FFFFFF",
          'score_icicle_phase': "#000000",
          'score_shadow_icicle_phase': "#FFFFFF",
+         'score_jellyfish_phase': "#0037FF",
+         'score_shadow_jellyfish_phase': "#FFFFFF",
          'score_saw_blade_phase': "#0037FF",
          'score_shadow_saw_blade_phase': "#000000",
          'score_rocket_phase': "#0037FF",
@@ -52,16 +54,17 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'chili_effect_text': "#953333",
          'grapes_effect_text': "#8D53AA",
          'pear_effect_text': "#99e550",
-         '250_rectangle_shot_effect_text': '#119329',
-         '300_rectangle_shot_effect_text': '#d700ff',
-         '350_rectangle_shot_effect_text': '#fff200',
-         '400_rectangle_shot_effect_text': '#ff0000',
-         'arrow_shot_effect_text': '#6d423a',
-         'icicle_shot_effect_text': '#70c4f5',
-         'saw_blade_shot_effect_text': '#9996a2',
-         'rocket_shot_effect_text': '#ea0404',
-         'asteroid_shot_effect_text': '#857c73',
-         'spike_ball_shot_effect_text': '#131312',
+         '250_rectangle_shot_effect_text': "#119329",
+         '300_rectangle_shot_effect_text': "#d700ff",
+         '350_rectangle_shot_effect_text': "#fff200",
+         '400_rectangle_shot_effect_text': "#ff0000",
+         'arrow_shot_effect_text': "#6d423a",
+         'icicle_shot_effect_text': "#70c4f5",
+         'jellyfish_shot_effect_text': "#6492E0",
+         'sawblade_shot_effect_text': "#9996a2",
+         'rocket_shot_effect_text': "#ea0404",
+         'asteroid_shot_effect_text': "#857c73",
+         'spikeball_shot_effect_text': "#131312",
          'blue_banana_trail': "#1E3AC8B1",
          'red_banana_trail': "#CA0909B1",
          'credits_header': "#70C1FF",
@@ -112,7 +115,7 @@ BOSS_EXPLOSION_SPEED: float = 0.7
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
-BANANA_TRAIL_LIFETIME: float = 0.4
+BANANA_TRAIL_LIFETIME: float = 0.53
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
@@ -120,6 +123,7 @@ DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
 BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'arrow': 'left',
                                               'icicle': None,
+                                              'jellyfish': None,
                                               'saw_blade': None,
                                               'rocket': None,
                                               'asteroid': None,
@@ -188,7 +192,7 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # phase probabilities
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -219,6 +223,13 @@ SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
 THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
 FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 ICICLE_PHASE_END_POINTS: int = 10
+
+# jellyfish phase
+JELLYFISH_SPAWN_TIME: float = 0.33
+JELLYFISH_PHASE_END_POINTS: int = 15
+LIGHT_RADIUS: int = 185
+JELLYFISH_GLOW_FREQUENCY: float = 1.5
+JELLYFISH_FRAME_INTERVALL: int = 50
 
 # saw blade phase
 SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
@@ -251,7 +262,7 @@ BOSS_SPEED: int = 180
 BOSS_STATE_DURATIONS: dict[str:int] = {'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 5}
 BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.4
 BOSS_SAW_BLADE_SPEED: int = 360
-BOSS_ASTEROID_SPAWN_DURATION: int =  0.4
+BOSS_ASTEROID_SPAWN_DURATION: int =  0.35
 BOSS_ASTEROID_SPEED: int = 240
 DARK_ENERGY_BALL_SPEED: int = 220
 DART_ENERGY_BALL_LIFE_TIME: float = 6.0 # seconds
