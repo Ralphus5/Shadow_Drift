@@ -150,6 +150,7 @@ MENU_SELECT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 
 # gameplay sound volumes
+USING_CONTROLLER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0 # unaffected by in-game settings
 EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
@@ -225,9 +226,9 @@ FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 ICICLE_PHASE_END_POINTS: int = 10
 
 # jellyfish phase
-JELLYFISH_SPAWN_TIME: float = 0.33
-JELLYFISH_PHASE_END_POINTS: int = 15
-LIGHT_RADIUS: int = 185
+JELLYFISH_SPAWN_TIME: float = 0.26
+JELLYFISH_PHASE_END_POINTS: int = 10
+LIGHT_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
 JELLYFISH_FRAME_INTERVALL: int = 50
 

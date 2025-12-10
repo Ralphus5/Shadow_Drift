@@ -38,6 +38,7 @@ class Game:
             #print(self.player.speed) # DEBUGGING
             #print_sprite_counts(self) # DEBUGGING
             #show_rects(self.all_sprites, self.screen) # DEBUGGING
+            self.display_controller_image(dt)
             present_frame(self)
 
     def handle_events_and_input(self):
@@ -786,6 +787,7 @@ class Game:
                              'boss_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.ogg')),}
 
         # --- sound effects ---
+        self.using_controller_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'using_controller_sound.wav'))
         self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
         self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
         self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
@@ -816,6 +818,7 @@ class Game:
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items()}
 
         # --- sound effects ---
+        self.using_controller_sound.set_volume(USING_CONTROLLER_SOUND_VOLUME)
         self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
@@ -922,6 +925,8 @@ class Game:
                               "Playtester")
         
         # --- images ---
+        self.using_controller_image = pygame.image.load(join(self.IMG_DIR, 'using_controller.png')).convert_alpha()
+
         self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 70))]
@@ -1193,6 +1198,16 @@ class Game:
     def runtime(self):
         """Total runtime since the program started (seconds)."""
         return perf_counter() - self.absolute_start_time
+
+    def display_controller_image(self, dt):
+        if not self.controller:
+            return
+        
+        if self.runtime < 4 and self.state == 'start':
+            if not getattr(self, 'using_controller_sound_played', False):
+                self.using_controller_sound.play()
+                self.using_controller_sound_played = True
+            self.screen.blit(self.using_controller_image, (WINDOW_WIDTH-self.using_controller_image.get_width()-1, WINDOW_HEIGHT-self.using_controller_image.get_height()-1))
 
 # --- Play loop ---
 

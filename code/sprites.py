@@ -557,10 +557,11 @@ class Pear(Fruit):
 
     def apply_effect(self):
         for sprite in self.game.obstacle_sprites:
-            EffectText(self.game, (self.game.all_sprites, self.game.UI_text_sprites), "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
-            self.kill()
-            sprite.kill()
-            STATS['score'] += 1
+            if not sprite.rect.bottom < 0 and not sprite.rect.top > WINDOW_HEIGHT and not sprite.rect.left > WINDOW_WIDTH and not sprite.rect.right < 0:
+                EffectText(self.game, (self.game.all_sprites, self.game.UI_text_sprites), "+1 point", self.game.fonts['effect_texts'], sprite.effect_text_color, sprite.rect.center)
+                self.kill()
+                sprite.kill()
+                STATS['score'] += 1
 
 # --- obstacles ---
 class Obstacle(pygame.sprite.Sprite):
@@ -581,7 +582,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.kill()
 
     def destroy(self):
-        if self.rect.left > WINDOW_WIDTH + 1000 or self.rect.right < -1000 or self.rect.top > WINDOW_WIDTH + 1000 or self.rect.bottom < -1000:
+        if self.rect.left > WINDOW_WIDTH + 800 or self.rect.right < -800 or self.rect.top > WINDOW_HEIGHT + 800 or self.rect.bottom < -800:
             self.kill()
 
     def update(self, dt):
@@ -635,7 +636,7 @@ class Rocket(Obstacle):
 class Jellyfish(Obstacle):
     def __init__(self, game, layer, groups, frames, speed):
         super().__init__(game, layer, groups, frames[0], speed)
-        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH), WINDOW_HEIGHT+self.size[1]/2))
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH), WINDOW_HEIGHT+self.size[1]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2((0,-1))
         self.frames = frames
@@ -687,7 +688,7 @@ class JellyfishGlow(pygame.sprite.Sprite):
             self.kill()
             return
 
-        # optional tiny pulse (comment out if not wanted)
+        # pulse
         t = self.game.runtime
         pulse = 0.65 + 0.35 * abs(sin(t * JELLYFISH_GLOW_FREQUENCY))
         self.image = JellyfishGlow.GLOW_SURF.copy()
