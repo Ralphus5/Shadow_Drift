@@ -636,6 +636,7 @@ class Rocket(Obstacle):
 class Jellyfish(Obstacle):
     def __init__(self, game, layer, groups, frames, speed):
         super().__init__(game, layer, groups, frames[0], speed)
+        self.creation_time = perf_counter()
         self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH), WINDOW_HEIGHT+self.size[1]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2((0,-1))
@@ -644,9 +645,12 @@ class Jellyfish(Obstacle):
         self.timer = 0
         self.interval = JELLYFISH_FRAME_INTERVALL
         self.image = self.frames[self.index]
-        JellyfishGlow(self.game,
-              (self.game.all_sprites, self.game.jellyfish_sprites),
-              self)
+        ObjectGlow(self.game,
+                   (self.game.all_sprites, self.game.obstacle_effect_sprites),
+                   self,
+                   (100,100,220),
+                   JELLYFISH_GLOW_RADIUS,
+                   offsety=-60)
         
     def update(self, dt):
         self.timer += dt * 1000
@@ -655,46 +659,6 @@ class Jellyfish(Obstacle):
             self.index = (self.index + 1) % len(self.frames)
             self.image = self.frames[self.index]
         super().update(dt)
-  
-class JellyfishGlow(pygame.sprite.Sprite):
-    GLOW_SURF = None   # cache so we only build once
-
-    def __init__(self, game, groups, jellyfish):
-        self.game = game
-        self.jellyfish = jellyfish
-        self._layer = self.game.LAYERS['player_glow']  # just above background
-        super().__init__(groups)
-
-        # build cached radial gradient
-        if JellyfishGlow.GLOW_SURF is None:
-            radius = LIGHT_RADIUS
-            size = radius * 2
-            surf = pygame.Surface((size, size), pygame.SRCALPHA)
-            cx, cy = radius, radius
-
-            for r in range(radius, 0, -1):
-                t = r / radius               # 1 at edge → 0 at center
-                alpha = int(255 * (1 - t) ** 2)
-                color = (180, 220, 255, alpha)
-                pygame.draw.circle(surf, color, (cx, cy), r)
-
-            JellyfishGlow.GLOW_SURF = surf
-
-        self.image = JellyfishGlow.GLOW_SURF.copy()
-        self.rect = self.image.get_rect(center=(jellyfish.rect.centerx, jellyfish.rect.centery-60))
-
-    def update(self, dt):
-        if not self.jellyfish.alive():
-            self.kill()
-            return
-
-        # pulse
-        t = self.game.runtime
-        pulse = 0.65 + 0.35 * abs(sin(t * JELLYFISH_GLOW_FREQUENCY))
-        self.image = JellyfishGlow.GLOW_SURF.copy()
-        self.image.set_alpha(int(255 * pulse))
-
-        self.rect.center = (self.jellyfish.rect.centerx, self.jellyfish.rect.centery-60)
 
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):
@@ -738,7 +702,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
         self.target_health = self.max_health
         self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
         self.speed = BOSS_SPEED
-        self.speed_during_summon = 80
+        self.speed_during_summon = BOSS_SPEED_DURING_SUMMON
         self.image = self.game.boss_image
         self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
         self.mask = pygame.mask.from_surface(self.image)
@@ -810,10 +774,13 @@ class ShadowGuardian(pygame.sprite.Sprite):
     def set_state(self, dt):
         if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
         if self.select_next_state:
-            self.game.boss_growl_sound.play()
-            prev_state = self.current_state
-            while prev_state is self.current_state:
-                self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+            if self.current_state == 'transition':
+                while self.prev_state is self.current_state or self.current_state == 'transition':
+                    self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+            else: 
+                self.prev_state = self.current_state
+                self.current_state = 'transition'
+                self.game.boss_growl_sound.play()
             self.state_start = self.game.play_time
             self.select_next_state = False
 
@@ -863,6 +830,12 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
         self.direction = self.distance_to_player
         self.direction.normalize()
+        ObjectGlow(self.game,
+                   (self.game.all_sprites, self.game.obstacle_effect_sprites),
+                   self,
+                   (255,255,255),
+                   DARK_ENERGY_BALL_GLOW_RADIUS,
+                   pulse=False)
     
     def handle_getting_shot(self):
         self.game.energy_ball_shot_sound.play()
@@ -941,6 +914,61 @@ class EffectText(pygame.sprite.Sprite):
         self.image.set_alpha(max(0, min(255, alpha)))
         if t >= 1.0:
             self.kill()
+
+class ObjectGlow(pygame.sprite.Sprite):
+    # Cache per (r,g,b,radius) so different glows don't overwrite each other
+    CACHE = {}
+
+    def __init__(self, game, groups, object, glow_color: tuple[int, int, int], glow_radius: int,offsetx: int = 0, offsety: int = 0, pulse: bool = True):
+        self.game = game
+        self.object = object
+        self._layer = self.game.LAYERS['object_effects'] 
+        super().__init__(groups)
+
+        self.pulse = pulse
+        self.offsetx = offsetx
+        self.offsety = offsety
+
+        key = (glow_color[0], glow_color[1], glow_color[2], glow_radius)
+
+        if key not in ObjectGlow.CACHE:
+            radius = glow_radius
+            size = radius * 2
+            surf = pygame.Surface((size, size), pygame.SRCALPHA)
+            cx = cy = radius
+
+            # Brightest inside, darker outside
+            for r in range(radius, 0, -1):
+                t = r / radius  # 1 at edge -> 0 at center
+                alpha = int(255 * (1 - t) ** 2)
+                pygame.draw.circle(surf, (*glow_color, alpha), (cx, cy), r)
+
+            ObjectGlow.CACHE[key] = surf
+
+        self.base_glow = ObjectGlow.CACHE[key]
+        self.image = self.base_glow.copy()
+        self.rect = self.image.get_rect(
+            center=(object.rect.centerx + self.offsetx, object.rect.centery + self.offsety)
+        )
+
+    def update(self, dt):
+        if not self.object.alive():
+            self.kill()
+            return
+
+        if self.pulse:
+            t = self.game.runtime
+            pulse = 0.65 + 0.35 * abs(sin(t * JELLYFISH_GLOW_FREQUENCY))
+            self.image = self.base_glow.copy()
+            self.image.set_alpha(int(255 * pulse))
+        else:
+            # keep non-pulsing glow stable and fast
+            self.image = self.base_glow
+
+        self.rect.center = (
+            self.object.rect.centerx + self.offsetx,
+            self.object.rect.centery + self.offsety,
+        )
 
 # --- physics objects ---
 class StartBlueberry(Blueberry):

@@ -65,8 +65,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'rocket_shot_effect_text': "#ea0404",
          'asteroid_shot_effect_text': "#857c73",
          'spikeball_shot_effect_text': "#131312",
-         'blue_banana_trail': "#1E3AC8B1",
-         'red_banana_trail': "#CA0909B1",
+         'blue_banana_trail': "#1E3AC8FF",
+         'red_banana_trail': "#CA0909FF",
          'credits_header': "#70C1FF",
          'credits_name': "#FFFFFF",
          'quit_icon_text': "#FB0000",
@@ -192,8 +192,10 @@ FIREBALL_SHOOT_COOLDOWN: float = 0.6
 FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
-# phase probabilities
+# --- phases ---
 PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
+
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 5, 'arrow': 10, 'icicle': 10, 'jellyfish': 10, 'saw_blade': 10, 'rocket': 20, 'asteroid': 15, 'spike_ball': 15, 'boss': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -206,7 +208,6 @@ RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
 SECOND_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
-RECTANGLE_PHASE_END_POINTS: int = 5
 
 # arrow phase
 ARROW_SUB_PHASE_DURATION: int = 10
@@ -216,19 +217,16 @@ ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 SECOND_ARROW_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ARROW_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_ARROW_PHASE_SPAWN_FACTOR: float = 1.6
-ARROW_PHASE_END_POINTS: float = 10
 
 # icicle phase
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
 SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
 THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
 FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
-ICICLE_PHASE_END_POINTS: int = 10
 
 # jellyfish phase
 JELLYFISH_SPAWN_TIME: float = 0.26
-JELLYFISH_PHASE_END_POINTS: int = 10
-LIGHT_RADIUS: int = 175
+JELLYFISH_GLOW_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
 JELLYFISH_FRAME_INTERVALL: int = 50
 
@@ -237,40 +235,38 @@ SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
 SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
-SAW_BLADE_PHASE_END_POINTS: int = 10
 
 # rocket phase
 ROCKET_SPAWN_TIME: float = 0.27 # seconds
 SECOND_ROCKET_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ROCKET_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
-ROCKET_PHASE_END_POINTS: int = 20
 
 # asteroid phase
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
-ASTEROID_PHASE_END_POINTS: int = 15
 
 # spike ball phase
 SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
-SPIKE_BALL_PHASE_END_POINTS: int = 15
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500
-BOSS_KILL_POINTS: int = 200
 BOSS_DAMAGE_PER_SHOT: int = 1
-BOSS_HEALTH: int = 35
-BOSS_SPEED: int = 180
-BOSS_STATE_DURATIONS: dict[str:int] = {'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 5}
-BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.4
+BOSS_HEALTH: int = 40
+BOSS_SPEED: int = 170
+BOSS_SPEED_DURING_SUMMON: int = 70
+BOSS_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
+BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.38
 BOSS_SAW_BLADE_SPEED: int = 360
-BOSS_ASTEROID_SPAWN_DURATION: int =  0.35
+BOSS_ASTEROID_SPAWN_DURATION: int =  0.4
 BOSS_ASTEROID_SPEED: int = 240
-DARK_ENERGY_BALL_SPEED: int = 220
-DART_ENERGY_BALL_LIFE_TIME: float = 6.0 # seconds
+DARK_ENERGY_BALL_SPEED: int = 200
+DART_ENERGY_BALL_LIFE_TIME: float = 8.0 # seconds
+DARK_ENERGY_BALL_GLOW_RADIUS: int = 200
 BOSS_PHASE_END_DURATION: float = 3.0 # seconds
 BOSS_HEALTH_BAR_HEIGHT: int = 30
 BOSS_HEALTH_BAR_LENGTH: int = 900
 BOSS_HEALTH_CHANGE_SPEED: float = 0.06
+BOSS_PHASE_TRANSITION_TIME: float = 5.5
 
 
 # --- DEFAULT KEY BINDINGS ---

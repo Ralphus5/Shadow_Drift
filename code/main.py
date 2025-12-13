@@ -1129,6 +1129,7 @@ class Game:
         self.boss_obstacle_sprites = pygame.sprite.Group()
         # animations and UI
         self.player_effect_sprites = pygame.sprite.Group()
+        self.obstacle_effect_sprites = pygame.sprite.Group()
         self.boss_effect_sprites = pygame.sprite.Group()
         self.UI_text_sprites = pygame.sprite.Group()
         self.background_sprites = pygame.sprite.Group()
@@ -1137,6 +1138,7 @@ class Game:
         self.secret_obstacles = pygame.sprite.Group()
 
         self.LAYERS = {'backgrounds': 1,
+                       'object_effects': 1.5,
                        'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
                        'fruits': 4,
@@ -1214,6 +1216,7 @@ class Game:
     def set_phase(self, dt):
         if getattr(self, 'phase_ended', False) and self.player.is_alive:
             self.phase_ended = False
+            STATS['score'] += PHASE_END_POINTS[self.current_phase]
             self.phase_switch_sound.play()
             fade_to_black(self)
             clear_input()
@@ -1298,7 +1301,6 @@ class Game:
             self.background.speed = 132
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += RECTANGLE_PHASE_END_POINTS
             return
 
         # --- spawn rectangle ---
@@ -1334,7 +1336,6 @@ class Game:
             self.background.speed = 125
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += ARROW_PHASE_END_POINTS
             return
 
         if self.play_time >= self.next_arrow_spawn_time:
@@ -1375,7 +1376,6 @@ class Game:
             spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += ICICLE_PHASE_END_POINTS
             return
 
         # --- spawn icicle ---
@@ -1398,7 +1398,6 @@ class Game:
             speed = 240
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += JELLYFISH_PHASE_END_POINTS
             return
 
         if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > 1:
@@ -1429,7 +1428,6 @@ class Game:
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += SAW_BLADE_PHASE_END_POINTS
             return
 
         # --- spawn saw blade ---
@@ -1458,7 +1456,6 @@ class Game:
             spawn_rate_factor = FOURTH_ROCKET_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += ROCKET_PHASE_END_POINTS
             return
 
         # --- spawn rocket ---
@@ -1482,7 +1479,6 @@ class Game:
             speed = 290
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += ASTEROID_PHASE_END_POINTS
             return
 
         # --- spawn rocket ---
@@ -1506,7 +1502,6 @@ class Game:
             speed = 400
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
-            STATS['score'] += SPIKE_BALL_PHASE_END_POINTS
             return
 
         # --- spawn spike ball ---
@@ -1538,7 +1533,6 @@ class Game:
             self.boss_defeated = False
             self.had_boss = True
             self.music_channel.stop()
-            STATS['score'] += BOSS_KILL_POINTS
             self.init_boss_phase_end = True
             self.boss_phase_end_start = self.play_time
             kill_sprites(self.boss_obstacle_sprites)
