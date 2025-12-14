@@ -361,6 +361,7 @@ class Game:
         if getattr(self, 'show_blueberry', False):
             StartBlueberry(self,
                           (self.all_sprites, self.secret_fruits),
+                          'top',
                           self.menu_space,
                           pos=(random_of_spectrum(30,1250), -25))
             self.show_blueberry = False
@@ -517,6 +518,7 @@ class Game:
         if getattr(self, 'show_apple', False):
             GameOverApple(self,
                           (self.all_sprites, self.secret_fruits),
+                          'top',
                           self.menu_space,
                           (random_of_spectrum(20,1260), -25))
             self.show_apple = False
@@ -524,6 +526,7 @@ class Game:
         if getattr(self, 'show_chili', False):
             GameOverChili(self,
                           (self.all_sprites, self.secret_fruits),
+                          'top',
                           self.menu_space,
                           (random_of_spectrum(30, 1250), -25))
             self.show_chili = False
@@ -791,6 +794,7 @@ class Game:
         self.menu_hover_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_hover_sound.wav'))
         self.menu_select_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'menu_select_sound.wav'))
         self.title_flash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'title_flash_sound.wav'))
+        self.coin_pickup_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'coin_pickup_sound.wav'))
         self.eat_fruit_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'eat_fruit_sound.wav'))
         self.damage_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'damage_sound.wav'))
         self.death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'death_sound.wav'))
@@ -822,6 +826,7 @@ class Game:
         self.menu_hover_sound.set_volume(MENU_HOVER_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.menu_select_sound.set_volume(MENU_SELECT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.title_flash_sound.set_volume(TITLE_FLASH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.coin_pickup_sound.set_volume(COIN_PICKUP_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.eat_fruit_sound.set_volume(EAT_FRUIT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.damage_sound.set_volume(DAMAGE_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.death_sound.set_volume(DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
@@ -892,8 +897,8 @@ class Game:
                                  'quit_icon_text': self.text_surfaces['quit_icon_text'].get_rect(center=(WINDOW_WIDTH - 70, 130)),
                                  'play_icon_text': self.text_surfaces['play_icon_text'].get_rect(center=(WINDOW_WIDTH - 170, 130)),
                                  'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130)),
-                                 'boss_name': self.text_surfaces['boss_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 52 - BOSS_HEALTH_BAR_HEIGHT)),
-                                 'boss_name_shadow': self.text_surfaces['boss_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 50 - BOSS_HEALTH_BAR_HEIGHT))}
+                                 'boss_name': self.text_surfaces['boss_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - BOSS_HEALTH_BAR_HEIGHT)),
+                                 'boss_name_shadow': self.text_surfaces['boss_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 56 - BOSS_HEALTH_BAR_HEIGHT))}
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
@@ -1052,6 +1057,8 @@ class Game:
         self.fruit_sprite_variants[StartBlueberry] = self.fruit_sprite_variants[Blueberry]
         self.fruit_sprite_variants[GameOverApple] = self.fruit_sprite_variants[Apple]
         self.fruit_sprite_variants[GameOverChili] = self.fruit_sprite_variants[Chili]
+
+        self.coin_frames = [pygame.image.load(join(self.IMG_DIR, 'coin', f'coin{i}.png')).convert_alpha() for i in range(12)]
         
         self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
 
@@ -1113,6 +1120,7 @@ class Game:
         # actual entities
         self.player_group = pygame.sprite.GroupSingle()
         self.fireball_sprites = pygame.sprite.Group()
+        self.coin_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
         self.enemy_sprites = pygame.sprite.Group()
         self.obstacle_sprites = pygame.sprite.Group()
@@ -1138,12 +1146,11 @@ class Game:
         self.secret_obstacles = pygame.sprite.Group()
 
         self.LAYERS = {'backgrounds': 1,
-                       'object_effects': 1.5,
                        'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
-                       'fruits': 4,
+                       'coins': 4, 'fruits': 4.1,
                        'fireballs': 5,
-                       'obstacles': 6,
+                       'object_effects': 6, 'obstacles': 6.1,
                        'boss_projectiles': 7,
                        'ui_texts': 8}
 
@@ -1218,12 +1225,15 @@ class Game:
             self.phase_ended = False
             STATS['score'] += PHASE_END_POINTS[self.current_phase]
             self.phase_switch_sound.play()
+            pause_play_time(self)
             fade_to_black(self)
+            resume_play_time(self)
             clear_input()
             kill_sprites(self.background_sprites)
             kill_sprites(self.enemy_sprites)
             kill_sprites(self.obstacle_sprites)
             kill_sprites(self.boss_sprites)
+            kill_sprites(self.coin_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.fireball_sprites)
             if STATS['score'] >= BOSS_PHASE_START_POINTS and not getattr(self, 'had_boss', False):
@@ -1251,32 +1261,40 @@ class Game:
             
         match(self.current_phase):
             case 'rectangle':
-                self.rectangle_phase()       
-                self.spawn_fruit(dt)
+                self.rectangle_phase()
+                self.spawn_coin(dt, spawn='top')
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.4)
             case 'arrow':
                 self.arrow_phase()
-                self.spawn_fruit(dt, spawn_tendency=0.6)
+                self.spawn_coin(dt, spawn='left')
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.6)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_fruit(dt, spawn_tendency=0.5)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5)
             case 'jellyfish':
                 self.jellyfish_phase()
-                self.spawn_fruit(dt, speed_tendency=0.05)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
+                self.spawn_fruit(dt, spawn='top', speed_tendency=0.05)
             case 'saw_blade':
                 self.saw_blade_phase()
-                self.spawn_fruit(dt, spawn_tendency=0.65)
+                self.spawn_coin(dt, spawn='top', speed_tendency=0.4)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.7)
             case 'rocket':
                 self.rocket_phase()
-                self.spawn_fruit(dt, speed_tendency=0.25, rotation=True)
+                self.spawn_coin(dt, spawn='bottom', speed_tendency=0.35)
+                self.spawn_fruit(dt, spawn='bottom', speed_tendency=0.35, rotation=True)
             case 'asteroid':
                 self.asteroid_phase()
-                self.spawn_fruit(dt, speed_tendency=0.25, rotation=True)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25)
+                self.spawn_fruit(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25, rotation=True)
             case 'spike_ball':
                 self.spike_ball_phase()
-                self.spawn_fruit(dt)
+                self.spawn_coin(dt, spawn='top')
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5)
             case 'boss':
                 self.boss_phase()
-                self.spawn_fruit(dt, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
+                self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
         # --- choose speed and spawn rate of rectangle ---
@@ -1313,12 +1331,14 @@ class Game:
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
     def arrow_phase(self):
+        # choose arrow sub phase
         if self.play_time - getattr(self, 'arrow_sub_phase_start', -ARROW_SUB_PHASE_DURATION) >= ARROW_SUB_PHASE_DURATION:
             self.prev_arrow_sub_phase = getattr(self, 'arrow_sub_phase', None)
             while self.prev_arrow_sub_phase == getattr(self, 'arrow_sub_phase', None):
                 self.arrow_sub_phase = random_of_selection(('columns', 'singles'))
             self.arrow_sub_phase_start = self.play_time
 
+        # choose arrow speed and spawn factor
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 280
             spawn_rate_factor = 1
@@ -1338,6 +1358,7 @@ class Game:
             self.phase_ended = True
             return
 
+        # spawn arrow according to phase
         if self.play_time >= self.next_arrow_spawn_time:
             match(self.arrow_sub_phase):
                     case 'columns':
@@ -1388,6 +1409,7 @@ class Game:
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
     def jellyfish_phase(self):
+        # choose speed of jellyfish
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
             speed = 150
         elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
@@ -1400,6 +1422,7 @@ class Game:
             self.phase_ended = True
             return
 
+        # spawn jellyfish
         if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > 1:
             Jellyfish(self,
                       self.LAYERS['obstacles'],
@@ -1524,7 +1547,7 @@ class Game:
                 change_track(self, 'game_track_1', fade_ms=3000, loop=True)
             return
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
-            Chili(self, (self.all_sprites, self.fruit_sprites), random_of_spectrum(100,200))
+            Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))
             self.last_chili_drop = self.play_time
         if not getattr(self, 'boss', False):
             self.boss = ShadowGuardian(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
@@ -1539,12 +1562,17 @@ class Game:
             kill_sprites(self.obstacle_sprites)
             return
 
-    def spawn_fruit(self, dt, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
+    def spawn_coin(self, dt, spawn, spawns_per_min=COIN_SPAWNS_PER_MINUTE, speed_tendency=None):
+        if random.random() < spawns_per_min/60 * dt:
+            Coin(self, (self.all_sprites, self.coin_sprites), self.coin_frames, random_of_spectrum(80,280,bias=speed_tendency), spawn=spawn)
+
+    def spawn_fruit(self, dt, spawn, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
         if random.random() < spawns_per_min/60 * dt:
             new_fruit = random_of_selection(fruits, (FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
             new_fruit(self,
                     (self.all_sprites, self.fruit_sprites),
                     speed=random_of_spectrum(80,260,bias=speed_tendency),
+                    spawn=spawn,
                     spawn_bias=spawn_tendency,
                     rotate=rotation)
 
@@ -1599,6 +1627,12 @@ class Game:
                     fruit.display_pickup_message(self.fonts['effect_texts'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
+        collected_coins = pygame.sprite.spritecollide(self.player, self.coin_sprites, True, pygame.sprite.collide_mask)
+        if collected_coins:
+            for coin in collected_coins:
+                STATS['score'] += COIN_POINTS
+                self.coin_pickup_sound.play()
+
     def check_record(self):
         if STATS['score'] > STATS['record'] and not getattr(self, 'record_checked', False):
             self.record_checked = True
@@ -1629,53 +1663,24 @@ class Game:
             pygame.SRCALPHA)
 
         # --- base bar: REAL health ---
-        health_bar_rect = pygame.Rect(
-            0,
-            0,
-            target_width,
-            BOSS_HEALTH_BAR_HEIGHT)
+        health_bar_rect = pygame.Rect(0, 0, target_width, BOSS_HEALTH_BAR_HEIGHT)
             
-        pygame.draw.rect(
-            bar_surface,
-            COLOR['boss_health_bar'],
-            health_bar_rect,
-            border_radius=2)
+        pygame.draw.rect(bar_surface, COLOR['boss_health_bar'], health_bar_rect, border_radius=2)
 
         # --- damage/transition bar ---
         if current_width > target_width:
             transition_width = current_width - target_width
-            transition_rect = pygame.Rect(
-                target_width,
-                0,
-                transition_width,
-                BOSS_HEALTH_BAR_HEIGHT)
+            transition_rect = pygame.Rect(target_width, 0, transition_width, BOSS_HEALTH_BAR_HEIGHT)
             
-            pygame.draw.rect(
-                bar_surface,
-                COLOR['boss_health_bar_damage'],
-                transition_rect,
-                border_radius=2)
+            pygame.draw.rect(bar_surface, COLOR['boss_health_bar_damage'], transition_rect, border_radius=1)
 
         # --- bar border ---
-        border_rect = pygame.Rect(
-            0,
-            0,
-            BOSS_HEALTH_BAR_LENGTH,
-            BOSS_HEALTH_BAR_HEIGHT)
+        border_rect = pygame.Rect(0, 0, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
         
-        pygame.draw.rect(
-            bar_surface,
-            COLOR['boss_health_bar_border'],
-            border_rect,
-            width=4,
-            border_radius=2)
+        pygame.draw.rect(bar_surface, COLOR['boss_health_bar_border'], border_rect, width=3, border_radius=1)
 
         # --- adjust transparency ---
-        bar_world_rect = pygame.Rect(
-            bar_x,
-            bar_y,
-            BOSS_HEALTH_BAR_LENGTH,
-            BOSS_HEALTH_BAR_HEIGHT)
+        bar_world_rect = pygame.Rect(bar_x, bar_y, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
         
         # boss name
         boss_name_shadow_surf = self.text_surfaces['boss_name_shadow'].copy()

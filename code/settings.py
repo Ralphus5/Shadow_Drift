@@ -72,9 +72,9 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'quit_icon_text': "#FB0000",
          'play_icon_text': "#00D512",
          'settings_icon_text':"#7E7E7E",
-         'boss_health_bar': "#DD00FF",
+         'boss_health_bar': "#FF0000",
          'boss_health_bar_damage': "#FFF700",
-         'boss_health_bar_border': "#444444",
+         'boss_health_bar_border': "#FFFFFF",
          'boss_name': "#7B2087",
          'boss_name_shadow': "#DD00FF"}
 
@@ -151,6 +151,7 @@ TITLE_FLASH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 
 # gameplay sound volumes
 USING_CONTROLLER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0 # unaffected by in-game settings
+COIN_PICKUP_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
@@ -181,9 +182,14 @@ DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.25 # seconds
 
+# coins
+COIN_SPAWNS_PER_MINUTE: float = 12.00
+COIN_POINTS: int = 2
+COIN_FRAME_INTERVALL: int = 35
+
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 5.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.1, 'banana': 0.2, 'chili': 0.1, 'grapes': 0.1, 'pear': 0.1}
+FRUIT_SPAWNS_PER_MINUTE: float = 4.00
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.3, 'grapes': 0.3, 'pear': 0.2}
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 25.0
@@ -195,7 +201,7 @@ POINTS_FOR_OBSTACLE_SHOOT: int = 2
 # --- phases ---
 PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 5, 'arrow': 10, 'icicle': 10, 'jellyfish': 10, 'saw_blade': 10, 'rocket': 20, 'asteroid': 15, 'spike_ball': 15, 'boss': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 20, 'spike_ball': 20, 'boss': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -263,7 +269,7 @@ DARK_ENERGY_BALL_SPEED: int = 200
 DART_ENERGY_BALL_LIFE_TIME: float = 8.0 # seconds
 DARK_ENERGY_BALL_GLOW_RADIUS: int = 200
 BOSS_PHASE_END_DURATION: float = 3.0 # seconds
-BOSS_HEALTH_BAR_HEIGHT: int = 30
+BOSS_HEALTH_BAR_HEIGHT: int = 26
 BOSS_HEALTH_BAR_LENGTH: int = 900
 BOSS_HEALTH_CHANGE_SPEED: float = 0.06
 BOSS_PHASE_TRANSITION_TIME: float = 5.5

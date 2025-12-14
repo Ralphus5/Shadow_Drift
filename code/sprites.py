@@ -475,27 +475,56 @@ class AnimatedBackground(pygame.sprite.Sprite):
             if self.rect.centerx >= WINDOW_WIDTH:
                 self.rect.topright = (WINDOW_WIDTH,0)
 
-# --- fruits ---
+# --- items ---
+class Coin(pygame.sprite.Sprite):
+    def __init__(self, game, groups, frames, speed, spawn):
+        self.game = game
+        self._layer = self.game.LAYERS['coins']
+        super().__init__(groups)
+        self.frames = frames
+        self.speed = speed
+        self.index = 0
+        self.timer = 0
+        self.interval = COIN_FRAME_INTERVALL
+        self.image = self.frames[self.index]
+        width, height = self.image.get_size()
+        COIN_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(30,WINDOW_HEIGHT-30)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(30,WINDOW_HEIGHT-30)), (-1,0)], 'top': [(random_of_spectrum(30,WINDOW_WIDTH-30),-height/2), (0,1)], 'bottom': [(random_of_spectrum(30,WINDOW_WIDTH-30),WINDOW_HEIGHT+height/2), (0,-1)]}
+        self.rect = self.image.get_frect(center=(COIN_ATTRIBUTES[spawn][0]))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(COIN_ATTRIBUTES[spawn][1])
+
+    def update(self, dt):
+        self.rect.center += self.direction * self.speed * dt
+        if self.rect.left > WINDOW_WIDTH + 100 or self.rect.right < -100 or self.rect.top > WINDOW_HEIGHT + 100 or self.rect.bottom < -100:
+            self.kill()
+        self.timer += dt * 1000
+        if self.timer >= self.interval:
+            self.timer = 0
+            self.index = (self.index + 1) % len(self.frames)
+            self.image = self.frames[self.index]
+
 class Fruit(pygame.sprite.Sprite):
     """Collectable items that give benefits"""
 
-    def __init__(self, game, groups, speed, spawn_bias=None, rotate=False):
+    def __init__(self, game, groups, spawn, speed, spawn_bias=None, rotate=False):
         self.game = game
         self._layer = self.game.LAYERS['fruits']
         super().__init__(groups)
         self.speed = speed
         self.rotate = rotate
         self.image = self.game.fruit_sprite_variants[self.__class__]
-        self.rect = self.image.get_frect(center=(random_of_spectrum(60,WINDOW_WIDTH-60,bias=spawn_bias),-80))
+        width, height = self.image.get_size()
+        FRUIT_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(50,WINDOW_HEIGHT-50,bias=spawn_bias)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(50,WINDOW_HEIGHT-50, bias=spawn_bias)), (-1,0)], 'top': [(random_of_spectrum(50,WINDOW_WIDTH-50, bias=spawn_bias),-height/2), (0,1)], 'bottom': [(random_of_spectrum(50,WINDOW_WIDTH-50),WINDOW_HEIGHT+height/2), (0,-1)]}
+        self.rect = self.image.get_frect(center=(FRUIT_ATTRIBUTES[spawn][0]))
         self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(0,1)
+        self.direction = pygame.Vector2(FRUIT_ATTRIBUTES[spawn][1])
         if self.rotate:
             self.angle = 0
             self.rotation_speed = random_of_spectrum(-150,150)
             self.base_image = self.image
 
     def destroy(self):
-        if self.rect.top > WINDOW_HEIGHT:
+        if self.rect.left > WINDOW_WIDTH + 100 or self.rect.right < -100 or self.rect.top > WINDOW_HEIGHT + 100 or self.rect.bottom < -100:
             self.kill()
 
     def display_pickup_message(self, font, messages):
@@ -582,7 +611,7 @@ class Obstacle(pygame.sprite.Sprite):
         self.kill()
 
     def destroy(self):
-        if self.rect.left > WINDOW_WIDTH + 800 or self.rect.right < -800 or self.rect.top > WINDOW_HEIGHT + 800 or self.rect.bottom < -800:
+        if self.rect.left > WINDOW_WIDTH + 700 or self.rect.right < -700 or self.rect.top > WINDOW_HEIGHT + 700 or self.rect.bottom < -700:
             self.kill()
 
     def update(self, dt):
@@ -833,7 +862,7 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         ObjectGlow(self.game,
                    (self.game.all_sprites, self.game.obstacle_effect_sprites),
                    self,
-                   (255,255,255),
+                   (210,210,210),
                    DARK_ENERGY_BALL_GLOW_RADIUS,
                    pulse=False)
     
@@ -916,7 +945,6 @@ class EffectText(pygame.sprite.Sprite):
             self.kill()
 
 class ObjectGlow(pygame.sprite.Sprite):
-    # Cache per (r,g,b,radius) so different glows don't overwrite each other
     CACHE = {}
 
     def __init__(self, game, groups, object, glow_color: tuple[int, int, int], glow_radius: int,offsetx: int = 0, offsety: int = 0, pulse: bool = True):
@@ -937,9 +965,8 @@ class ObjectGlow(pygame.sprite.Sprite):
             surf = pygame.Surface((size, size), pygame.SRCALPHA)
             cx = cy = radius
 
-            # Brightest inside, darker outside
             for r in range(radius, 0, -1):
-                t = r / radius  # 1 at edge -> 0 at center
+                t = r / radius
                 alpha = int(255 * (1 - t) ** 2)
                 pygame.draw.circle(surf, (*glow_color, alpha), (cx, cy), r)
 
@@ -947,9 +974,7 @@ class ObjectGlow(pygame.sprite.Sprite):
 
         self.base_glow = ObjectGlow.CACHE[key]
         self.image = self.base_glow.copy()
-        self.rect = self.image.get_rect(
-            center=(object.rect.centerx + self.offsetx, object.rect.centery + self.offsety)
-        )
+        self.rect = self.image.get_rect(center=(object.rect.centerx + self.offsetx, object.rect.centery + self.offsety))
 
     def update(self, dt):
         if not self.object.alive():
@@ -962,18 +987,14 @@ class ObjectGlow(pygame.sprite.Sprite):
             self.image = self.base_glow.copy()
             self.image.set_alpha(int(255 * pulse))
         else:
-            # keep non-pulsing glow stable and fast
             self.image = self.base_glow
 
-        self.rect.center = (
-            self.object.rect.centerx + self.offsetx,
-            self.object.rect.centery + self.offsety,
-        )
+        self.rect.center = (self.object.rect.centerx + self.offsetx, self.object.rect.centery + self.offsety,)
 
 # --- physics objects ---
 class StartBlueberry(Blueberry):
-    def __init__(self, game, groups, space, pos):
-        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+    def __init__(self, game, groups, spawn, space, pos):
+        super().__init__(game, groups, spawn, speed=0, spawn_bias=None, rotate=False)
         self.rect.center = pos
 
         # ---- Pymunk body/shape ----     
@@ -1019,8 +1040,8 @@ class StartIcicle(Icicle):
         self.mask = pygame.mask.from_surface(self.image)
 
 class GameOverApple(Apple):
-    def __init__(self, game, groups, space, pos):
-        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+    def __init__(self, game, groups, spawn, space, pos):
+        super().__init__(game, groups, spawn, speed=0, spawn_bias=None, rotate=False)
         self.rect.center = pos
         self.base_image = self.image
 
@@ -1045,8 +1066,8 @@ class GameOverApple(Apple):
         self.mask = pygame.mask.from_surface(self.image)
 
 class GameOverChili(Chili):
-    def __init__(self, game, groups, space, pos):
-        super().__init__(game, groups, speed=0, spawn_bias=None, rotate=False)
+    def __init__(self, game, groups, spawn, space, pos):
+        super().__init__(game, groups, spawn, speed=0, spawn_bias=None, rotate=False)
         self.rect.center = pos
         self.base_image = self.image
 
