@@ -477,7 +477,7 @@ class AnimatedBackground(pygame.sprite.Sprite):
 
 # --- items ---
 class Coin(pygame.sprite.Sprite):
-    def __init__(self, game, groups, frames, speed, spawn):
+    def __init__(self, game, groups, frames, spawn, speed, spawn_bias=None):
         self.game = game
         self._layer = self.game.LAYERS['coins']
         super().__init__(groups)
@@ -488,7 +488,7 @@ class Coin(pygame.sprite.Sprite):
         self.interval = COIN_FRAME_INTERVALL
         self.image = self.frames[self.index]
         width, height = self.image.get_size()
-        COIN_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(30,WINDOW_HEIGHT-30)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(30,WINDOW_HEIGHT-30)), (-1,0)], 'top': [(random_of_spectrum(30,WINDOW_WIDTH-30),-height/2), (0,1)], 'bottom': [(random_of_spectrum(30,WINDOW_WIDTH-30),WINDOW_HEIGHT+height/2), (0,-1)]}
+        COIN_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(30,WINDOW_HEIGHT-30,bias=spawn_bias)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(30,WINDOW_HEIGHT-30,bias=spawn_bias)), (-1,0)], 'top': [(random_of_spectrum(30,WINDOW_WIDTH-30,bias=spawn_bias),-height/2), (0,1)], 'bottom': [(random_of_spectrum(30,WINDOW_WIDTH-30,bias=spawn_bias),WINDOW_HEIGHT+height/2), (0,-1)]}
         self.rect = self.image.get_frect(center=(COIN_ATTRIBUTES[spawn][0]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(COIN_ATTRIBUTES[spawn][1])
@@ -688,6 +688,13 @@ class Jellyfish(Obstacle):
             self.index = (self.index + 1) % len(self.frames)
             self.image = self.frames[self.index]
         super().update(dt)
+
+class SpikeBlock(Obstacle):
+    def __init__(self, game, layer, groups, image, speed, spawn):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH), -self.size[1]/2 if spawn == 'top' else WINDOW_HEIGHT+self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, 1) if spawn == 'top' else pygame.Vector2(0, -1)
 
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):

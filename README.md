@@ -3,8 +3,8 @@
 ## 🎮 Gameplay
 
 **Shadow Drift** is a fast-paced arcade dodger.  
-Avoid obstacles, collect fruits, and survive as long as possible.  
-Score increases over time and with fruit pickups and when shooting obstacles. Hitting an obstacle costs health.  
+Avoid obstacles, collect coins and fruits, and survive as long as possible.  
+Score increases over time and with coin/fruit pickups and when shooting obstacles. Hitting an obstacle costs health.  
 The game ends when health reaches zero.
 
 ### Game States
@@ -31,6 +31,8 @@ The game ends when health reaches zero.
 | Dash | `RETURN` | Quick burst in movement direction |
 | Pause / Resume | `ESC` | Toggle pause menu |
 | Fullscreen | `F11` | Toggle fullscreen mode |
+
+(Controllers are supported, however, keybinds cannot be changed as of now)
 
 ---
 

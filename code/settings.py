@@ -29,6 +29,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_asteroid_phase': "#FFFFFF",
          'score_spike_ball_phase': "#0037FF",
          'score_shadow_spike_ball_phase': "#FFFFFF",
+         'score_spike_block_phase': "#000000",
+         'score_shadow_spike_block_phase': "#FFFFFF",
          'score_boss_phase': "#0037FF",
          'score_shadow_boss_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
@@ -65,6 +67,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'rocket_shot_effect_text': "#ea0404",
          'asteroid_shot_effect_text': "#857c73",
          'spikeball_shot_effect_text': "#131312",
+         'spikeblock_shot_effect_text': "#9badb7",
          'blue_banana_trail': "#1E3AC8FF",
          'red_banana_trail': "#CA0909FF",
          'credits_header': "#70C1FF",
@@ -109,6 +112,7 @@ MAX_FLICKER_INT: Annotated[int, (188-255)] = 255
 MIN_FLICKER_INT: Annotated[int, (60-160)] = 100
 FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
+PHASE_CHANGE_FADE_DURATION: float = 0.8
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.85
 BOSS_EXPLOSION_SPEED: float = 0.7
@@ -128,6 +132,7 @@ BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'rocket': None,
                                               'asteroid': None,
                                               'spike_ball': None,
+                                              'spike_block': None,
                                               'boss': None}
 
 # ----- AUDIO -----
@@ -183,13 +188,15 @@ DASH_SPEED: float = 1600
 DASH_COOLDOWN: float = 0.25 # seconds
 
 # coins
-COIN_SPAWNS_PER_MINUTE: float = 12.00
+COIN_SPAWNS_PER_MINUTE: float = 14.00
 COIN_POINTS: int = 2
+COIN_SPEED_RANGE: tuple[int] = (100,220)
 COIN_FRAME_INTERVALL: int = 35
 
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 4.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 1.0, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.3, 'grapes': 0.3, 'pear': 0.2}
+FRUIT_SPAWNS_PER_MINUTE: float = 3.00
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.9, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.3, 'grapes': 0.3, 'pear': 0.2}
+FRUIT_SPEED_RANGE: tuple[int] = (100,220)
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 25.0
@@ -199,9 +206,9 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 20, 'spike_ball': 20, 'boss': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'boss': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -216,8 +223,9 @@ THIRD_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
 
 # arrow phase
+ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
-ARROW_SINGLES_SPAWN_TIME: float = 0.3
+ARROW_SINGLES_SPAWN_TIME: float = 0.33
 ARROW_COLUMN_SPAWN_TIME: float = 2.5
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 SECOND_ARROW_PHASE_SPAWN_FACTOR: float = 1.2
@@ -225,34 +233,44 @@ THIRD_ARROW_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_ARROW_PHASE_SPAWN_FACTOR: float = 1.6
 
 # icicle phase
+ICICLE_PHASE_DELAY: float = 1.0
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
 SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
 THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
 FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
 
 # jellyfish phase
+JELLYFISH_PHASE_DELAY: float = 1.0
 JELLYFISH_SPAWN_TIME: float = 0.26
 JELLYFISH_GLOW_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
 JELLYFISH_FRAME_INTERVALL: int = 50
 
 # saw blade phase
+SAW_BLADE_PHASE_DELAY: float = 1.5
 SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
 SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
 
 # rocket phase
+ROCKET_PHASE_DELAY: float = 2.0
 ROCKET_SPAWN_TIME: float = 0.27 # seconds
 SECOND_ROCKET_PHASE_SPAWN_FACTOR: float = 1.2
 THIRD_ROCKET_PHASE_SPAWN_FACTOR: float = 1.4
 FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
 
 # asteroid phase
+ASTEROID_PHASE_DELAY: float = 1.0
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
 
 # spike ball phase
+SPIKE_BALL_PHASE_DELAY: float = 1.0
 SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
+
+# spike block phase
+SPIKE_BLOCK_PHASE_DELAY: float = 1.0
+SPIKE_BLOCK_SPAWN_TIME: float = 0.36 # seconds
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500

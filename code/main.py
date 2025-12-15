@@ -1014,6 +1014,7 @@ class Game:
             'rocket': [pygame.image.load(join(self.IMG_DIR, 'bg_rocket_phase', 'bg_rocket_phase.png')).convert_alpha()],
             'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
             'spike_ball': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_ball_phase', 'bg_spike_ball_phase.png')).convert_alpha()],
+            'spike_block': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_block_phase', 'bg_spike_block_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
         
         # --- heart images ---
@@ -1048,6 +1049,8 @@ class Game:
 
         self.spike_ball_image = pygame.image.load(join(self.IMG_DIR, 'spike_ball.png')).convert_alpha()
 
+        self.spike_block_image = pygame.image.load(join(self.IMG_DIR, 'spike_block.png')).convert_alpha()
+
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
@@ -1077,7 +1080,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = 'rectangle'
+        self.current_phase = 'spike_block'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1089,6 +1092,7 @@ class Game:
         self.next_rocket_spawn_time = ROCKET_SPAWN_TIME
         self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
         self.next_spike_ball_spawn_time = SPIKE_BALL_SPAWN_TIME
+        self.next_spike_block_spawn_time = SPIKE_BLOCK_SPAWN_TIME
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -1132,6 +1136,7 @@ class Game:
         self.rocket_sprites = pygame.sprite.Group()
         self.asteroid_sprites = pygame.sprite.Group()
         self.spike_ball_sprites = pygame.sprite.Group()
+        self.spike_block_sprites = pygame.sprite.Group()
         self.boss_sprites = pygame.sprite.Group()
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
@@ -1226,7 +1231,7 @@ class Game:
             STATS['score'] += PHASE_END_POINTS[self.current_phase]
             self.phase_switch_sound.play()
             pause_play_time(self)
-            fade_to_black(self)
+            fade_to_black(self, duration=PHASE_CHANGE_FADE_DURATION)
             resume_play_time(self)
             clear_input()
             kill_sprites(self.background_sprites)
@@ -1262,23 +1267,23 @@ class Game:
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()
-                self.spawn_coin(dt, spawn='top')
+                self.spawn_coin(dt, spawn='top', spawn_tendency=0.4)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.4)
             case 'arrow':
                 self.arrow_phase()
-                self.spawn_coin(dt, spawn='left')
+                self.spawn_coin(dt, spawn='left', spawn_tendency=0.6)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.6)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']), spawn_tendency=0.6)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5)
             case 'jellyfish':
                 self.jellyfish_phase()
-                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
-                self.spawn_fruit(dt, spawn='top', speed_tendency=0.05)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']), speed_tendency=0.1)
+                self.spawn_fruit(dt, spawn='top', speed_tendency=0.1)
             case 'saw_blade':
                 self.saw_blade_phase()
-                self.spawn_coin(dt, spawn='top', speed_tendency=0.4)
+                self.spawn_coin(dt, spawn='top', speed_tendency=0.4, spawn_tendency=0.7)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.7)
             case 'rocket':
                 self.rocket_phase()
@@ -1286,12 +1291,16 @@ class Game:
                 self.spawn_fruit(dt, spawn='bottom', speed_tendency=0.35, rotation=True)
             case 'asteroid':
                 self.asteroid_phase()
-                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25)
-                self.spawn_fruit(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25, rotation=True)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25, spawn_tendency=0.5)
+                self.spawn_fruit(dt, spawn=random_of_selection(['left', 'right', 'top', 'bottom']), speed_tendency=0.25, spawn_tendency=0.5, rotation=True)
             case 'spike_ball':
                 self.spike_ball_phase()
-                self.spawn_coin(dt, spawn='top')
+                self.spawn_coin(dt, spawn='top', spawn_tendency=0.5)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5)
+            case 'spike_block':
+                self.spike_block_phase()
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
+                self.spawn_fruit(dt, spawn=random_of_selection(['left', 'right']))
             case 'boss':
                 self.boss_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
@@ -1359,7 +1368,7 @@ class Game:
             return
 
         # spawn arrow according to phase
-        if self.play_time >= self.next_arrow_spawn_time:
+        if self.play_time >= self.next_arrow_spawn_time and self.play_time - self.phase_start > ARROW_PHASE_DELAY:
             match(self.arrow_sub_phase):
                     case 'columns':
                         height = random_of_selection(ARROW_COLUMN_SPAWN_HEIGHTS)
@@ -1400,7 +1409,7 @@ class Game:
             return
 
         # --- spawn icicle ---
-        if self.play_time >= self.next_icicle_spawn_time and self.play_time - self.phase_start > 1:
+        if self.play_time >= self.next_icicle_spawn_time and self.play_time - self.phase_start > ICICLE_PHASE_DELAY:
             Icicle(self,
                    self.LAYERS['obstacles'],
                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.icicle_sprites),
@@ -1423,7 +1432,7 @@ class Game:
             return
 
         # spawn jellyfish
-        if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > 1:
+        if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > JELLYFISH_PHASE_DELAY:
             Jellyfish(self,
                       self.LAYERS['obstacles'],
                       (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.jellyfish_sprites),
@@ -1454,7 +1463,7 @@ class Game:
             return
 
         # --- spawn saw blade ---
-        if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > 1.5:
+        if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > SAW_BLADE_PHASE_DELAY:
             SawBlade(self,
                      self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.saw_blade_sprites),
@@ -1482,7 +1491,7 @@ class Game:
             return
 
         # --- spawn rocket ---
-        if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > 2.0:
+        if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > ROCKET_PHASE_DELAY:
             Rocket(self,
                    self.LAYERS['obstacles'],
                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.rocket_sprites),
@@ -1505,7 +1514,7 @@ class Game:
             return
 
         # --- spawn rocket ---
-        if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > 1.0:
+        if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > ASTEROID_PHASE_DELAY:
             Asteroid(self,
                      self.LAYERS['obstacles'],
                     (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.asteroid_sprites),
@@ -1528,7 +1537,7 @@ class Game:
             return
 
         # --- spawn spike ball ---
-        if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > 1:
+        if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > SPIKE_BALL_PHASE_DELAY:
             SpikeBall(self,
                       self.LAYERS['obstacles'],
                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_ball_sprites),
@@ -1538,6 +1547,30 @@ class Game:
                      230,
                      random_of_selection(('right', 'left')))
             self.next_spike_ball_spawn_time = self.play_time + SPIKE_BALL_SPAWN_TIME
+
+    def spike_block_phase(self):
+        # --- choose speed and spawn rate of spike block ---
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = 180
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = 200
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = 220
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = 240
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            return
+
+        # --- spawn spike block ---
+        if self.play_time >= self.next_spike_block_spawn_time and self.play_time - self.phase_start > SPIKE_BLOCK_PHASE_DELAY:
+            SpikeBlock(self,
+                       self.LAYERS['obstacles'],
+                       (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_block_sprites),
+                       self.spike_block_image,
+                       speed,
+                       random_of_selection(('top', 'bottom')))
+            self.next_spike_block_spawn_time = self.play_time + SPIKE_BLOCK_SPAWN_TIME
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):
@@ -1562,19 +1595,14 @@ class Game:
             kill_sprites(self.obstacle_sprites)
             return
 
-    def spawn_coin(self, dt, spawn, spawns_per_min=COIN_SPAWNS_PER_MINUTE, speed_tendency=None):
+    def spawn_coin(self, dt, spawn, spawns_per_min=COIN_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None):
         if random.random() < spawns_per_min/60 * dt:
-            Coin(self, (self.all_sprites, self.coin_sprites), self.coin_frames, random_of_spectrum(80,280,bias=speed_tendency), spawn=spawn)
+            Coin(self, (self.all_sprites, self.coin_sprites), self.coin_frames, spawn=spawn, speed=random_of_spectrum(COIN_SPEED_RANGE[0], COIN_SPEED_RANGE[1], bias=speed_tendency),spawn_bias=spawn_tendency)
 
     def spawn_fruit(self, dt, spawn, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
         if random.random() < spawns_per_min/60 * dt:
             new_fruit = random_of_selection(fruits, (FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
-            new_fruit(self,
-                    (self.all_sprites, self.fruit_sprites),
-                    speed=random_of_spectrum(80,260,bias=speed_tendency),
-                    spawn=spawn,
-                    spawn_bias=spawn_tendency,
-                    rotate=rotation)
+            new_fruit(self, (self.all_sprites, self.fruit_sprites), speed=random_of_spectrum(FRUIT_SPEED_RANGE[0], FRUIT_SPEED_RANGE[1], bias=speed_tendency), spawn=spawn, spawn_bias=spawn_tendency, rotate=rotation)
 
     def collisions(self):
         # --- fireball collisions ---
