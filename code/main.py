@@ -97,7 +97,8 @@ class Game:
             elif self.state == 'play':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE and self.player.is_alive and self.requested_state != 'game_over':
-                        self.requested_state = 'stop'
+                        if self.play_time > MUSIC_FADE_IN_ON_GAME_START / 1000:
+                            self.requested_state = 'stop'
 
             # controller buttons
                 elif event.type == pygame.JOYBUTTONDOWN:
@@ -106,7 +107,8 @@ class Game:
                     elif event.button == PAD_A_BUTTON:
                         self.player.want_ability = True
                     elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON) and self.player.is_alive and self.requested_state != 'game_over':
-                        self.requested_state = 'stop'
+                        if self.play_time > MUSIC_FADE_IN_ON_GAME_START / 1000:
+                            self.requested_state = 'stop'
 
                 elif event.type == self.score_event:
                     STATS['score'] += 1
@@ -229,11 +231,11 @@ class Game:
         '''Switches game mode and handles necessary changes.'''
         # check for state change request
         if not self.requested_state or self.requested_state == self.state:
-            if getattr(self, 'show_credits', False) and self.current_track != 'credits_track':
+            if getattr(self, 'show_credits', False) and self.current_track != 'credits':
                 self.pre_credits_track = self.current_track
-                change_track(self, 'credits_track', fade_ms=0, loop=False)
-            elif not getattr(self, 'show_credits', False) and self.current_track == 'credits_track':
-                change_track(self, self.pre_credits_track, fade_ms=0)
+                change_track(self, 'credits', fade_out=0, fade_in=0, loop=False)
+            elif not getattr(self, 'show_credits', False) and self.current_track == 'credits':
+                change_track(self, self.pre_credits_track, fade_out=0, fade_in=0)
                 self.music_channel.set_volume(self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR)
             return
         
@@ -247,13 +249,13 @@ class Game:
                 kill_sprites(self.all_sprites, space=self.menu_space)
                 self.init_game_state()
                 self.init_sprites()
-            change_track(self, 'start_track')
+            change_track(self, 'start')
 
         elif new == 'play':
             if old == 'start':
                 kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
                 self.play_start = perf_counter()
-                change_track(self, 'game_track_1')
+                change_track(self, 'rectangle', fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START)
                 pygame.key.get_pressed()
                 clear_input()
             if old == 'stop':
@@ -279,7 +281,7 @@ class Game:
             self.game_over_sound.play()
             fade_to_black(self, duration=GAME_OVER_FADE_DURATION)
             clear_input()
-            change_track(self, 'game_over_track')
+            change_track(self, 'game_over')
             self.text_surfaces['game_over_score'] = self.fonts['game_over_score'].render(f"Score: {STATS['score']}", True, COLOR['game_over_text'])
             self.text_rects['game_over_score'] = self.text_surfaces['game_over_score'].get_rect(topleft=(10, 10))
             
@@ -783,11 +785,19 @@ class Game:
         
     def load_sounds(self):
         # --- game music ---
-        self.tracks: dict = {'start_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'start_track.ogg')),
-                             'game_over_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
-                             'credits_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'credits_track.ogg')),
-                             'game_track_1': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_track_1.ogg')),
-                             'boss_track': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.ogg')),}
+        self.tracks: dict = {'start': pygame.mixer.Sound(join(self.AUDIO_DIR, 'start_track.ogg')),
+                             'game_over': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
+                             'credits': pygame.mixer.Sound(join(self.AUDIO_DIR, 'credits_track.ogg')),
+                             'rectangle': pygame.mixer.Sound(join(self.AUDIO_DIR, 'rectangle_track.wav')),
+                             'arrow': pygame.mixer.Sound(join(self.AUDIO_DIR, 'arrow_track.wav')),
+                             'icicle': pygame.mixer.Sound(join(self.AUDIO_DIR, 'icicle_track.wav')),
+                             'jellyfish': pygame.mixer.Sound(join(self.AUDIO_DIR, 'jellyfish_track.wav')),
+                             'saw_blade': pygame.mixer.Sound(join(self.AUDIO_DIR, 'saw_blade_track.wav')),
+                             'rocket': pygame.mixer.Sound(join(self.AUDIO_DIR, 'rocket_track.wav')),
+                             'asteroid': pygame.mixer.Sound(join(self.AUDIO_DIR, 'asteroid_track.wav')),
+                             'spike_ball': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_ball_track.wav')),
+                             'spike_block': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_block_track.wav')),
+                             'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.ogg'))}
 
         # --- sound effects ---
         self.using_controller_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'using_controller_sound.wav'))
@@ -812,11 +822,19 @@ class Game:
 
     def set_all_volumes(self):
         # --- game music ---
-        self.tracks['start_track'].set_volume(START_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
-        self.tracks['game_over_track'].set_volume(GAME_OVER_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
-        self.tracks['credits_track'].set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
-        self.tracks['game_track_1'].set_volume(GAME_TRACK_1_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME) 
-        self.tracks['boss_track'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['start'].set_volume(START_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['game_over'].set_volume(GAME_OVER_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['credits'].set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['rectangle'].set_volume(RECTANGLE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['arrow'].set_volume(ARROW_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['icicle'].set_volume(ICICLE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['jellyfish'].set_volume(JELLYFISH_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['saw_blade'].set_volume(SAW_BLADE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['rocket'].set_volume(ROCKET_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['asteroid'].set_volume(ASTEROID_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['spike_ball'].set_volume(SPIKE_BALL_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['spike_block'].set_volume(SPIKE_BLOCK_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['boss'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items()}
@@ -1080,7 +1098,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = 'spike_block'
+        self.current_phase = 'rectangle'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1243,11 +1261,11 @@ class Game:
             kill_sprites(self.fireball_sprites)
             if STATS['score'] >= BOSS_PHASE_START_POINTS and not getattr(self, 'had_boss', False):
                 self.current_phase = 'boss'
-                change_track(self, 'boss_track', fade_ms=2000, loop=True)
             else:
                 self.prev_phase = self.current_phase
                 while self.current_phase == self.prev_phase:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
+            change_track(self, self.current_phase, fade_out=500, fade_in=700)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1255,7 +1273,7 @@ class Game:
             self.change_score_color = True
             self.phase_start = self.play_time
             if self.current_phase in ('arrow', 'saw_blade'):
-                self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1])
+                self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1]) 
                 self.player.facing_right = False
             elif self.current_phase in ('rocket', 'jellyfish'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
@@ -1577,7 +1595,7 @@ class Game:
             if self.play_time - self.boss_phase_end_start > BOSS_PHASE_END_DURATION:
                 self.init_boss_phase_end = False
                 self.phase_ended = True
-                change_track(self, 'game_track_1', fade_ms=3000, loop=True)
+                self.music_channel.fadeout(3000)
             return
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
             Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))

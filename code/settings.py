@@ -112,7 +112,7 @@ MAX_FLICKER_INT: Annotated[int, (188-255)] = 255
 MIN_FLICKER_INT: Annotated[int, (60-160)] = 100
 FADE_TO_BLACK_SMOOTHNESS: int = 600
 FADE_TO_BLACK_DURATION: float = 0.6
-PHASE_CHANGE_FADE_DURATION: float = 0.8
+PHASE_CHANGE_FADE_DURATION: float = 0.75
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.85
 BOSS_EXPLOSION_SPEED: float = 0.7
@@ -142,11 +142,20 @@ MUSIC_VOLUME: Annotated[float, (0-1)] = 1
 SFX_VOLUME: Annotated[float, (0-1)] = 1
 
 # game music volumes
+MUSIC_FADE_IN_ON_GAME_START: float = 1000 # milliseconds
 STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.4
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
-GAME_TRACK_1_VOLUME: Annotated[float, (0-1)] = 0.4
+RECTANGLE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+ARROW_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+ICICLE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+JELLYFISH_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+SAW_BLADE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+ROCKET_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+ASTEROID_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+SPIKE_BALL_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+SPIKE_BLOCK_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 
 # menu sound volumes
@@ -165,10 +174,10 @@ PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
-ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
+ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 BUFF_END_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 BOSS_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
@@ -206,7 +215,7 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.7, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.8, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
 
 PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'boss': 200}
 

@@ -66,14 +66,14 @@ def get_scaled_mouse_pos(game):
     scale_y = BASE_RESOLUTION[1] / game.window.get_height()
     return int(mouse_x * scale_x), int(mouse_y * scale_y)
 
-def change_track(game, key, fade_ms=1, loop=True):
+def change_track(game, key, fade_out=1, fade_in=1, loop=True):
     """Switch to another track while preserving base volume."""
 
     if hasattr(game, 'music_channel') and game.music_channel and game.music_channel.get_busy():
-        game.music_channel.stop()
+        game.music_channel.fadeout(fade_out)
 
     track = game.tracks[key]
-    game.music_channel = track.play(loops=-1 if loop else 0, fade_ms=fade_ms)
+    game.music_channel = track.play(loops=-1 if loop else 0, fade_ms=fade_in)
     game.music_channel.set_volume(game.base_volumes[key])
     game.current_track = key
 
