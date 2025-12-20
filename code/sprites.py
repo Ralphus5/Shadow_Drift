@@ -467,7 +467,7 @@ class AnimatedBackground(pygame.sprite.Sprite):
             self.image = self.frames[self.index]
 
         if self.scroll == 'right':
-            self.rect.centerx -= dt * self.speed
+            self.rect.centerx += dt * self.speed * -1
             if self.rect.centerx <= 0:
                 self.rect.topleft = (0,0)
         elif self.scroll == 'left':

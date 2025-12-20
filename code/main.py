@@ -797,7 +797,7 @@ class Game:
                              'asteroid': pygame.mixer.Sound(join(self.AUDIO_DIR, 'asteroid_track.wav')),
                              'spike_ball': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_ball_track.wav')),
                              'spike_block': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_block_track.wav')),
-                             'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.ogg'))}
+                             'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.wav'))}
 
         # --- sound effects ---
         self.using_controller_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'using_controller_sound.wav'))
@@ -1265,7 +1265,7 @@ class Game:
                 self.prev_phase = self.current_phase
                 while self.current_phase == self.prev_phase:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            change_track(self, self.current_phase, fade_out=500, fade_in=700)
+            change_track(self, self.current_phase, fade_out=100, fade_in=400)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1285,16 +1285,16 @@ class Game:
         match(self.current_phase):
             case 'rectangle':
                 self.rectangle_phase()
-                self.spawn_coin(dt, spawn='top', spawn_tendency=0.4)
-                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.4)
+                self.spawn_coin(dt, spawn='top', spawn_tendency=0.3)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.3)
             case 'arrow':
                 self.arrow_phase()
-                self.spawn_coin(dt, spawn='left', spawn_tendency=0.6)
-                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.6)
+                self.spawn_coin(dt, spawn='left', spawn_tendency=0.7)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.7)
             case 'icicle':
                 self.icicle_phase()
-                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']), spawn_tendency=0.6)
-                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5)
+                self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']), spawn_tendency=0.8)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.6)
             case 'jellyfish':
                 self.jellyfish_phase()
                 self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']), speed_tendency=0.1)
@@ -1333,17 +1333,17 @@ class Game:
             speed = 350
             weight = (0.8, 0.7, 0.7, 0.6)
             spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
-            self.background.speed = 84
+            self.background.speed = 85
         elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
             speed = 450
             weight = (0.6, 0.6, 0.8, 0.8)
             spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
-            self.background.speed = 108
+            self.background.speed = 105
         elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
             speed = 550
             weight = (0.4, 0.5, 0.9, 1)
             spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
-            self.background.speed = 132
+            self.background.speed = 125
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return

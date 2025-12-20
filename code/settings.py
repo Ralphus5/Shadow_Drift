@@ -123,7 +123,7 @@ BANANA_TRAIL_LIFETIME: float = 0.53
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
-DEFAULT_BACKGROUND_SCROLL_SPEED: int = 60
+DEFAULT_BACKGROUND_SCROLL_SPEED: int = 70
 BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'arrow': 'left',
                                               'icicle': None,
@@ -168,6 +168,7 @@ USING_CONTROLLER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0 # unaffected by in-
 COIN_PICKUP_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 EAT_FRUIT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.85
 DAMAGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+BUFF_END_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 GAME_OVER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
@@ -176,9 +177,8 @@ ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
 BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
+BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.5
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
-BUFF_END_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 BOSS_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 
@@ -215,7 +215,7 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.8, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.9, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
 
 PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'boss': 200}
 
