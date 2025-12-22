@@ -29,8 +29,10 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_asteroid_phase': "#FFFFFF",
          'score_spike_ball_phase': "#0037FF",
          'score_shadow_spike_ball_phase': "#FFFFFF",
-         'score_spike_block_phase': "#000000",
-         'score_shadow_spike_block_phase': "#FFFFFF",
+         'score_spike_block_phase': "#0037FF",
+         'score_shadow_spike_block_phase': "#000000",
+         'score_poison_cloud_phase': "#000000",
+         'score_shadow_poison_cloud_phase': "#FFFFFF",
          'score_boss_phase': "#0037FF",
          'score_shadow_boss_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
@@ -68,6 +70,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'asteroid_shot_effect_text': "#857c73",
          'spikeball_shot_effect_text': "#131312",
          'spikeblock_shot_effect_text': "#9badb7",
+         'poisoncloud_shot_effect_text': "#abc632",
          'blue_banana_trail': "#1E3AC8FF",
          'red_banana_trail': "#CA0909FF",
          'credits_header': "#70C1FF",
@@ -133,6 +136,7 @@ BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'asteroid': None,
                                               'spike_ball': None,
                                               'spike_block': None,
+                                              'poison_cloud': None,
                                               'boss': None}
 
 # ----- AUDIO -----
@@ -156,7 +160,8 @@ ROCKET_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 ASTEROID_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 SPIKE_BALL_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 SPIKE_BLOCK_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
-BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
+POISON_CLOUD_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
+BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -175,9 +180,9 @@ PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.6
+SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.55
 BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.5
+BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 BOSS_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
@@ -215,9 +220,9 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 0.9, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'boss': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'boss': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -280,6 +285,10 @@ SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
 # spike block phase
 SPIKE_BLOCK_PHASE_DELAY: float = 1.0
 SPIKE_BLOCK_SPAWN_TIME: float = 0.36 # seconds
+
+# poison cloud phase
+POISON_CLOUD_DELAY: float = 1.0
+POISON_CLOUD_SPAWN_TIME: float = 0.38 # seconds
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500

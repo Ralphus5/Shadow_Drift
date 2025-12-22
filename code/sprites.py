@@ -696,6 +696,18 @@ class SpikeBlock(Obstacle):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, 1) if spawn == 'top' else pygame.Vector2(0, -1)
 
+class PoisonCloud(Obstacle):
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), WINDOW_HEIGHT+self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, -1)
+        self.creation_time = self.game.play_time
+
+    def update(self, dt):
+        super().update(dt)
+        self.rect.centerx += dt * sin((self.game.play_time - self.creation_time) * 2) * 40
+
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):
         super().__init__(game, layer, groups, image, speed, angle, rotation_speed)

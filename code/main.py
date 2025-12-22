@@ -253,9 +253,9 @@ class Game:
 
         elif new == 'play':
             if old == 'start':
+                change_track(self, self.current_phase, fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START)
                 kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
                 self.play_start = perf_counter()
-                change_track(self, 'rectangle', fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START)
                 pygame.key.get_pressed()
                 clear_input()
             if old == 'stop':
@@ -797,6 +797,7 @@ class Game:
                              'asteroid': pygame.mixer.Sound(join(self.AUDIO_DIR, 'asteroid_track.wav')),
                              'spike_ball': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_ball_track.wav')),
                              'spike_block': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_block_track.wav')),
+                             'poison_cloud': pygame.mixer.Sound(join(self.AUDIO_DIR, 'poison_cloud_track.wav')),
                              'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.wav'))}
 
         # --- sound effects ---
@@ -834,6 +835,7 @@ class Game:
         self.tracks['asteroid'].set_volume(ASTEROID_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['spike_ball'].set_volume(SPIKE_BALL_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['spike_block'].set_volume(SPIKE_BLOCK_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['poison_cloud'].set_volume(POISON_CLOUD_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['boss'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
@@ -1033,6 +1035,7 @@ class Game:
             'asteroid': [pygame.image.load(join(self.IMG_DIR, 'bg_asteroid_phase', 'bg_asteroid_phase.png')).convert_alpha()],
             'spike_ball': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_ball_phase', 'bg_spike_ball_phase.png')).convert_alpha()],
             'spike_block': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_block_phase', 'bg_spike_block_phase.png')).convert_alpha()],
+            'poison_cloud': [pygame.image.load(join(self.IMG_DIR, 'bg_poison_cloud_phase', 'bg_poison_cloud_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
         
         # --- heart images ---
@@ -1068,6 +1071,8 @@ class Game:
         self.spike_ball_image = pygame.image.load(join(self.IMG_DIR, 'spike_ball.png')).convert_alpha()
 
         self.spike_block_image = pygame.image.load(join(self.IMG_DIR, 'spike_block.png')).convert_alpha()
+
+        self.poison_cloud_image = pygame.image.load(join(self.IMG_DIR, 'poison_cloud.png')).convert_alpha()
 
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
@@ -1111,6 +1116,7 @@ class Game:
         self.next_asteroid_spawn_time = ASTEROID_SPAWN_TIME
         self.next_spike_ball_spawn_time = SPIKE_BALL_SPAWN_TIME
         self.next_spike_block_spawn_time = SPIKE_BLOCK_SPAWN_TIME
+        self.next_poison_cloud_spawn_time = POISON_CLOUD_SPAWN_TIME
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -1155,6 +1161,7 @@ class Game:
         self.asteroid_sprites = pygame.sprite.Group()
         self.spike_ball_sprites = pygame.sprite.Group()
         self.spike_block_sprites = pygame.sprite.Group()
+        self.poison_cloud_sprites = pygame.sprite.Group()
         self.boss_sprites = pygame.sprite.Group()
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
@@ -1265,7 +1272,7 @@ class Game:
                 self.prev_phase = self.current_phase
                 while self.current_phase == self.prev_phase:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            change_track(self, self.current_phase, fade_out=100, fade_in=400)
+            change_track(self, self.current_phase, fade_out=100, fade_in=150)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1275,7 +1282,7 @@ class Game:
             if self.current_phase in ('arrow', 'saw_blade'):
                 self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1]) 
                 self.player.facing_right = False
-            elif self.current_phase in ('rocket', 'jellyfish'):
+            elif self.current_phase in ('rocket', 'jellyfish', 'poison_cloud'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
             elif self.current_phase in ('boss', 'icicle', ):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] + 200)
@@ -1319,6 +1326,10 @@ class Game:
                 self.spike_block_phase()
                 self.spawn_coin(dt, spawn=random_of_selection(['left', 'right']))
                 self.spawn_fruit(dt, spawn=random_of_selection(['left', 'right']))
+            case 'poison_cloud':
+                self.poison_cloud_phase()
+                self.spawn_coin(dt, spawn=random_of_selection(['right', 'left']), spawn_tendency=0.7, speed_tendency=0.7)
+                self.spawn_fruit(dt, spawn=random_of_selection(['right', 'left']), spawn_tendency=0.7, speed_tendency=0.7)
             case 'boss':
                 self.boss_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
@@ -1461,11 +1472,11 @@ class Game:
     def saw_blade_phase(self):
         # --- choose speed and spawn rate of saw blade ---
         if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 360
+            speed = 400
             rotation_speed = -180
             spawn_rate_factor = 1
         elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 460
+            speed = 480
             rotation_speed = -220
             spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
@@ -1473,7 +1484,7 @@ class Game:
             rotation_speed = -270
             spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 660
+            speed = 640
             rotation_speed = -320
             spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
         elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
@@ -1589,6 +1600,27 @@ class Game:
                        speed,
                        random_of_selection(('top', 'bottom')))
             self.next_spike_block_spawn_time = self.play_time + SPIKE_BLOCK_SPAWN_TIME
+
+    def poison_cloud_phase(self):
+        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = 120
+        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = 130
+        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = 140
+        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = 150
+        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            return
+
+        if self.play_time >= self.next_poison_cloud_spawn_time and self.play_time - self.phase_start > POISON_CLOUD_DELAY:
+            PoisonCloud(self,
+                       self.LAYERS['obstacles'],
+                       (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.poison_cloud_sprites),
+                       self.poison_cloud_image,
+                       speed)
+            self.next_poison_cloud_spawn_time = self.play_time + POISON_CLOUD_SPAWN_TIME
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):
