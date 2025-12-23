@@ -126,7 +126,6 @@ BANANA_TRAIL_LIFETIME: float = 0.53
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
-DEFAULT_BACKGROUND_SCROLL_SPEED: int = 70
 BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'arrow': 'left',
                                               'icicle': None,
@@ -147,7 +146,6 @@ SFX_VOLUME: Annotated[float, (0-1)] = 1
 
 # game music volumes
 MUSIC_FADE_IN_ON_GAME_START: float = 1000 # milliseconds
-STOP_SCREEN_DIM_FACTOR: Annotated[float, (0-1)] = 0.4
 START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
@@ -208,7 +206,7 @@ COIN_SPEED_RANGE: tuple[int] = (100,220)
 COIN_FRAME_INTERVALL: int = 35
 
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 3.00
+FRUIT_SPAWNS_PER_MINUTE: float = 3.75
 FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.9, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.3, 'grapes': 0.3, 'pear': 0.2}
 FRUIT_SPEED_RANGE: tuple[int] = (100,220)
 APPLE_POINTS: int = 10
@@ -232,9 +230,10 @@ FOURTH_OBSTACLE_PHASE_END: int = 60
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
-SECOND_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.2
-THIRD_RECTANGEL_PHASE_SPAWN_FACTOR: float = 1.4
-FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR: float = 1.6
+RECTANGLE_SPEEDS: tuple[int] = (280, 350, 420, 500)
+RECTANGLE_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
+RECTANGLE_BACKGROUND_SPEEDS: tuple[int] = (80, 95, 110, 125)
+RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.8, 0.7, 0.7, 0.6], [0.6, 0.6, 0.8, 0.8], [0.4, 0.5, 0.9, 1])
 
 # arrow phase
 ARROW_PHASE_DELAY: float = 1.0
@@ -242,20 +241,20 @@ ARROW_SUB_PHASE_DURATION: int = 10
 ARROW_SINGLES_SPAWN_TIME: float = 0.33
 ARROW_COLUMN_SPAWN_TIME: float = 2.5
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
-SECOND_ARROW_PHASE_SPAWN_FACTOR: float = 1.2
-THIRD_ARROW_PHASE_SPAWN_FACTOR: float = 1.4
-FOURTH_ARROW_PHASE_SPAWN_FACTOR: float = 1.6
+ARROW_SPEEDS: tuple[int] = (300, 320, 340, 360)
+ARROW_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
+ARROW_BACKGROUND_SPEEDS: tuple[int] = (75, 90, 105, 120)
 
 # icicle phase
 ICICLE_PHASE_DELAY: float = 1.0
 ICICLE_SPAWN_TIME: float = 0.19 # seconds
-SECOND_ICICLE_PHASE_SPAWN_FACTOR: float = 1.15
-THIRD_ICICLE_PHASE_SPAWN_FACTOR: float = 1.2
-FOURTH_ICICLE_PHASE_SPAWN_FACTOR: float = 1.25
+ICICLE_SPEEDS: tuple[int] = (200, 250, 300, 350)
+ICICLE_SPAWN_RATE_FACTORS: tuple[float] = (1.15, 1.2, 1.25)
 
 # jellyfish phase
 JELLYFISH_PHASE_DELAY: float = 1.0
 JELLYFISH_SPAWN_TIME: float = 0.26
+JELLYFISH_SPEEDS: tuple[int] = (150, 180, 210, 240)
 JELLYFISH_GLOW_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
 JELLYFISH_FRAME_INTERVALL: int = 50
@@ -263,32 +262,37 @@ JELLYFISH_FRAME_INTERVALL: int = 50
 # saw blade phase
 SAW_BLADE_PHASE_DELAY: float = 1.5
 SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
-SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.2
-THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.4
-FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR: float = 1.6
+SAW_BLADE_SPEEDS: tuple[int] = (400, 480, 560, 640)
+SAW_BLADE_ROTATION_SPEEDS: tuple[int] = (-190, -230, -270, -320)
+SAW_BLADE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
 # rocket phase
 ROCKET_PHASE_DELAY: float = 2.0
 ROCKET_SPAWN_TIME: float = 0.27 # seconds
-SECOND_ROCKET_PHASE_SPAWN_FACTOR: float = 1.2
-THIRD_ROCKET_PHASE_SPAWN_FACTOR: float = 1.4
-FOURTH_ROCKET_PHASE_SPAWN_FACTOR: float = 1.6
+ROCKET_SPEEDS: tuple[int] = (600, 700, 800, 900)
+ROCKET_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
 # asteroid phase
 ASTEROID_PHASE_DELAY: float = 1.0
 ASTEROID_SPAWN_TIME: float = 0.35 # seconds
+ASTEROID_SPEEDS: tuple[int] = (200, 230, 260, 290)
 
 # spike ball phase
 SPIKE_BALL_PHASE_DELAY: float = 1.0
 SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
+SPIKE_BALL_SPEEDS: tuple[int] = (250, 300, 350, 400)
+SPIKE_BALL_ROTATION_SPEEDS: tuple[int] = (170, 190, 210, 230)
 
 # spike block phase
 SPIKE_BLOCK_PHASE_DELAY: float = 1.0
 SPIKE_BLOCK_SPAWN_TIME: float = 0.36 # seconds
+SPIKE_BLOCK_SPEEDS: tuple[int] = (180, 200, 220, 240)
 
 # poison cloud phase
 POISON_CLOUD_DELAY: float = 1.0
 POISON_CLOUD_SPAWN_TIME: float = 0.38 # seconds
+POISON_CLOUD_SPEEDS: tuple[int] = (120, 140, 160, 180)
+POISON_CLOUD_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500

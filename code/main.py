@@ -97,8 +97,7 @@ class Game:
             elif self.state == 'play':
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE and self.player.is_alive and self.requested_state != 'game_over':
-                        if self.play_time > MUSIC_FADE_IN_ON_GAME_START / 1000:
-                            self.requested_state = 'stop'
+                        self.requested_state = 'stop'
 
             # controller buttons
                 elif event.type == pygame.JOYBUTTONDOWN:
@@ -107,8 +106,7 @@ class Game:
                     elif event.button == PAD_A_BUTTON:
                         self.player.want_ability = True
                     elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON) and self.player.is_alive and self.requested_state != 'game_over':
-                        if self.play_time > MUSIC_FADE_IN_ON_GAME_START / 1000:
-                            self.requested_state = 'stop'
+                        self.requested_state = 'stop'
 
                 elif event.type == self.score_event:
                     STATS['score'] += 1
@@ -231,12 +229,12 @@ class Game:
         '''Switches game mode and handles necessary changes.'''
         # check for state change request
         if not self.requested_state or self.requested_state == self.state:
-            if getattr(self, 'show_credits', False) and self.current_track != 'credits':
-                self.pre_credits_track = self.current_track
-                change_track(self, 'credits', fade_out=0, fade_in=0, loop=False)
-            elif not getattr(self, 'show_credits', False) and self.current_track == 'credits':
-                change_track(self, self.pre_credits_track, fade_out=0, fade_in=0)
-                self.music_channel.set_volume(self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR)
+            if getattr(self, 'show_credits', False) and not getattr(self, 'playing_credits', False):
+                pygame.mixer.music.play(loops=0)
+                self.playing_credits = True
+            elif not getattr(self, 'show_credits', False) and getattr(self, 'playing_credits', False):
+                self.playing_credits = False
+                pygame.mixer.music.stop()
             return
         
         old, new = self.state, self.requested_state
@@ -249,31 +247,23 @@ class Game:
                 kill_sprites(self.all_sprites, space=self.menu_space)
                 self.init_game_state()
                 self.init_sprites()
-            change_track(self, 'start')
+            change_track(self, 'start', loop=True)
 
         elif new == 'play':
             if old == 'start':
-                change_track(self, self.current_phase, fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START)
+                change_track(self, self.current_phase, fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START, loop=False)
                 kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
                 self.play_start = perf_counter()
                 pygame.key.get_pressed()
                 clear_input()
             if old == 'stop':
-                    resume_play_time(self)
-                    if self.music_channel and self.current_track:
-                        base = self.base_volumes[self.current_track]
-                        self.tracks[self.current_track].set_volume(base)
-                        self.music_channel.set_volume(1.0)
-                        self.music_dimmed = False
+                self.music_channel.unpause()
+                resume_play_time(self)
 
         elif new == 'stop':
             if old != 'settings':
+                self.music_channel.pause()
                 pause_play_time(self)
-                if self.music_channel and self.music_channel.get_busy() and self.current_track:
-                    if not getattr(self, 'music_dimmed', False):
-                        self.paused_volume = self.base_volumes[self.current_track] * STOP_SCREEN_DIM_FACTOR
-                        self.music_channel.set_volume(self.paused_volume)
-                        self.music_dimmed = True
             
         elif new == 'game_over':
             kill_sprites(self.all_sprites)
@@ -281,7 +271,7 @@ class Game:
             self.game_over_sound.play()
             fade_to_black(self, duration=GAME_OVER_FADE_DURATION)
             clear_input()
-            change_track(self, 'game_over')
+            change_track(self, 'game_over', loop=True)
             self.text_surfaces['game_over_score'] = self.fonts['game_over_score'].render(f"Score: {STATS['score']}", True, COLOR['game_over_text'])
             self.text_rects['game_over_score'] = self.text_surfaces['game_over_score'].get_rect(topleft=(10, 10))
             
@@ -703,12 +693,12 @@ class Game:
                         if entry["minus"].clicked:
                             volumes[label] = round(max(0.0, volumes[label] - 0.05), 2)
                             settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
-                            apply_audio_settings(self)
+                            self.set_all_volumes()
                             save_settings(self)
                         elif entry["plus"].clicked:
                             volumes[label] = round(min(1.0, volumes[label] + 0.05), 2)
                             settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
-                            apply_audio_settings(self)
+                            self.set_all_volumes()
                             save_settings(self)
 
                     # reassign updated globals
@@ -787,7 +777,7 @@ class Game:
         # --- game music ---
         self.tracks: dict = {'start': pygame.mixer.Sound(join(self.AUDIO_DIR, 'start_track.ogg')),
                              'game_over': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
-                             'credits': pygame.mixer.Sound(join(self.AUDIO_DIR, 'credits_track.ogg')),
+                             'credits': pygame.mixer.music.load(join(self.AUDIO_DIR, 'credits_track.ogg')),
                              'rectangle': pygame.mixer.Sound(join(self.AUDIO_DIR, 'rectangle_track.wav')),
                              'arrow': pygame.mixer.Sound(join(self.AUDIO_DIR, 'arrow_track.wav')),
                              'icicle': pygame.mixer.Sound(join(self.AUDIO_DIR, 'icicle_track.wav')),
@@ -825,7 +815,7 @@ class Game:
         # --- game music ---
         self.tracks['start'].set_volume(START_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['game_over'].set_volume(GAME_OVER_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
-        self.tracks['credits'].set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        pygame.mixer.music.set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['rectangle'].set_volume(RECTANGLE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['arrow'].set_volume(ARROW_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['icicle'].set_volume(ICICLE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
@@ -839,7 +829,7 @@ class Game:
         self.tracks['boss'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
-        self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items()}
+        self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items() if name != 'credits'}
 
         # --- sound effects ---
         self.using_controller_sound.set_volume(USING_CONTROLLER_SOUND_VOLUME)
@@ -1272,7 +1262,7 @@ class Game:
                 self.prev_phase = self.current_phase
                 while self.current_phase == self.prev_phase:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            change_track(self, self.current_phase, fade_out=100, fade_in=150)
+            change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase == 'boss' else False)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1335,29 +1325,11 @@ class Game:
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
-        # --- choose speed and spawn rate of rectangle ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 250
-            weight = (1, 0.8, 0.6, 0.4)
-            spawn_rate_factor = 1
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 350
-            weight = (0.8, 0.7, 0.7, 0.6)
-            spawn_rate_factor = SECOND_RECTANGEL_PHASE_SPAWN_FACTOR
-            self.background.speed = 85
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 450
-            weight = (0.6, 0.6, 0.8, 0.8)
-            spawn_rate_factor = THIRD_RECTANGEL_PHASE_SPAWN_FACTOR
-            self.background.speed = 105
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 550
-            weight = (0.4, 0.5, 0.9, 1)
-            spawn_rate_factor = FOURTH_RECTANGLE_PHASE_SPAWN_FACTOR
-            self.background.speed = 125
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=RECTANGLE_SPEEDS, spawn_rate_factors=RECTANGLE_SPAWN_RATE_FACTORS, background_speeds=RECTANGLE_BACKGROUND_SPEEDS)
 
         # --- spawn rectangle ---
         if self.play_time >= self.next_rectangle_spawn_time:
@@ -1369,34 +1341,20 @@ class Game:
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
     def arrow_phase(self):
-        # choose arrow sub phase
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=ARROW_SPEEDS, spawn_rate_factors=ARROW_SPAWN_RATE_FACTORS, background_speeds=ARROW_BACKGROUND_SPEEDS)
+
+        # --- select sub-phase ---
         if self.play_time - getattr(self, 'arrow_sub_phase_start', -ARROW_SUB_PHASE_DURATION) >= ARROW_SUB_PHASE_DURATION:
             self.prev_arrow_sub_phase = getattr(self, 'arrow_sub_phase', None)
             while self.prev_arrow_sub_phase == getattr(self, 'arrow_sub_phase', None):
                 self.arrow_sub_phase = random_of_selection(('columns', 'singles'))
             self.arrow_sub_phase_start = self.play_time
 
-        # choose arrow speed and spawn factor
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 280
-            spawn_rate_factor = 1
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 300
-            spawn_rate_factor = SECOND_ARROW_PHASE_SPAWN_FACTOR
-            self.background.speed = 95
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 320
-            spawn_rate_factor = THIRD_ARROW_PHASE_SPAWN_FACTOR
-            self.background.speed = 115
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 370
-            spawn_rate_factor = FOURTH_ARROW_PHASE_SPAWN_FACTOR
-            self.background.speed = 125
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
-            self.phase_ended = True
-            return
-
-        # spawn arrow according to phase
+        # --- spawn arrow according to phase ---
         if self.play_time >= self.next_arrow_spawn_time and self.play_time - self.phase_start > ARROW_PHASE_DELAY:
             match(self.arrow_sub_phase):
                     case 'columns':
@@ -1420,22 +1378,11 @@ class Game:
                         self.next_arrow_spawn_time = self.play_time + ARROW_SINGLES_SPAWN_TIME / spawn_rate_factor
 
     def icicle_phase(self):
-        # --- choose speed and spawn rate of icicle ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 200
-            spawn_rate_factor = 1
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 250
-            spawn_rate_factor = SECOND_ICICLE_PHASE_SPAWN_FACTOR
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 300
-            spawn_rate_factor = THIRD_ICICLE_PHASE_SPAWN_FACTOR
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 350
-            spawn_rate_factor = FOURTH_ICICLE_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=ICICLE_SPEEDS, spawn_rate_factors=ICICLE_SPAWN_RATE_FACTORS)
 
         # --- spawn icicle ---
         if self.play_time >= self.next_icicle_spawn_time and self.play_time - self.phase_start > ICICLE_PHASE_DELAY:
@@ -1447,20 +1394,13 @@ class Game:
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
     def jellyfish_phase(self):
-        # choose speed of jellyfish
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 150
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 180
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 210
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 240
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=JELLYFISH_SPEEDS)
 
-        # spawn jellyfish
+        # --- spawn jellyfish ---
         if self.play_time >= self.next_jellyfish_spawn_time and self.play_time - self.phase_start > JELLYFISH_PHASE_DELAY:
             Jellyfish(self,
                       self.LAYERS['obstacles'],
@@ -1470,26 +1410,11 @@ class Game:
             self.next_jellyfish_spawn_time = self.play_time + JELLYFISH_SPAWN_TIME
 
     def saw_blade_phase(self):
-        # --- choose speed and spawn rate of saw blade ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 400
-            rotation_speed = -180
-            spawn_rate_factor = 1
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 480
-            rotation_speed = -220
-            spawn_rate_factor = SECOND_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 560
-            rotation_speed = -270
-            spawn_rate_factor = THIRD_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 640
-            rotation_speed = -320
-            spawn_rate_factor = FOURTH_SAW_BLADE_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=SAW_BLADE_SPEEDS, rotation_speeds=SAW_BLADE_ROTATION_SPEEDS, spawn_rate_factors=SAW_BLADE_SPAWN_RATE_FACTORS)
 
         # --- spawn saw blade ---
         if self.play_time >= self.next_saw_blade_spawn_time and self.play_time - self.phase_start > SAW_BLADE_PHASE_DELAY:
@@ -1502,22 +1427,11 @@ class Game:
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
     def rocket_phase(self):
-        # --- choose speed and spawn rate of rocket ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 600
-            spawn_rate_factor = 1
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 700
-            spawn_rate_factor = SECOND_ROCKET_PHASE_SPAWN_FACTOR
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 800
-            spawn_rate_factor = THIRD_ROCKET_PHASE_SPAWN_FACTOR
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 900
-            spawn_rate_factor = FOURTH_ROCKET_PHASE_SPAWN_FACTOR
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=ROCKET_SPEEDS, spawn_rate_factors=ROCKET_SPAWN_RATE_FACTORS)
 
         # --- spawn rocket ---
         if self.play_time >= self.next_rocket_spawn_time and self.play_time - self.phase_start > ROCKET_PHASE_DELAY:
@@ -1529,18 +1443,11 @@ class Game:
             self.next_rocket_spawn_time = self.play_time + ROCKET_SPAWN_TIME / spawn_rate_factor
 
     def asteroid_phase(self):
-        # --- choose speed and spawn rate of asteroid ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 200
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 230
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 260
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 290
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=ASTEROID_SPEEDS)
 
         # --- spawn rocket ---
         if self.play_time >= self.next_asteroid_spawn_time and self.play_time - self.phase_start > ASTEROID_PHASE_DELAY:
@@ -1552,44 +1459,30 @@ class Game:
             self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
 
     def spike_ball_phase(self):
-        # --- choose speed and spawn rate of spike ball ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 250
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 300
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 350
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 400
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=SPIKE_BALL_SPEEDS, rotation_speeds=SPIKE_BALL_ROTATION_SPEEDS)
 
         # --- spawn spike ball ---
         if self.play_time >= self.next_spike_ball_spawn_time and self.play_time - self.phase_start > SPIKE_BALL_PHASE_DELAY:
             SpikeBall(self,
                       self.LAYERS['obstacles'],
-                     (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_ball_sprites),
-                     self.spike_ball_image,
-                     speed,
-                     0,
-                     230,
-                     random_of_selection(('right', 'left')))
+                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.spike_ball_sprites),
+                      self.spike_ball_image,
+                      speed,
+                      0,
+                      rotation_speed,
+                      random_of_selection(('right', 'left')))
             self.next_spike_ball_spawn_time = self.play_time + SPIKE_BALL_SPAWN_TIME
 
     def spike_block_phase(self):
-        # --- choose speed and spawn rate of spike block ---
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 180
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 200
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 220
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 240
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=SPIKE_BLOCK_SPEEDS)
 
         # --- spawn spike block ---
         if self.play_time >= self.next_spike_block_spawn_time and self.play_time - self.phase_start > SPIKE_BLOCK_PHASE_DELAY:
@@ -1602,17 +1495,11 @@ class Game:
             self.next_spike_block_spawn_time = self.play_time + SPIKE_BLOCK_SPAWN_TIME
 
     def poison_cloud_phase(self):
-        if self.play_time - self.phase_start < FIRST_OBSTACLE_PHASE_END:
-            speed = 120
-        elif FIRST_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < SECOND_OBSTACLE_PHASE_END:
-            speed = 130
-        elif SECOND_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < THIRD_OBSTACLE_PHASE_END:
-            speed = 140
-        elif THIRD_OBSTACLE_PHASE_END <= self.play_time - self.phase_start < FOURTH_OBSTACLE_PHASE_END:
-            speed = 150
-        elif self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
             return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=POISON_CLOUD_SPEEDS, spawn_rate_factors=POISON_CLOUD_SPAWN_RATE_FACTORS)
 
         if self.play_time >= self.next_poison_cloud_spawn_time and self.play_time - self.phase_start > POISON_CLOUD_DELAY:
             PoisonCloud(self,
@@ -1620,7 +1507,7 @@ class Game:
                        (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.poison_cloud_sprites),
                        self.poison_cloud_image,
                        speed)
-            self.next_poison_cloud_spawn_time = self.play_time + POISON_CLOUD_SPAWN_TIME
+            self.next_poison_cloud_spawn_time = self.play_time + POISON_CLOUD_SPAWN_TIME / spawn_rate_factor
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):

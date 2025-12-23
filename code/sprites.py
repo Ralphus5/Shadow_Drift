@@ -457,7 +457,7 @@ class AnimatedBackground(pygame.sprite.Sprite):
         self.interval = interval
         self.image = self.frames[self.index]
         self.rect = self.image.get_rect(topleft=(-WINDOW_WIDTH,0) if self.scroll == 'right' else (0, 0))
-        self.speed = DEFAULT_BACKGROUND_SCROLL_SPEED
+        self.speed = 0
 
     def update(self, dt):
         self.timer += dt * 1000

@@ -110,6 +110,33 @@ def toggle_fullscreen(game):
     else:
         game.window = pygame.display.set_mode(BASE_RESOLUTION)
 
+def set_phase_parameters(game, speeds: list, rotation_speeds = [0,0,0,0], spawn_rate_factors = [1,1,1], background_speeds = [0,0,0,0]):
+        if game.play_time - game.phase_start < FIRST_OBSTACLE_PHASE_END:
+            speed = speeds[0]
+            rotation_speed = rotation_speeds[0]
+            spawn_rate_factor = 1
+            game.background.speed = background_speeds[0]
+            weight = RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS[0]
+        elif FIRST_OBSTACLE_PHASE_END <= game.play_time - game.phase_start < SECOND_OBSTACLE_PHASE_END:
+            speed = speeds[1]
+            rotation_speed = rotation_speeds[1]
+            spawn_rate_factor = spawn_rate_factors[0]
+            game.background.speed = background_speeds[1]
+            weight = RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS[1]
+        elif SECOND_OBSTACLE_PHASE_END <= game.play_time - game.phase_start < THIRD_OBSTACLE_PHASE_END:
+            speed = speeds[2]
+            rotation_speed = rotation_speeds[2]
+            spawn_rate_factor = spawn_rate_factors[1]
+            game.background.speed = background_speeds[2]
+            weight = RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS[2]
+        elif THIRD_OBSTACLE_PHASE_END <= game.play_time - game.phase_start < FOURTH_OBSTACLE_PHASE_END:
+            speed = speeds[3]
+            rotation_speed = rotation_speeds[3]
+            spawn_rate_factor = spawn_rate_factors[2]
+            game.background.speed = background_speeds[3]
+            weight = RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS[3]
+        return speed, rotation_speed, spawn_rate_factor, weight
+
 # --- randomizers ---
 def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:
     """Return random number from [start, end].
@@ -148,15 +175,6 @@ def save_runtime(game):
 
     with open(game.SAVE_FILE, 'w') as f:
         json.dump(save_data, f, indent=2)
-
-def apply_audio_settings(game):
-    game.set_all_volumes()
-    if game.music_channel and game.current_track:
-        base = game.base_volumes[game.current_track]
-        dimmed = base * STOP_SCREEN_DIM_FACTOR
-        game.music_channel.set_volume(dimmed)
-        game.paused_volume = dimmed
-        game.music_dimmed = True
 
 def title_flash(game):
     """Play title flash and transition to play mode."""
