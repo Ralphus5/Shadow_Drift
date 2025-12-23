@@ -99,7 +99,7 @@ class Game:
                     if event.key == pygame.K_ESCAPE and self.player.is_alive and self.requested_state != 'game_over':
                         self.requested_state = 'stop'
 
-            # controller buttons
+                # controller buttons
                 elif event.type == pygame.JOYBUTTONDOWN:
                     if event.button == PAD_B_BUTTON:
                         self.player.want_dash = True
@@ -114,7 +114,7 @@ class Game:
             # --- pause state ---
             elif self.state == 'stop':
                 if event.type == pygame.KEYDOWN:
-                    if event.key in (pygame.K_RETURN, pygame.K_ESCAPE):
+                    if event.key == pygame.K_ESCAPE:
                         if getattr(self, 'show_credits',False): 
                             self.show_credits = False
                             self.credits_title_rect.center = WINDOW_CENTER
@@ -123,9 +123,41 @@ class Game:
                         elif getattr(self, 'quit_prompt', False): self.quit_prompt = False
                         else: self.requested_state = 'play'
 
+                    if not getattr(self, 'quit_prompt', False):
+                        if event.key in (pygame.K_RIGHT, pygame.K_LEFT):
+                            self.controller_hover_icon += -1 if event.key == pygame.K_RIGHT else 1
+                            for button in self.clickable_icons:
+                                if button is self.clickable_icons[self.controller_hover_icon % 3]:
+                                    button.controller_hovered = True
+                                else: button.controller_hovered = False
+                        elif event.key == pygame.K_RETURN:
+                            if self.clickable_icons[self.controller_hover_icon % 3].hovered or self.clickable_icons[self.controller_hover_icon % 3].controller_hovered:
+                                self.clickable_icons[self.controller_hover_icon % 3].controller_clicked = True
+                    else: 
+                        if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                            if not self.yes_btn.controller_hovered and not self.no_btn.controller_hovered:
+                                self.no_btn.controller_hovered = True
+                            else:
+                                self.yes_btn.controller_hovered = not self.yes_btn.controller_hovered
+                                self.no_btn.controller_hovered = not self.no_btn.controller_hovered
+                        elif event.key == pygame.K_RETURN:
+                            for button in (self.yes_btn, self.no_btn):
+                                if button.hovered or button.controller_hovered:
+                                    button.controller_clicked = True
+                                    button.click_sound.play()
+
                 elif event.type == pygame.JOYBUTTONDOWN:
                     if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
                         self.requested_state = 'play'
+                    elif event.button in (PAD_D_PAD_LEFT, PAD_D_PAD_RIGHT):
+                        self.controller_hover_icon += -1 if event.key == PAD_D_PAD_RIGHT else 1
+                        for button in self.clickable_icons:
+                            if button is self.clickable_icons[self.controller_hover_icon % 3]:
+                                button.controller_hovered = True
+                            else: button.controller_hovered = False
+                    elif event.key == PAD_A_BUTTON:
+                        if self.clickable_icons[self.controller_hover_icon % 3].hovered or self.clickable_icons[self.controller_hover_icon % 3].controller_hovered:
+                            self.clickable_icons[self.controller_hover_icon % 3].controller_clicked = True
                     
                 if event.type == self.credits_event and getattr(self, 'show_credits', False):
                     if not getattr(self, 'header_counter', False): self.header_counter = 1
@@ -190,6 +222,7 @@ class Game:
                     if event.key == pygame.K_ESCAPE and not self.waiting_for_key:
                         if self.active_settings_tab:
                             self.active_settings_tab = None
+                            self.controller_hover_control_text = len(self.control_texts)
                         else:
                             self.requested_state = self.prev_state
                             save_settings(self)
@@ -225,6 +258,99 @@ class Game:
                                                                     self.menu_hover_sound))
                             y += 40
 
+                    # ----- SETTINGS NAV (KEYBOARD) -----
+                    if not self.active_settings_tab:
+                        if event.key in (pygame.K_UP, pygame.K_DOWN):
+                            self.controller_hover_main_settings_text += -1 if event.key == pygame.K_UP else 1
+                            for i, button in enumerate(self.main_settings_buttons):
+                                button.controller_hovered = (i == (self.controller_hover_main_settings_text % 3))
+
+                        elif event.key == pygame.K_RETURN:
+                            idx = self.controller_hover_main_settings_text % 3
+                            self.main_settings_buttons[idx].controller_clicked = True
+                            if self.main_settings_buttons[idx].click_sound:
+                                self.main_settings_buttons[idx].click_sound.play()
+
+                    elif self.active_settings_tab == 'controls':
+                        if event.key in (pygame.K_UP, pygame.K_DOWN):
+                            self.controller_hover_control_text += -1 if event.key == pygame.K_UP else 1
+                            total_with_back = len(self.control_texts) + 1
+                            hover_index = self.controller_hover_control_text % total_with_back
+
+                            # reset hovers
+                            for b in self.control_texts:
+                                b.controller_hovered = False
+                            self.back_btn.controller_hovered = False
+
+                            if hover_index < len(self.control_texts):
+                                self.control_texts[hover_index].controller_hovered = True
+                            else:
+                                self.back_btn.controller_hovered = True
+
+                        elif event.key == pygame.K_RETURN:
+                            # click hovered control item OR back
+                            for b in self.control_texts:
+                                if b.controller_hovered:
+                                    b.controller_clicked = True
+                                    if b.click_sound:
+                                        b.click_sound.play()
+                            if self.back_btn.controller_hovered:
+                                self.back_btn.controller_clicked = True
+                                if self.back_btn.click_sound:
+                                    self.back_btn.click_sound.play()
+
+                    elif self.active_settings_tab == 'audio':
+                        # audio navigation: row/col + back row
+                        max_row = len(self.audio_texts)  # last "row" is Back
+
+                        if event.key in (pygame.K_UP, pygame.K_DOWN):
+                            self.audio_nav_row += -1 if event.key == pygame.K_UP else 1
+                            self.audio_nav_row %= (max_row + 1)  # include Back
+
+                        elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                            # only switch minus/plus when not on Back row
+                            if self.audio_nav_row != max_row:
+                                self.audio_nav_col = 0 if event.key == pygame.K_LEFT else 1
+
+                        elif event.key == pygame.K_RETURN:
+                            if self.audio_nav_row == max_row:
+                                self.back_btn.controller_clicked = True
+                                if self.back_btn.click_sound:
+                                    self.back_btn.click_sound.play()
+                            else:
+                                entry = self.audio_texts[self.audio_nav_row]
+                                btn = entry["minus"] if self.audio_nav_col == 0 else entry["plus"]
+                                btn.controller_clicked = True
+                                if btn.click_sound:
+                                    btn.click_sound.play()
+
+                        # apply hover visuals after any relevant key
+                        for entry_i, entry in enumerate(self.audio_texts):
+                            entry["minus"].controller_hovered = False
+                            entry["plus"].controller_hovered = False
+                            if entry_i == self.audio_nav_row:
+                                if self.audio_nav_col == 0:
+                                    entry["minus"].controller_hovered = True
+                                else:
+                                    entry["plus"].controller_hovered = True
+
+                        self.back_btn.controller_hovered = (self.audio_nav_row == max_row)
+                elif event.type == pygame.JOYBUTTONDOWN:
+                    # Map D-PAD to the same logic as arrow keys
+                    if event.button == PAD_D_PAD_UP:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_UP))
+                    elif event.button == PAD_D_PAD_DOWN:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_DOWN))
+                    elif event.button == PAD_D_PAD_LEFT:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+                    elif event.button == PAD_D_PAD_RIGHT:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT))
+                    elif event.button == PAD_A_BUTTON:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+                    elif event.button == PAD_B_BUTTON:
+                        pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+
+
     def set_game_mode(self):
         '''Switches game mode and handles necessary changes.'''
         # check for state change request
@@ -257,10 +383,23 @@ class Game:
                 pygame.key.get_pressed()
                 clear_input()
             if old == 'stop':
+                for button in self.clickable_icons:
+                    button.controller_hovered = False
+                for button in self.main_settings_buttons:
+                    button.controller_hovered = False
+
                 self.music_channel.unpause()
                 resume_play_time(self)
 
         elif new == 'stop':
+            for button in self.clickable_icons:
+                    button.controller_hovered = False
+                    button.controller_clicked = False
+            for button in self.main_settings_buttons:
+                    button.controller_hovered = False
+                    button.controller_clicked = False
+            self.controller_hover_icon = 1
+            self.controller_hover_main_settings_text = 1
             if old != 'settings':
                 self.music_channel.pause()
                 pause_play_time(self)
@@ -276,6 +415,7 @@ class Game:
             self.text_rects['game_over_score'] = self.text_surfaces['game_over_score'].get_rect(topleft=(10, 10))
             
         elif new == 'settings':
+            self.controller_hover_control_text = 0
             self.prev_state = old
 
     def start_screen(self, dt):
@@ -427,18 +567,25 @@ class Game:
                     pygame.time.set_timer(self.credits_event, 5000)
                 for btn in self.clickable_icons:
                     btn.update(mouse_pos, mouse_click)
-                    if btn.hovered:
+                    if btn.hovered or btn.controller_hovered:
                         if btn is self.clickable_icons[0]:
                             self.screen.blit(self.text_surfaces['quit_icon_text'], self.text_rects['quit_icon_text'])
+                            for i in range(1,3):
+                                self.clickable_icons[i].controller_hovered = False
                         elif btn is self.clickable_icons[1]:
                             self.screen.blit(self.text_surfaces['play_icon_text'], self.text_rects['play_icon_text'])
+                            for i in range(0,3,2):
+                                self.clickable_icons[i].controller_hovered = False
                         elif btn is self.clickable_icons[2]:
                             self.screen.blit(self.text_surfaces['settings_icon_text'], self.text_rects['settings_icon_text'])
+                            for i in range(0,2):
+                                self.clickable_icons[i].controller_hovered = False
                         if btn.hover_changed:
                             self.menu_hover_sound.play()
                     btn.draw(self.screen)
 
-                    if btn.clicked:
+                    if btn.clicked or btn.controller_clicked:
+                        btn.controller_clicked = False
                         if btn is self.clickable_icons[0]:
                             self.menu_select_sound.play()
                             self.quit_prompt = True
@@ -457,10 +604,12 @@ class Game:
                     btn.update(mouse_pos, mouse_click)
                     btn.draw(self.screen)
 
-                if self.yes_btn.clicked:   
+                if self.yes_btn.clicked or self.yes_btn.controller_clicked:   
+                    self.yes_btn.controller_clicked = False
                     fade_to_black(self)
                     close_game()
-                elif self.no_btn.clicked:
+                elif self.no_btn.clicked or self.no_btn.controller_clicked:
+                    self.no_btn.controller_clicked = False
                     self.quit_prompt = False
         
         else:
@@ -572,34 +721,64 @@ class Game:
                     text_btn.update(mouse_pos, mouse_click)
                     text_btn.draw(self.screen)
 
-                # check clicks
-                if self.main_settings_buttons[0].clicked:
+                if self.main_settings_buttons[0].clicked or self.main_settings_buttons[0].controller_clicked:
+                    self.main_settings_buttons[0].controller_clicked = False
+                    self.main_settings_buttons[0].clicked = False
                     self.active_settings_tab = "audio"
                     pygame.event.clear()
                     return
-                elif self.main_settings_buttons[1].clicked:
+
+                elif self.main_settings_buttons[1].clicked or self.main_settings_buttons[1].controller_clicked:
+                    self.main_settings_buttons[1].controller_clicked = False
+                    self.main_settings_buttons[1].clicked = False
                     self.active_settings_tab = "controls"
                     pygame.event.clear()
                     return
-                elif self.main_settings_buttons[2].clicked:
+
+                elif self.main_settings_buttons[2].clicked or self.main_settings_buttons[2].controller_clicked:
+                    self.main_settings_buttons[2].controller_clicked = False
+                    self.main_settings_buttons[2].clicked = False
                     save_settings(self)
                     self.requested_state = self.prev_state
                     pygame.event.clear()
                     return
 
+
             elif self.active_settings_tab:
+                # Only reset the NON-back main buttons; keep back_btn hover state.
+                for button in self.main_settings_buttons[:2]:
+                    button.controller_hovered = False
+                    button.controller_clicked = False
+
                 # back button at bottom
-                back_btn = self.main_settings_buttons[2]
+                self.back_btn = self.main_settings_buttons[2]
 
                 # only draw back button if not waiting for key
                 if not self.waiting_for_key:
-                    back_btn.update(mouse_pos, mouse_click)
-                    back_btn.draw(self.screen)
+                    self.back_btn.update(mouse_pos, mouse_click)
+                    self.back_btn.draw(self.screen)
 
-                # check back button click
-                if back_btn.clicked:
-                    self.active_settings_tab = None
+                # check back button click (mouse OR controller)
+                if self.back_btn.clicked or self.back_btn.controller_clicked:
+                    self.back_btn.controller_clicked = False
+                    self.back_btn.clicked = False
+
+                    if self.active_settings_tab is not None:
+                        # leaving a submenu -> return to main menu and preselect Back
+                        self.active_settings_tab = None
+
+                        # IMPORTANT: reset selection so the main-menu "Back" is the active/hovered item
+                        self.controller_hover_main_settings_text = 2
+                        for i, btn in enumerate(self.main_settings_buttons):
+                            btn.controller_hovered = (i == 2)
+                            btn.controller_clicked = False
+                            btn.clicked = False
+                    else:
+                        save_settings(self)
+                        self.requested_state = self.prev_state
+
                     pygame.event.clear()
+                    return
 
             # --- controls submenu ---
             if self.active_settings_tab == "controls":
@@ -610,7 +789,7 @@ class Game:
                     btn.draw(self.screen)
 
                     # handle clicks
-                    if btn.clicked and self.waiting_for_key is None:
+                    if (btn.clicked or btn.controller_clicked) and self.waiting_for_key is None:
                         if btn.text == "Reset to Defaults":
                             # restore defaults
                             KEY_BINDINGS.clear()
@@ -690,16 +869,20 @@ class Game:
                         entry["minus"].draw(self.screen)
                         entry["plus"].draw(self.screen)
 
-                        if entry["minus"].clicked:
+                        if entry["minus"].clicked or entry["minus"].controller_clicked:
+                            entry["minus"].controller_clicked = False
                             volumes[label] = round(max(0.0, volumes[label] - 0.05), 2)
                             settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
                             self.set_all_volumes()
                             save_settings(self)
-                        elif entry["plus"].clicked:
+
+                        elif entry["plus"].clicked or entry["plus"].controller_clicked:
+                            entry["plus"].controller_clicked = False
                             volumes[label] = round(min(1.0, volumes[label] + 0.05), 2)
                             settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
                             self.set_all_volumes()
                             save_settings(self)
+
 
                     # reassign updated globals
                     settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
@@ -1010,7 +1193,6 @@ class Game:
                                     (WINDOW_CENTER[0] + 140, y),
                                     COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'],
                                     self.menu_select_sound, self.menu_hover_sound)
-
             self.audio_texts.append({"label": label, "text": text_surface, "rect": text_rect,
                                         "minus": minus_btn, "plus": plus_btn})
 
@@ -1081,6 +1263,10 @@ class Game:
         self.boss_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'boss_death_animation', f'boss_death_frame{i}.png')).convert_alpha() for i in range(23)]
 
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
+
+        self.audio_nav_row = 0        # 0..len(self.audio_texts) where last index = Back
+        self.audio_nav_col = 0        # 0 = minus, 1 = plus
+        self.controller_hover_audio_text = 0  # if you still want it for something else
 
     def init_game_state(self):
         # --- Game starting conditions ---

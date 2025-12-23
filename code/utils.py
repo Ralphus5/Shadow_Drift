@@ -216,15 +216,18 @@ class ClickableIcon:
         setattr(self.rect, anchor, pos)
         self.scale_factor = hover_scale_factor
 
+        self.controller_hovered = False
+        self.controller_clicked = False
         self.hovered = False
         self.hover_changed = False
         self.clicked = False
 
     def update(self, mouse_pos: tuple[float, float], mouse_click: bool):
         prev_hover = self.hovered
-        self.hovered = self.rect.collidepoint(mouse_pos)
+        self.hovered = any((self.rect.collidepoint(mouse_pos), self.controller_hovered))
+        self.controller_hovered = False if self.rect.collidepoint(mouse_pos) else self.controller_hovered
         self.hover_changed = (self.hovered != prev_hover)
-        self.clicked = mouse_click and self.hovered
+        self.clicked = mouse_click and not self.controller_hovered and self.hovered
 
     def draw(self, screen):
         scale = self.scale_factor if self.hovered else 1.0
@@ -249,13 +252,16 @@ class ClickableText:
         self.rect = self.surface.get_rect()
         setattr(self.rect, self.anchor, self.pos)
 
+        self.controller_hovered = False
+        self.controller_clicked = False
         self.hovered = False
         self.hover_changed = False
         self.clicked = False
 
     def update(self, mouse_pos, mouse_click):
         prev_hover = self.hovered
-        self.hovered = self.rect.collidepoint(mouse_pos)
+        self.hovered = any((self.rect.collidepoint(mouse_pos), self.controller_hovered))
+        self.controller_hovered = False if self.rect.collidepoint(mouse_pos) else self.controller_hovered
         self.hover_changed = (self.hovered != prev_hover)
 
         if self.hover_changed and self.hovered and self.hover_sound:
@@ -264,7 +270,7 @@ class ClickableText:
         color = self.hover_color if self.hovered else self.color
         self.surface = self.font.render(self.text, True, color)
 
-        self.clicked = mouse_click and self.hovered
+        self.clicked = mouse_click and not self.controller_hovered and self.hovered
         if self.clicked and self.click_sound:
             self.click_sound.play()
 
