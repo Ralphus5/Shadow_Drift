@@ -147,17 +147,61 @@ class Game:
                                     button.click_sound.play()
 
                 elif event.type == pygame.JOYBUTTONDOWN:
-                    if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
-                        self.requested_state = 'play'
-                    elif event.button in (PAD_D_PAD_LEFT, PAD_D_PAD_RIGHT):
-                        self.controller_hover_icon += -1 if event.key == PAD_D_PAD_RIGHT else 1
-                        for button in self.clickable_icons:
-                            if button is self.clickable_icons[self.controller_hover_icon % 3]:
-                                button.controller_hovered = True
-                            else: button.controller_hovered = False
-                    elif event.key == PAD_A_BUTTON:
-                        if self.clickable_icons[self.controller_hover_icon % 3].hovered or self.clickable_icons[self.controller_hover_icon % 3].controller_hovered:
-                            self.clickable_icons[self.controller_hover_icon % 3].controller_clicked = True
+                    # --- If quit prompt is open, controller controls should operate YES/NO ---
+                    if getattr(self, 'quit_prompt', False):
+
+                        # D-Pad left/right toggles YES/NO
+                        if event.button in (PAD_D_PAD_LEFT, PAD_D_PAD_RIGHT):
+                            # default selection if nothing hovered yet
+                            if not self.yes_btn.controller_hovered and not self.no_btn.controller_hovered:
+                                self.no_btn.controller_hovered = True
+                                self.yes_btn.controller_hovered = False
+                            else:
+                                self.yes_btn.controller_hovered = not self.yes_btn.controller_hovered
+                                self.no_btn.controller_hovered = not self.no_btn.controller_hovered
+
+                        # A confirms (click hovered YES/NO)
+                        elif event.button == PAD_A_BUTTON:
+                            for button in (self.yes_btn, self.no_btn):
+                                if button.hovered or button.controller_hovered:
+                                    button.controller_clicked = True
+                                    button.click_sound.play()
+
+                        # B cancels prompt (like ESC)
+                        elif event.button == PAD_B_BUTTON:
+                            self.quit_prompt = False
+
+                        # optional: Start/Select/Home also cancels the prompt instead of resuming instantly
+                        elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
+                            self.quit_prompt = False
+
+                    # --- Normal pause menu controller controls (icons) ---
+                    else:
+                        if event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
+                            self.requested_state = 'play'
+
+                        elif event.button in (PAD_D_PAD_LEFT, PAD_D_PAD_RIGHT):
+                            self.controller_hover_icon += -1 if event.button == PAD_D_PAD_RIGHT else 1
+                            for button in self.clickable_icons:
+                                button.controller_hovered = (button is self.clickable_icons[self.controller_hover_icon % 3])
+
+                        elif event.button == PAD_A_BUTTON:
+                            if (self.clickable_icons[self.controller_hover_icon % 3].hovered
+                                    or self.clickable_icons[self.controller_hover_icon % 3].controller_hovered):
+                                self.clickable_icons[self.controller_hover_icon % 3].controller_clicked = True
+
+                        # B behaves like ESC in pause menu (back / resume)
+                        elif event.button == PAD_B_BUTTON:
+                            if getattr(self, 'show_credits', False):
+                                self.show_credits = False
+                                pygame.time.set_timer(self.credits_event, 0)
+                                self.credits_title_rect.center = WINDOW_CENTER
+                                for attr in ('header_counter', 'credits_instances', 'last_created'):
+                                    if hasattr(self, attr):
+                                        delattr(self, attr)
+                            else:
+                                self.requested_state = 'play'
+
                     
                 if event.type == self.credits_event and getattr(self, 'show_credits', False):
                     if not getattr(self, 'header_counter', False): self.header_counter = 1
@@ -350,7 +394,6 @@ class Game:
                     elif event.button == PAD_B_BUTTON:
                         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
 
-
     def set_game_mode(self):
         '''Switches game mode and handles necessary changes.'''
         # check for state change request
@@ -415,7 +458,7 @@ class Game:
             self.text_rects['game_over_score'] = self.text_surfaces['game_over_score'].get_rect(topleft=(10, 10))
             
         elif new == 'settings':
-            self.controller_hover_control_text = 0
+            self.controller_hover_control_text = len(self.control_texts)
             self.prev_state = old
 
     def start_screen(self, dt):
@@ -602,6 +645,10 @@ class Game:
 
                 for btn in (self.yes_btn, self.no_btn):
                     btn.update(mouse_pos, mouse_click)
+                    if btn.hovered:
+                        if btn is self.yes_btn:
+                            self.no_btn.controller_hovered = False
+                        else: self.yes_btn.controller_hovered = False
                     btn.draw(self.screen)
 
                 if self.yes_btn.clicked or self.yes_btn.controller_clicked:   
@@ -710,75 +757,83 @@ class Game:
                         self.eat_fruit_sound.play()
 
     def settings_menu(self, dt):
-            self.screen.fill(COLOR['settings_bg'])
-            mouse_pos = get_scaled_mouse_pos(self)
-            mouse_click = pygame.mouse.get_just_pressed()[0]
+        self.screen.fill(COLOR['settings_bg'])
+        mouse_pos = get_scaled_mouse_pos(self)
+        mouse_click = pygame.mouse.get_just_pressed()[0]
 
-            # --- if no tab active, show main menu ---
-            if not self.active_settings_tab:
-                self.screen.blit(self.text_surfaces['settings'], self.text_rects['settings'])
-                for text_btn in self.main_settings_buttons:
-                    text_btn.update(mouse_pos, mouse_click)
-                    text_btn.draw(self.screen)
+        if not self.active_settings_tab:
+            self.screen.blit(self.text_surfaces['settings'], self.text_rects['settings'])
+            for text_btn in self.main_settings_buttons:
+                text_btn.update(mouse_pos, mouse_click)
 
-                if self.main_settings_buttons[0].clicked or self.main_settings_buttons[0].controller_clicked:
-                    self.main_settings_buttons[0].controller_clicked = False
-                    self.main_settings_buttons[0].clicked = False
-                    self.active_settings_tab = "audio"
-                    pygame.event.clear()
-                    return
+                # mouse hover overrides controller hover: if mouse is on one option,
+                # release controller hover from the other main options
+                if text_btn.hovered:
+                    for other in self.main_settings_buttons:
+                        if other is not text_btn:
+                            other.controller_hovered = False
 
-                elif self.main_settings_buttons[1].clicked or self.main_settings_buttons[1].controller_clicked:
-                    self.main_settings_buttons[1].controller_clicked = False
-                    self.main_settings_buttons[1].clicked = False
-                    self.active_settings_tab = "controls"
-                    pygame.event.clear()
-                    return
+                    # keep your controller index consistent with the hovered button
+                    self.controller_hover_main_settings_text = self.main_settings_buttons.index(text_btn)
 
-                elif self.main_settings_buttons[2].clicked or self.main_settings_buttons[2].controller_clicked:
-                    self.main_settings_buttons[2].controller_clicked = False
-                    self.main_settings_buttons[2].clicked = False
+                text_btn.draw(self.screen)
+
+            if self.main_settings_buttons[0].clicked or self.main_settings_buttons[0].controller_clicked:
+                self.main_settings_buttons[0].controller_clicked = False
+                self.main_settings_buttons[0].clicked = False
+                self.active_settings_tab = "audio"
+                pygame.event.clear()
+                return
+
+            elif self.main_settings_buttons[1].clicked or self.main_settings_buttons[1].controller_clicked:
+                self.main_settings_buttons[1].controller_clicked = False
+                self.main_settings_buttons[1].clicked = False
+                self.active_settings_tab = "controls"
+                pygame.event.clear()
+                return
+
+            elif self.main_settings_buttons[2].clicked or self.main_settings_buttons[2].controller_clicked:
+                self.main_settings_buttons[2].controller_clicked = False
+                self.main_settings_buttons[2].clicked = False
+                save_settings(self)
+                self.requested_state = self.prev_state
+                pygame.event.clear()
+                return
+
+        elif self.active_settings_tab:
+            for button in self.main_settings_buttons[:2]:
+                button.controller_hovered = False
+                button.controller_clicked = False
+
+            # back button at bottom
+            self.back_btn = self.main_settings_buttons[2]
+
+            # only draw back button if not waiting for key
+            if not self.waiting_for_key:
+                self.back_btn.update(mouse_pos, mouse_click)
+                self.back_btn.draw(self.screen)
+
+            # check back button click (mouse OR controller)
+            if self.back_btn.clicked or self.back_btn.controller_clicked:
+                self.back_btn.controller_clicked = False
+                self.back_btn.clicked = False
+
+                if self.active_settings_tab is not None:
+                    # leaving a submenu -> return to main menu and preselect Back
+                    self.active_settings_tab = None
+
+                    # IMPORTANT: reset selection so the main-menu "Back" is the active/hovered item
+                    self.controller_hover_main_settings_text = 2
+                    for i, btn in enumerate(self.main_settings_buttons):
+                        btn.controller_hovered = (i == 2)
+                        btn.controller_clicked = False
+                        btn.clicked = False
+                else:
                     save_settings(self)
                     self.requested_state = self.prev_state
-                    pygame.event.clear()
-                    return
 
-
-            elif self.active_settings_tab:
-                # Only reset the NON-back main buttons; keep back_btn hover state.
-                for button in self.main_settings_buttons[:2]:
-                    button.controller_hovered = False
-                    button.controller_clicked = False
-
-                # back button at bottom
-                self.back_btn = self.main_settings_buttons[2]
-
-                # only draw back button if not waiting for key
-                if not self.waiting_for_key:
-                    self.back_btn.update(mouse_pos, mouse_click)
-                    self.back_btn.draw(self.screen)
-
-                # check back button click (mouse OR controller)
-                if self.back_btn.clicked or self.back_btn.controller_clicked:
-                    self.back_btn.controller_clicked = False
-                    self.back_btn.clicked = False
-
-                    if self.active_settings_tab is not None:
-                        # leaving a submenu -> return to main menu and preselect Back
-                        self.active_settings_tab = None
-
-                        # IMPORTANT: reset selection so the main-menu "Back" is the active/hovered item
-                        self.controller_hover_main_settings_text = 2
-                        for i, btn in enumerate(self.main_settings_buttons):
-                            btn.controller_hovered = (i == 2)
-                            btn.controller_clicked = False
-                            btn.clicked = False
-                    else:
-                        save_settings(self)
-                        self.requested_state = self.prev_state
-
-                    pygame.event.clear()
-                    return
+                pygame.event.clear()
+                return
 
             # --- controls submenu ---
             if self.active_settings_tab == "controls":
@@ -786,7 +841,20 @@ class Game:
 
                 for btn in self.control_texts:
                     btn.update(mouse_pos, mouse_click)
+
+                    # mouse hover overrides controller hover: un-hover all others + back
+                    if btn.hovered:
+                        for other in self.control_texts:
+                            if other is not btn:
+                                other.controller_hovered = False
+                        self.back_btn.controller_hovered = False
+
                     btn.draw(self.screen)
+
+                    # if mouse is hovering back, release controller hover from all control entries
+                    if self.back_btn.hovered:
+                        for other in self.control_texts:
+                            other.controller_hovered = False
 
                     # handle clicks
                     if (btn.clicked or btn.controller_clicked) and self.waiting_for_key is None:
@@ -794,36 +862,36 @@ class Game:
                             # restore defaults
                             KEY_BINDINGS.clear()
                             KEY_BINDINGS.update({'move_left': pygame.K_a,
-                                                 'move_right': pygame.K_d,
-                                                 'move_up': pygame.K_w,
-                                                 'move_down': pygame.K_s,
-                                                 'ability': pygame.K_SPACE,
-                                                 'dash': pygame.K_RETURN,
-                                                 'shoot_up': pygame.K_UP,
-                                                 'shoot_down': pygame.K_DOWN,
-                                                 'shoot_right': pygame.K_RIGHT,
-                                                 'shoot_left': pygame.K_LEFT,
-                                                 'fullscreen': pygame.K_F11,})
+                                                    'move_right': pygame.K_d,
+                                                    'move_up': pygame.K_w,
+                                                    'move_down': pygame.K_s,
+                                                    'ability': pygame.K_SPACE,
+                                                    'dash': pygame.K_RETURN,
+                                                    'shoot_up': pygame.K_UP,
+                                                    'shoot_down': pygame.K_DOWN,
+                                                    'shoot_right': pygame.K_RIGHT,
+                                                    'shoot_left': pygame.K_LEFT,
+                                                    'fullscreen': pygame.K_F11,})
 
                             # rebuild control texts
                             self.control_texts.clear()
                             self.control_texts.append(ClickableText("Reset to Defaults",
-                                                      self.fonts["settings_texts"],
-                                                      (WINDOW_CENTER[0], 110),
-                                                      COLOR["clickable_text_buttons"],
-                                                      COLOR["clickable_text_buttons_hovered"],
-                                                      self.menu_select_sound,
-                                                      self.menu_hover_sound))
+                                                        self.fonts["settings_texts"],
+                                                        (WINDOW_CENTER[0], 110),
+                                                        COLOR["clickable_text_buttons"],
+                                                        COLOR["clickable_text_buttons_hovered"],
+                                                        self.menu_select_sound,
+                                                        self.menu_hover_sound))
                             y = 180
                             for action, key in KEY_BINDINGS.items():
                                 label = f"{action.replace('_', ' ').title()}: {pygame.key.name(key).upper()}"
                                 self.control_texts.append(ClickableText(label,
-                                                          self.fonts["settings_texts"],
-                                                          (WINDOW_CENTER[0], y),
-                                                          COLOR["clickable_text_buttons"],
-                                                          COLOR["clickable_text_buttons_hovered"],
-                                                          self.menu_select_sound,
-                                                          self.menu_hover_sound))
+                                                            self.fonts["settings_texts"],
+                                                            (WINDOW_CENTER[0], y),
+                                                            COLOR["clickable_text_buttons"],
+                                                            COLOR["clickable_text_buttons_hovered"],
+                                                            self.menu_select_sound,
+                                                            self.menu_hover_sound))
                                 y += 40
                             pygame.event.clear()
                         else:
@@ -845,47 +913,67 @@ class Game:
 
             # --- audio submenu ---
             elif self.active_settings_tab == "audio":
-                    self.screen.blit(self.text_surfaces["audio"], self.text_rects["audio"])
-                    mouse_pos = get_scaled_mouse_pos(self)
-                    mouse_click = pygame.mouse.get_just_pressed()[0]
+                self.screen.blit(self.text_surfaces["audio"], self.text_rects["audio"])
+                mouse_pos = get_scaled_mouse_pos(self)
+                mouse_click = pygame.mouse.get_just_pressed()[0]
 
-                    volumes = {"Master": settings.MASTER_VOLUME, "Music": settings.MUSIC_VOLUME, "SFX": settings.SFX_VOLUME}
+                volumes = {"Master": settings.MASTER_VOLUME, "Music": settings.MUSIC_VOLUME, "SFX": settings.SFX_VOLUME}
 
-                    for entry in self.audio_texts:
-                        label = entry["label"]
+                for entry in self.audio_texts:
+                    label = entry["label"]
 
-                        # draw label
-                        self.screen.blit(entry["text"], entry["rect"])
+                    # draw label
+                    self.screen.blit(entry["text"], entry["rect"])
 
-                        # draw percentage text
-                        percent = int(volumes[label] * 100)
-                        percent_surface = self.fonts['settings_texts'].render(f"{percent}%", True, COLOR['clickable_text_buttons'])
-                        percent_rect = percent_surface.get_rect(center=(WINDOW_CENTER[0], entry["rect"].centery))
-                        self.screen.blit(percent_surface, percent_rect)
+                    # draw percentage text
+                    percent = int(volumes[label] * 100)
+                    percent_surface = self.fonts['settings_texts'].render(f"{percent}%", True, COLOR['clickable_text_buttons'])
+                    percent_rect = percent_surface.get_rect(center=(WINDOW_CENTER[0], entry["rect"].centery))
+                    self.screen.blit(percent_surface, percent_rect)
 
-                        # update and draw buttons
-                        entry["minus"].update(mouse_pos, mouse_click)
-                        entry["plus"].update(mouse_pos, mouse_click)
-                        entry["minus"].draw(self.screen)
-                        entry["plus"].draw(self.screen)
+                    # update buttons
+                    entry["minus"].update(mouse_pos, mouse_click)
+                    entry["plus"].update(mouse_pos, mouse_click)
 
-                        if entry["minus"].clicked or entry["minus"].controller_clicked:
-                            entry["minus"].controller_clicked = False
-                            volumes[label] = round(max(0.0, volumes[label] - 0.05), 2)
-                            settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
-                            self.set_all_volumes()
-                            save_settings(self)
+                    if entry["minus"].hovered:
+                        entry["plus"].controller_hovered = False
 
-                        elif entry["plus"].clicked or entry["plus"].controller_clicked:
-                            entry["plus"].controller_clicked = False
-                            volumes[label] = round(min(1.0, volumes[label] + 0.05), 2)
-                            settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
-                            self.set_all_volumes()
-                            save_settings(self)
+                    if entry["plus"].hovered:
+                        entry["minus"].controller_hovered = False
 
+                    if entry["minus"].hovered or entry["plus"].hovered:
+                        for other in self.audio_texts:
+                            if other is not entry:
+                                other["minus"].controller_hovered = False
+                                other["plus"].controller_hovered = False
+                        self.back_btn.controller_hovered = False
 
-                    # reassign updated globals
-                    settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
+                    # draw buttons
+                    entry["minus"].draw(self.screen)
+                    entry["plus"].draw(self.screen)
+
+                    if entry["minus"].clicked or entry["minus"].controller_clicked:
+                        entry["minus"].controller_clicked = False
+                        volumes[label] = round(max(0.0, volumes[label] - 0.05), 2)
+                        settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
+                        self.set_all_volumes()
+                        save_settings(self)
+
+                    elif entry["plus"].clicked or entry["plus"].controller_clicked:
+                        entry["plus"].controller_clicked = False
+                        volumes[label] = round(min(1.0, volumes[label] + 0.05), 2)
+                        settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
+                        self.set_all_volumes()
+                        save_settings(self)
+
+                # reassign updated globals
+                settings.MASTER_VOLUME, settings.MUSIC_VOLUME, settings.SFX_VOLUME = volumes["Master"], volumes["Music"], volumes["SFX"]
+
+                # if mouse is hovering back, release controller hover from all audio +/- buttons
+                if self.back_btn.hovered:
+                    for other in self.audio_texts:
+                        other["minus"].controller_hovered = False
+                        other["plus"].controller_hovered = False
 
 # --- Initialization steps ---
     def init_paths(self):
@@ -971,6 +1059,7 @@ class Game:
                              'spike_ball': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_ball_track.wav')),
                              'spike_block': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_block_track.wav')),
                              'poison_cloud': pygame.mixer.Sound(join(self.AUDIO_DIR, 'poison_cloud_track.wav')),
+                             'coconut': pygame.mixer.Sound(join(self.AUDIO_DIR, 'coconut_track.wav')),
                              'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.wav'))}
 
         # --- sound effects ---
@@ -1195,6 +1284,9 @@ class Game:
                                     self.menu_select_sound, self.menu_hover_sound)
             self.audio_texts.append({"label": label, "text": text_surface, "rect": text_rect,
                                         "minus": minus_btn, "plus": plus_btn})
+            
+        self.audio_nav_row = 0
+        self.audio_nav_col = 0
 
         # --- animated backgrounds ---
         self.backgrounds: dict = {
@@ -1208,6 +1300,7 @@ class Game:
             'spike_ball': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_ball_phase', 'bg_spike_ball_phase.png')).convert_alpha()],
             'spike_block': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_block_phase', 'bg_spike_block_phase.png')).convert_alpha()],
             'poison_cloud': [pygame.image.load(join(self.IMG_DIR, 'bg_poison_cloud_phase', 'bg_poison_cloud_phase.png')).convert_alpha()],
+            'coconut': [pygame.image.load(join(self.IMG_DIR, 'bg_coconut_phase', 'bg_coconut_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
         
         # --- heart images ---
@@ -1246,6 +1339,9 @@ class Game:
 
         self.poison_cloud_image = pygame.image.load(join(self.IMG_DIR, 'poison_cloud.png')).convert_alpha()
 
+        self.coconut_image = pygame.image.load(join(self.IMG_DIR, 'coconut.png')).convert_alpha()
+        self.coconut_image.set_colorkey((0,0,0))
+
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
@@ -1264,10 +1360,6 @@ class Game:
 
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
-        self.audio_nav_row = 0        # 0..len(self.audio_texts) where last index = Back
-        self.audio_nav_col = 0        # 0 = minus, 1 = plus
-        self.controller_hover_audio_text = 0  # if you still want it for something else
-
     def init_game_state(self):
         # --- Game starting conditions ---
         STATS['score'] = 0
@@ -1279,7 +1371,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = 'rectangle'
+        self.current_phase = 'coconut'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1293,6 +1385,7 @@ class Game:
         self.next_spike_ball_spawn_time = SPIKE_BALL_SPAWN_TIME
         self.next_spike_block_spawn_time = SPIKE_BLOCK_SPAWN_TIME
         self.next_poison_cloud_spawn_time = POISON_CLOUD_SPAWN_TIME
+        self.next_coconut_spawn_time = COCONUT_SPAWN_TIME
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -1338,6 +1431,7 @@ class Game:
         self.spike_ball_sprites = pygame.sprite.Group()
         self.spike_block_sprites = pygame.sprite.Group()
         self.poison_cloud_sprites = pygame.sprite.Group()
+        self.coconut_sprites = pygame.sprite.Group()
         self.boss_sprites = pygame.sprite.Group()
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
@@ -1460,7 +1554,7 @@ class Game:
                 self.player.facing_right = False
             elif self.current_phase in ('rocket', 'jellyfish', 'poison_cloud'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
-            elif self.current_phase in ('boss', 'icicle', ):
+            elif self.current_phase in ('boss', 'icicle', 'coconut'):
                 self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] + 200)
             else:
                 self.player.rect.center = WINDOW_CENTER
@@ -1506,6 +1600,10 @@ class Game:
                 self.poison_cloud_phase()
                 self.spawn_coin(dt, spawn=random_of_selection(['right', 'left']), spawn_tendency=0.7, speed_tendency=0.7)
                 self.spawn_fruit(dt, spawn=random_of_selection(['right', 'left']), spawn_tendency=0.7, speed_tendency=0.7)
+            case 'coconut':
+                self.coconut_phase()
+                self.spawn_coin(dt, spawn='top', spawn_tendency=0.5, speed_tendency=0.6)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5, speed_tendency=0.6)
             case 'boss':
                 self.boss_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
@@ -1694,6 +1792,22 @@ class Game:
                        self.poison_cloud_image,
                        speed)
             self.next_poison_cloud_spawn_time = self.play_time + POISON_CLOUD_SPAWN_TIME / spawn_rate_factor
+
+    def coconut_phase(self):
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=COCONUT_SPEEDS, spawn_rate_factors=COCONUT_SPAWN_RATE_FACTORS)
+
+        # --- spawn coconut ---
+        if self.play_time >= self.next_coconut_spawn_time and self.play_time - self.phase_start > COCONUT_PHASE_DELAY:
+            Coconut(self,
+                    self.LAYERS['obstacles'],
+                    (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.coconut_sprites),
+                    self.coconut_image,
+                    speed)
+            self.next_coconut_spawn_time = self.play_time + COCONUT_SPAWN_TIME / spawn_rate_factor
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):

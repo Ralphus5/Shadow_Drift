@@ -192,7 +192,7 @@ class Player(pygame.sprite.Sprite):
             return
         
         if self.direction.length_squared() != 0:
-                self.direction = self.direction.normalize()
+            self.direction = self.direction.normalize()
         self.rect.center += dt * self.speed * self.direction
 
     def update_appearance(self):
@@ -707,6 +707,13 @@ class PoisonCloud(Obstacle):
     def update(self, dt):
         super().update(dt)
         self.rect.centerx += dt * sin((self.game.play_time - self.creation_time) * 2) * 40
+
+class Coconut(Obstacle):
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(random_of_spectrum(0,WINDOW_WIDTH, as_float=True), -self.size[1]/2))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(0, 1)
 
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):

@@ -33,6 +33,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_spike_block_phase': "#000000",
          'score_poison_cloud_phase': "#000000",
          'score_shadow_poison_cloud_phase': "#FFFFFF",
+         'score_coconut_phase': "#0037FF",
+         'score_shadow_coconut_phase': "#000000",
          'score_boss_phase': "#0037FF",
          'score_shadow_boss_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
@@ -71,6 +73,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'spikeball_shot_effect_text': "#131312",
          'spikeblock_shot_effect_text': "#9badb7",
          'poisoncloud_shot_effect_text': "#abc632",
+         'coconut_shot_effect_text': "#B5562A",
          'blue_banana_trail': "#1E3AC8FF",
          'red_banana_trail': "#CA0909FF",
          'credits_header': "#70C1FF",
@@ -136,6 +139,7 @@ BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'spike_ball': None,
                                               'spike_block': None,
                                               'poison_cloud': None,
+                                              'coconut': None,
                                               'boss': None}
 
 # ----- AUDIO -----
@@ -218,9 +222,9 @@ FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 1.0}
+PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 1.0, 'coconut': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'boss': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 25, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'boss': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -293,6 +297,12 @@ POISON_CLOUD_DELAY: float = 1.0
 POISON_CLOUD_SPAWN_TIME: float = 0.38 # seconds
 POISON_CLOUD_SPEEDS: tuple[int] = (120, 140, 160, 180)
 POISON_CLOUD_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
+
+# coconut phase
+COCONUT_PHASE_DELAY: float = 1.0
+COCONUT_SPAWN_TIME: float = 0.28 # seconds
+COCONUT_SPEEDS: tuple[int] = (420, 470, 510, 540)
+COCONUT_SPAWN_RATE_FACTORS: tuple[int] = (1.1, 1.15, 1.2)
 
 # boss phase
 BOSS_PHASE_START_POINTS: int = 500
