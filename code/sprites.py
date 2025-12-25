@@ -715,6 +715,13 @@ class Coconut(Obstacle):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(0, 1)
 
+class MusicNote(Obstacle):
+    def __init__(self, game, layer, groups, image, speed):
+        super().__init__(game, layer, groups, image, speed)
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.size[0]/2, random_of_spectrum(0, WINDOW_HEIGHT)))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.direction = pygame.Vector2(-1, 0)
+
 class SawBlade(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=0, rotation_speed=-180, spawn='left'):
         super().__init__(game, layer, groups, image, speed, angle, rotation_speed)

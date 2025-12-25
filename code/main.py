@@ -1060,6 +1060,7 @@ class Game:
                              'spike_block': pygame.mixer.Sound(join(self.AUDIO_DIR, 'spike_block_track.wav')),
                              'poison_cloud': pygame.mixer.Sound(join(self.AUDIO_DIR, 'poison_cloud_track.wav')),
                              'coconut': pygame.mixer.Sound(join(self.AUDIO_DIR, 'coconut_track.wav')),
+                             'music_note': pygame.mixer.Sound(join(self.AUDIO_DIR, 'music_note_track.wav')),
                              'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.wav'))}
 
         # --- sound effects ---
@@ -1098,6 +1099,8 @@ class Game:
         self.tracks['spike_ball'].set_volume(SPIKE_BALL_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['spike_block'].set_volume(SPIKE_BLOCK_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['poison_cloud'].set_volume(POISON_CLOUD_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['coconut'].set_volume(COCONUT_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['music_note'].set_volume(MUSIC_NOTE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['boss'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
@@ -1301,6 +1304,7 @@ class Game:
             'spike_block': [pygame.image.load(join(self.IMG_DIR, 'bg_spike_block_phase', 'bg_spike_block_phase.png')).convert_alpha()],
             'poison_cloud': [pygame.image.load(join(self.IMG_DIR, 'bg_poison_cloud_phase', 'bg_poison_cloud_phase.png')).convert_alpha()],
             'coconut': [pygame.image.load(join(self.IMG_DIR, 'bg_coconut_phase', 'bg_coconut_phase.png')).convert_alpha()],
+            'music_note': [pygame.image.load(join(self.IMG_DIR, 'bg_music_note_phase', 'bg_music_note_phase.png')).convert_alpha()],
             'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
         
         # --- heart images ---
@@ -1342,6 +1346,11 @@ class Game:
         self.coconut_image = pygame.image.load(join(self.IMG_DIR, 'coconut.png')).convert_alpha()
         self.coconut_image.set_colorkey((0,0,0))
 
+        self.music_note_sprite_variants: list = [pygame.image.load(join(self.IMG_DIR, 'quarter_note.png')).convert_alpha(),
+                                                 pygame.image.load(join(self.IMG_DIR, 'eighth_note.png')).convert_alpha(),
+                                                 pygame.image.load(join(self.IMG_DIR, 'triplet_note.png')).convert_alpha(),
+                                                 pygame.image.load(join(self.IMG_DIR, 'clef.png')).convert_alpha()]
+
         self.fruit_sprite_variants = {Apple: pygame.image.load(join(self.IMG_DIR, 'apple.png')).convert_alpha(),
                                       Blueberry: pygame.image.load(join(self.IMG_DIR, 'blueberry.png')).convert_alpha(),
                                       Banana: pygame.image.load(join(self.IMG_DIR, 'banana.png')).convert_alpha(),
@@ -1371,7 +1380,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = 'coconut'
+        self.current_phase = 'music_note'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1386,6 +1395,7 @@ class Game:
         self.next_spike_block_spawn_time = SPIKE_BLOCK_SPAWN_TIME
         self.next_poison_cloud_spawn_time = POISON_CLOUD_SPAWN_TIME
         self.next_coconut_spawn_time = COCONUT_SPAWN_TIME
+        self.next_music_note_spawn_time = MUSIC_NOTE_SPAWN_TIME
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
@@ -1432,6 +1442,7 @@ class Game:
         self.spike_block_sprites = pygame.sprite.Group()
         self.poison_cloud_sprites = pygame.sprite.Group()
         self.coconut_sprites = pygame.sprite.Group()
+        self.music_note_sprites = pygame.sprite.Group()
         self.boss_sprites = pygame.sprite.Group()
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
@@ -1550,12 +1561,15 @@ class Game:
             self.change_score_color = True
             self.phase_start = self.play_time
             if self.current_phase in ('arrow', 'saw_blade'):
-                self.player.rect.center = (WINDOW_CENTER[0] + 400,WINDOW_CENTER[1]) 
+                self.player.rect.center = (WINDOW_CENTER[0] + 400, WINDOW_CENTER[1]) 
                 self.player.facing_right = False
+            elif self.current_phase in ('music_note'):
+                self.player.rect.center = (WINDOW_CENTER[0] - 400, WINDOW_CENTER[1])
+                self.player.facing_right = True
             elif self.current_phase in ('rocket', 'jellyfish', 'poison_cloud'):
-                self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] - 200)
+                self.player.rect.center = (WINDOW_CENTER[0], WINDOW_CENTER[1] - 200)
             elif self.current_phase in ('boss', 'icicle', 'coconut'):
-                self.player.rect.center = (WINDOW_CENTER[0],WINDOW_CENTER[1] + 200)
+                self.player.rect.center = (WINDOW_CENTER[0], WINDOW_CENTER[1] + 200)
             else:
                 self.player.rect.center = WINDOW_CENTER
             
@@ -1604,6 +1618,10 @@ class Game:
                 self.coconut_phase()
                 self.spawn_coin(dt, spawn='top', spawn_tendency=0.5, speed_tendency=0.6)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.5, speed_tendency=0.6)
+            case 'music_note':
+                self.music_note_phase()
+                self.spawn_coin(dt, spawn='top', spawn_tendency=0.3)
+                self.spawn_fruit(dt, spawn='top', spawn_tendency=0.3)
             case 'boss':
                 self.boss_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
@@ -1808,6 +1826,22 @@ class Game:
                     self.coconut_image,
                     speed)
             self.next_coconut_spawn_time = self.play_time + COCONUT_SPAWN_TIME / spawn_rate_factor
+
+    def music_note_phase(self):
+        # --- phase parameters ---
+        if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
+            self.phase_ended = True
+            return
+        speed, rotation_speed, spawn_rate_factor, weight = set_phase_parameters(self, speeds=MUSIC_NOTE_SPEEDS, spawn_rate_factors=MUSIC_NOTE_SPAWN_RATE_FACTORS)
+        # --- spawn music note ---
+        if self.play_time >= self.next_music_note_spawn_time and self.play_time - self.phase_start > MUSIC_NOTE_PHASE_DELAY:
+            MusicNote(self,
+                      self.LAYERS['obstacles'],
+                      (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.music_note_sprites),
+                      random_of_selection(self.music_note_sprite_variants, weights=weight),
+                      speed)
+            self.next_music_note_spawn_time = self.play_time + MUSIC_NOTE_SPAWN_TIME / spawn_rate_factor
+        
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):
