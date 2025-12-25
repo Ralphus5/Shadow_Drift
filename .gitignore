@@ -38,3 +38,8 @@ data/settings.json
 *.mp3
 *.flac
 *.m4a
+audio/*.wav
+audio/*.ogg
+audio/*.mp3
+audio/*.flac
+audio/*.m4a

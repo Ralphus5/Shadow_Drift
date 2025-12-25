@@ -1347,6 +1347,7 @@ class Game:
         self.coconut_image.set_colorkey((0,0,0))
 
         self.music_note_sprite_variants: list = [pygame.image.load(join(self.IMG_DIR, 'quarter_note.png')).convert_alpha(),
+                                                 pygame.image.load(join(self.IMG_DIR, 'sixteenth_note.png')).convert_alpha(),
                                                  pygame.image.load(join(self.IMG_DIR, 'eighth_note.png')).convert_alpha(),
                                                  pygame.image.load(join(self.IMG_DIR, 'triplet_note.png')).convert_alpha(),
                                                  pygame.image.load(join(self.IMG_DIR, 'clef.png')).convert_alpha()]
@@ -1361,7 +1362,7 @@ class Game:
         self.fruit_sprite_variants[GameOverApple] = self.fruit_sprite_variants[Apple]
         self.fruit_sprite_variants[GameOverChili] = self.fruit_sprite_variants[Chili]
 
-        self.coin_frames = [pygame.image.load(join(self.IMG_DIR, 'coin', f'coin{i}.png')).convert_alpha() for i in range(12)]
+        self.coin_frames = [pygame.image.load(join(self.IMG_DIR, 'coin', f'coin{i}.png')).convert_alpha() for i in range(16)]
         
         self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
 
@@ -1380,7 +1381,7 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
         # --- starting phase ---
-        self.current_phase = 'music_note'
+        self.current_phase = 'rectangle'
         self.prev_phase = self.current_phase
 
         # --- spawn timers ---
@@ -1838,10 +1839,9 @@ class Game:
             MusicNote(self,
                       self.LAYERS['obstacles'],
                       (self.all_sprites, self.enemy_sprites, self.obstacle_sprites, self.music_note_sprites),
-                      random_of_selection(self.music_note_sprite_variants, weights=weight),
+                      random_of_selection(self.music_note_sprite_variants),
                       speed)
             self.next_music_note_spawn_time = self.play_time + MUSIC_NOTE_SPAWN_TIME / spawn_rate_factor
-        
 
     def boss_phase(self):
         if getattr(self, 'init_boss_phase_end', False):

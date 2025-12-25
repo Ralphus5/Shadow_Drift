@@ -217,7 +217,7 @@ COIN_FRAME_INTERVALL: int = 35
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 4.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.9, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.3, 'grapes': 0.3, 'pear': 0.2}
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.9, 'blueberry': 0.45, 'banana': 0.5, 'chili': 0.2, 'grapes': 0.4, 'pear': 0.2}
 FRUIT_SPEED_RANGE: tuple[int] = (100,220)
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
