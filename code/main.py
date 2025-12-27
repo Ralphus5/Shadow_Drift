@@ -427,11 +427,11 @@ class Game:
                 kill_sprites(self.all_sprites, space=self.menu_space)
                 self.init_game_state()
                 self.init_sprites()
-            change_track(self, 'start', loop=True)
+            change_track(self, random_of_selection([track for track in self.tracks.keys() if track not in ('game_over', 'credits')]),   loop=True)
 
         elif new == 'play':
             if old == 'start':
-                change_track(self, self.current_phase, fade_out=600, fade_in=MUSIC_FADE_IN_ON_GAME_START, loop=False)
+                change_track(self, self.current_phase, fade_out=MUSIC_FADE_OUT_ON_GAME_START, fade_in=MUSIC_FADE_IN_ON_GAME_START, loop=False)
                 kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
                 self.play_start = perf_counter()
                 pygame.key.get_pressed()
@@ -1059,8 +1059,7 @@ class Game:
         
     def load_sounds(self):
         # --- game music ---
-        self.tracks: dict = {'start': pygame.mixer.Sound(join(self.AUDIO_DIR, 'start_track.ogg')),
-                             'game_over': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
+        self.tracks: dict = {'game_over': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
                              'credits': pygame.mixer.music.load(join(self.AUDIO_DIR, 'credits_track.ogg')),
                              'rectangle': pygame.mixer.Sound(join(self.AUDIO_DIR, 'rectangle_track.wav')),
                              'arrow': pygame.mixer.Sound(join(self.AUDIO_DIR, 'arrow_track.wav')),
@@ -1099,7 +1098,6 @@ class Game:
 
     def set_all_volumes(self):
         # --- game music ---
-        self.tracks['start'].set_volume(START_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['game_over'].set_volume(GAME_OVER_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         pygame.mixer.music.set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['rectangle'].set_volume(RECTANGLE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
@@ -1432,7 +1430,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'last_chili_drop'):
+                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1676,7 +1674,7 @@ class Game:
             self.arrow_sub_phase_start = self.play_time
 
         # --- spawn arrow according to phase ---
-        if self.play_time >= self.next_arrow_spawn_time and self.play_time - self.phase_start > ARROW_PHASE_DELAY:
+        if self.play_time >= self.next_arrow_spawn_time and self.play_time - self.phase_start > ARROW_PHASE_DELAY and self.play_time - self.arrow_sub_phase_start >= 1.0:
             match(self.arrow_sub_phase):
                     case 'columns':
                         height = random_of_selection(ARROW_COLUMN_SPAWN_HEIGHTS)

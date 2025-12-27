@@ -31,7 +31,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_spike_ball_phase': "#FFFFFF",
          'score_spike_block_phase': "#0037FF",
          'score_shadow_spike_block_phase': "#000000",
-         'score_poison_cloud_phase': "#000000",
+         'score_poison_cloud_phase': "#0037FF",
          'score_shadow_poison_cloud_phase': "#FFFFFF",
          'score_coconut_phase': "#0037FF",
          'score_shadow_coconut_phase': "#000000",
@@ -154,7 +154,7 @@ SFX_VOLUME: Annotated[float, (0-1)] = 1
 
 # game music volumes
 MUSIC_FADE_IN_ON_GAME_START: float = 1000 # milliseconds
-START_TRACK_VOLUME: Annotated[float, (0-1)] = 0.3
+MUSIC_FADE_OUT_ON_GAME_START: float = 450 # milliseconds
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
 RECTANGLE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
@@ -223,7 +223,7 @@ APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 25.0
 FIRE_POWER_DURATION: float = 25.0
-FIREBALL_SHOOT_COOLDOWN: float = 0.6
+FIREBALL_SHOOT_COOLDOWN: float = 0.55
 FIRE_BALL_SPEED: int = 600
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
@@ -248,8 +248,8 @@ RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.
 # arrow phase
 ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
-ARROW_SINGLES_SPAWN_TIME: float = 0.33
-ARROW_COLUMN_SPAWN_TIME: float = 2.5
+ARROW_SINGLES_SPAWN_TIME: float = 0.32
+ARROW_COLUMN_SPAWN_TIME: float = 3.5
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 ARROW_SPEEDS: tuple[int] = (300, 320, 340, 360)
 ARROW_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
