@@ -37,8 +37,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'score_shadow_coconut_phase': "#000000",
          'score_music_note_phase': "#0037FF",
          'score_shadow_music_note_phase': "#000000",
-         'score_boss_phase': "#0037FF",
-         'score_shadow_boss_phase': "#FFFFFF",
+         'score_shadow_guardian_phase': "#0037FF",
+         'score_shadow_shadow_guardian_phase': "#FFFFFF",
          'blue_player_glow': "#0066FF81",
          'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
@@ -84,11 +84,11 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'quit_icon_text': "#FB0000",
          'play_icon_text': "#00D512",
          'settings_icon_text':"#7E7E7E",
-         'boss_health_bar': "#FF0000",
-         'boss_health_bar_damage': "#FFF700",
-         'boss_health_bar_border': "#FFFFFF",
-         'boss_name': "#7B2087",
-         'boss_name_shadow': "#DD00FF"}
+         'shadow_guardian_health_bar': "#FF0000",
+         'shadow_guardian_health_bar_damage': "#FFF700",
+         'shadow_guardian_health_bar_border': "#FFFFFF",
+         'shadow_guardian_name': "#7B2087",
+         'shadow_guardian_name_shadow': "#DD00FF"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -107,7 +107,7 @@ FRUIT_PICKUP_MESSAGES_FONT_SIZE: int = 35
 CREDITS_HEADER_FONT_SIZE: int = 70
 CREDITS_NAME_FONT_SIZE: int = 45
 ICON_TEXTS_FONT_SIZE: int = 20
-BOSS_NAME_FONT_SIZE: int = 50
+SHADOW_GUARDIAN_NAME_FONT_SIZE: int = 50
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
@@ -124,7 +124,7 @@ FADE_TO_BLACK_DURATION: float = 0.6
 PHASE_CHANGE_FADE_DURATION: float = 0.75
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.85
-BOSS_EXPLOSION_SPEED: float = 0.7
+SHADOW_GUARDIAN_EXPLOSION_SPEED: float = 0.7
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
@@ -144,7 +144,7 @@ BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'poison_cloud': None,
                                               'coconut': None,
                                               'music_note': None,
-                                              'boss': None}
+                                              'shadow_guardian': None}
 
 # ----- AUDIO -----
 # user volume settings
@@ -169,7 +169,7 @@ SPIKE_BLOCK_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 POISON_CLOUD_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 COCONUT_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 MUSIC_NOTE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
-BOSS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
+SHADOW_GUARDIAN_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -189,10 +189,10 @@ RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.55
-BOSS_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-BOSS_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
+SHADOW_GUARDIAN_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+SHADOW_GUARDIAN_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
-BOSS_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+SHADOW_GUARDIAN_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 
 
 # ----- GAMEPLAY -----
@@ -230,7 +230,7 @@ POINTS_FOR_OBSTACLE_SHOOT: int = 2
 # --- phases ---
 PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 0.9, 'coconut': 1.0, 'music_note': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'boss': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'shadow_guardian': 200}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -316,25 +316,24 @@ MUSIC_NOTE_SPAWN_TIME: float = 0.4 # seconds
 MUSIC_NOTE_SPEEDS: tuple[int] = (330, 360, 390, 420)
 MUSIC_NOTE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
-# boss phase
-BOSS_PHASE_START_POINTS: int = 500
-BOSS_DAMAGE_PER_SHOT: int = 1
-BOSS_HEALTH: int = 40
-BOSS_SPEED: int = 170
-BOSS_SPEED_DURING_SUMMON: int = 70
-BOSS_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
-BOSS_SAW_BLADE_SPAWN_DURATION: float = 0.38
-BOSS_SAW_BLADE_SPEED: int = 360
-BOSS_ASTEROID_SPAWN_DURATION: int =  0.4
-BOSS_ASTEROID_SPEED: int = 240
+# shadow guardian phase
+SHADOW_GUARDIAN_PHASE_START_POINTS: int = 500
+SHADOW_GUARDIAN_DAMAGE_PER_SHOT: int = 1
+SHADOW_GUARDIAN_HEALTH: int = 40
+SHADOW_GUARDIAN_SPEED: int = 170
+SHADOW_GUARDIAN_SPEED_DURING_SUMMON: int = 70
+SHADOW_GUARDIAN_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
+SHADOW_GUARDIAN_SAW_BLADE_SPAWN_DURATION: float = 0.38
+SHADOW_GUARDIAN_SAW_BLADE_SPEED: int = 360
+SHADOW_GUARDIAN_ASTEROID_SPAWN_DURATION: int =  0.4
+SHADOW_GUARDIAN_ASTEROID_SPEED: int = 240
 DARK_ENERGY_BALL_SPEED: int = 200
 DART_ENERGY_BALL_LIFE_TIME: float = 8.0 # seconds
 DARK_ENERGY_BALL_GLOW_RADIUS: int = 200
-BOSS_PHASE_END_DURATION: float = 3.0 # seconds
-BOSS_HEALTH_BAR_HEIGHT: int = 26
-BOSS_HEALTH_BAR_LENGTH: int = 900
-BOSS_HEALTH_CHANGE_SPEED: float = 0.06
-BOSS_PHASE_TRANSITION_TIME: float = 5.5
+SHADOW_GUARDIAN_PHASE_END_DURATION: float = 3.0 # seconds
+SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT: int = 26
+SHADOW_GUARDIAN_HEALTH_BAR_LENGTH: int = 900
+SHADOW_GUARDIAN_HEALTH_CHANGE_SPEED: float = 0.06
 
 
 # --- DEFAULT KEY BINDINGS ---

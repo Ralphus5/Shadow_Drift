@@ -114,6 +114,11 @@ class Game:
             # --- pause state ---
             elif self.state == 'stop':
                 if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN and getattr(self, 'show_credits',False):
+                        self.show_credits = False
+                        self.credits_title_rect.center = WINDOW_CENTER
+                        for attr in ('header_counter', 'credits_instances', 'last_created'):
+                            if hasattr(self, attr): delattr(self, attr)
                     if event.key == pygame.K_ESCAPE:
                         if getattr(self, 'show_credits',False): 
                             self.show_credits = False
@@ -186,11 +191,17 @@ class Game:
                                 button.controller_hovered = (button is self.clickable_icons[self.controller_hover_icon % 3])
 
                         elif event.button == PAD_A_BUTTON:
+                            if getattr(self, 'show_credits', False):
+                                self.show_credits = False
+                                pygame.time.set_timer(self.credits_event, 0)
+                                self.credits_title_rect.center = WINDOW_CENTER
+                                for attr in ('header_counter', 'credits_instances', 'last_created'):
+                                    if hasattr(self, attr):
+                                        delattr(self, attr)
                             if (self.clickable_icons[self.controller_hover_icon % 3].hovered
                                     or self.clickable_icons[self.controller_hover_icon % 3].controller_hovered):
                                 self.clickable_icons[self.controller_hover_icon % 3].controller_clicked = True
 
-                        # B behaves like ESC in pause menu (back / resume)
                         elif event.button == PAD_B_BUTTON:
                             if getattr(self, 'show_credits', False):
                                 self.show_credits = False
@@ -582,7 +593,7 @@ class Game:
         self.collisions()
         self.check_record()
         self.all_sprites.draw(self.screen)
-        self.draw_boss_health_bar()
+        self.draw_shadow_guardian_health_bar()
         self.draw_hearts()
         self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
@@ -592,7 +603,7 @@ class Game:
             mouse_pos = get_scaled_mouse_pos(self)
             mouse_click = pygame.mouse.get_pressed()[0]
             self.all_sprites.draw(self.screen)
-            self.draw_boss_health_bar()
+            self.draw_shadow_guardian_health_bar()
 
             # --- dim effect ---
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
@@ -608,6 +619,8 @@ class Game:
                 if self.credits_btn.clicked:
                     self.show_credits = True
                     pygame.time.set_timer(self.credits_event, 5000)
+                    for button in self.clickable_icons:
+                        button.controller_hovered = False
                 for btn in self.clickable_icons:
                     btn.update(mouse_pos, mouse_click)
                     if btn.hovered or btn.controller_hovered:
@@ -1061,7 +1074,7 @@ class Game:
                              'poison_cloud': pygame.mixer.Sound(join(self.AUDIO_DIR, 'poison_cloud_track.wav')),
                              'coconut': pygame.mixer.Sound(join(self.AUDIO_DIR, 'coconut_track.wav')),
                              'music_note': pygame.mixer.Sound(join(self.AUDIO_DIR, 'music_note_track.wav')),
-                             'boss': pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_track.wav'))}
+                             'shadow_guardian': pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_track.wav'))}
 
         # --- sound effects ---
         self.using_controller_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'using_controller_sound.wav'))
@@ -1078,11 +1091,11 @@ class Game:
         self.dash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'dash_sound.wav'))
         self.phase_switch_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'phase_switch_sound.wav'))
         self.shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shoot_sound.wav'))
-        self.boss_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_growl_sound.wav'))
-        self.boss_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_hurt_sound.wav'))
+        self.shadow_guardian_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_growl_sound.wav'))
+        self.shadow_guardian_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_hurt_sound.wav'))
         self.energy_ball_shot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'energy_ball_shot_sound.wav'))
         self.buff_end_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'buff_end_sound.wav'))
-        self.boss_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'boss_death_sound.wav'))
+        self.shadow_guardian_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_death_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -1101,7 +1114,7 @@ class Game:
         self.tracks['poison_cloud'].set_volume(POISON_CLOUD_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['coconut'].set_volume(COCONUT_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['music_note'].set_volume(MUSIC_NOTE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
-        self.tracks['boss'].set_volume(BOSS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['shadow_guardian'].set_volume(SHADOW_GUARDIAN_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items() if name != 'credits'}
@@ -1121,11 +1134,11 @@ class Game:
         self.dash_sound.set_volume(DASH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.phase_switch_sound.set_volume(PHASE_SWITCH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.shoot_sound.set_volume(SHOOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
-        self.boss_growl_sound.set_volume(BOSS_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
-        self.boss_hurt_sound.set_volume(BOSS_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.shadow_guardian_growl_sound.set_volume(SHADOW_GUARDIAN_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.shadow_guardian_hurt_sound.set_volume(SHADOW_GUARDIAN_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.energy_ball_shot_sound.set_volume(ENERGY_BALL_SHOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.buff_end_sound.set_volume(BUFF_END_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
-        self.boss_death_sound.set_volume(BOSS_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.shadow_guardian_death_sound.set_volume(SHADOW_GUARDIAN_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -1147,14 +1160,14 @@ class Game:
                             'quit_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
                             'play_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
                             'settings_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
-                            'boss_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), BOSS_NAME_FONT_SIZE)}
+                            'shadow_guardian_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SHADOW_GUARDIAN_NAME_FONT_SIZE)}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
                                     'game_over_hint': self.fonts['game_over_hint'].render("Play again: " + ("START" if self.controller else "ENTER") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['game_over_text']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: " + ("START" if self.controller else "RETURN") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['start_hint']),
-                                    'credits_hint': self.fonts['credits_hint'].render("Press ESC or RETURN", True, COLOR['credits_hint']),
+                                    'credits_hint': self.fonts['credits_hint'].render("Press A or B" if self.controller else "Press ESC or RETURN", True, COLOR['credits_hint']),
                                     'settings': self.fonts['settings_headers'].render("Settings", True, COLOR['settings_headers']),
                                     'controls': self.fonts['settings_headers'].render("Controls", True, COLOR['settings_headers']),
                                     'audio': self.fonts['settings_headers'].render("Audio", True, COLOR['settings_headers']),
@@ -1162,8 +1175,8 @@ class Game:
                                     'quit_icon_text': self.fonts['quit_icon_text'].render("Quit", True, COLOR['quit_icon_text']),
                                     'play_icon_text': self.fonts['quit_icon_text'].render("Continue", True, COLOR['play_icon_text']),
                                     'settings_icon_text': self.fonts['quit_icon_text'].render("Settings", True, COLOR['settings_icon_text']),
-                                    'boss_name': self.fonts['boss_name'].render("Shadow Guardian", True, COLOR['boss_name']),
-                                    'boss_name_shadow': self.fonts['boss_name'].render("Shadow Guardian", True, COLOR['boss_name_shadow'])}
+                                    'shadow_guardian_name': self.fonts['shadow_guardian_name'].render("Shadow Guardian", True, COLOR['shadow_guardian_name']),
+                                    'shadow_guardian_name_shadow': self.fonts['shadow_guardian_name'].render("Shadow Guardian", True, COLOR['shadow_guardian_name_shadow'])}
         
         # credits title
         self.credits_title_surf = self.text_surfaces['title'].copy()
@@ -1182,8 +1195,8 @@ class Game:
                                  'quit_icon_text': self.text_surfaces['quit_icon_text'].get_rect(center=(WINDOW_WIDTH - 70, 130)),
                                  'play_icon_text': self.text_surfaces['play_icon_text'].get_rect(center=(WINDOW_WIDTH - 170, 130)),
                                  'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130)),
-                                 'boss_name': self.text_surfaces['boss_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - BOSS_HEALTH_BAR_HEIGHT)),
-                                 'boss_name_shadow': self.text_surfaces['boss_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 56 - BOSS_HEALTH_BAR_HEIGHT))}
+                                 'shadow_guardian_name': self.text_surfaces['shadow_guardian_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)),
+                                 'shadow_guardian_name_shadow': self.text_surfaces['shadow_guardian_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 56 - SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT))}
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
@@ -1305,7 +1318,7 @@ class Game:
             'poison_cloud': [pygame.image.load(join(self.IMG_DIR, 'bg_poison_cloud_phase', 'bg_poison_cloud_phase.png')).convert_alpha()],
             'coconut': [pygame.image.load(join(self.IMG_DIR, 'bg_coconut_phase', 'bg_coconut_phase.png')).convert_alpha()],
             'music_note': [pygame.image.load(join(self.IMG_DIR, 'bg_music_note_phase', 'bg_music_note_phase.png')).convert_alpha()],
-            'boss': [pygame.image.load(join(self.IMG_DIR, 'bg_boss_phase', 'bg_boss_phase.png')).convert_alpha()]}
+            'shadow_guardian': [pygame.image.load(join(self.IMG_DIR, 'bg_shadow_guardian_phase', 'bg_shadow_guardian_phase.png')).convert_alpha()]}
         
         # --- heart images ---
         self.empty_heart = pygame.image.load(join(self.IMG_DIR, 'empty_heart.png')).convert_alpha()
@@ -1364,9 +1377,9 @@ class Game:
 
         self.coin_frames = [pygame.image.load(join(self.IMG_DIR, 'coin', f'coin{i}.png')).convert_alpha() for i in range(16)]
         
-        self.boss_image = pygame.image.load(join(self.IMG_DIR, 'boss.png')).convert_alpha()
+        self.shadow_guardian_image = pygame.image.load(join(self.IMG_DIR, 'shadow_guardian.png')).convert_alpha()
 
-        self.boss_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'boss_death_animation', f'boss_death_frame{i}.png')).convert_alpha() for i in range(23)]
+        self.shadow_guardian_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'shadow_guardian_death_animation', f'shadow_guardian_death_frame{i}.png')).convert_alpha() for i in range(23)]
 
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
@@ -1383,6 +1396,7 @@ class Game:
         # --- starting phase ---
         self.current_phase = 'rectangle'
         self.prev_phase = self.current_phase
+        self.completed_phases = set()
 
         # --- spawn timers ---
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
@@ -1418,7 +1432,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'had_boss', 'boss', 'boss_phase_end_start', 'last_chili_drop'):
+                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1548,13 +1562,17 @@ class Game:
             kill_sprites(self.coin_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.fireball_sprites)
-            if STATS['score'] >= BOSS_PHASE_START_POINTS and not getattr(self, 'had_boss', False):
-                self.current_phase = 'boss'
+            if STATS['score'] >= SHADOW_GUARDIAN_PHASE_START_POINTS and not getattr(self, 'had_shadow_guardian', False):
+                self.current_phase = 'shadow_guardian'
             else:
-                self.prev_phase = self.current_phase
-                while self.current_phase == self.prev_phase:
+                if self.current_phase not in ('rectangle', 'shadow_guardian'):
+                    self.prev_phase = self.current_phase
+                    self.completed_phases.add(self.current_phase)
+                    if len(self.completed_phases) >= len(PHASE_PROBABILITIES.keys()):
+                        self.completed_phases.clear()
+                while self.current_phase == self.prev_phase or self.current_phase in self.completed_phases:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase == 'boss' else False)
+            change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase == 'shadow_guardian' else False)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1569,7 +1587,7 @@ class Game:
                 self.player.facing_right = True
             elif self.current_phase in ('rocket', 'jellyfish', 'poison_cloud'):
                 self.player.rect.center = (WINDOW_CENTER[0], WINDOW_CENTER[1] - 200)
-            elif self.current_phase in ('boss', 'icicle', 'coconut'):
+            elif self.current_phase in ('shadow_guardian', 'icicle', 'coconut'):
                 self.player.rect.center = (WINDOW_CENTER[0], WINDOW_CENTER[1] + 200)
             else:
                 self.player.rect.center = WINDOW_CENTER
@@ -1623,8 +1641,8 @@ class Game:
                 self.music_note_phase()
                 self.spawn_coin(dt, spawn='top', spawn_tendency=0.3)
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.3)
-            case 'boss':
-                self.boss_phase()
+            case 'shadow_guardian':
+                self.shadow_guardian_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
@@ -1843,25 +1861,25 @@ class Game:
                       speed)
             self.next_music_note_spawn_time = self.play_time + MUSIC_NOTE_SPAWN_TIME / spawn_rate_factor
 
-    def boss_phase(self):
-        if getattr(self, 'init_boss_phase_end', False):
-            if self.play_time - self.boss_phase_end_start > BOSS_PHASE_END_DURATION:
-                self.init_boss_phase_end = False
+    def shadow_guardian_phase(self):
+        if getattr(self, 'init_shadow_guardian_phase_end', False):
+            if self.play_time - self.shadow_guardian_phase_end_start > SHADOW_GUARDIAN_PHASE_END_DURATION:
+                self.init_shadow_guardian_phase_end = False
                 self.phase_ended = True
                 self.music_channel.fadeout(3000)
             return
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
             Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))
             self.last_chili_drop = self.play_time
-        if not getattr(self, 'boss', False):
-            self.boss = ShadowGuardian(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
+        if not getattr(self, 'shadow_guardian', False):
+            self.shadow_guardian = ShadowGuardian(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
             
-        if getattr(self, 'boss_defeated', False):
-            self.boss_defeated = False
-            self.had_boss = True
+        if getattr(self, 'shadow_guardian_defeated', False):
+            self.shadow_guardian_defeated = False
+            self.had_shadow_guardian = True
             self.music_channel.stop()
-            self.init_boss_phase_end = True
-            self.boss_phase_end_start = self.play_time
+            self.init_shadow_guardian_phase_end = True
+            self.shadow_guardian_phase_end_start = self.play_time
             kill_sprites(self.boss_obstacle_sprites)
             kill_sprites(self.obstacle_sprites)
             return
@@ -1895,7 +1913,7 @@ class Game:
             if hit_enemy:
                 for enemy in hit_enemy: 
                     if enemy in self.energy_ball_sprites:
-                        self.boss.energy_ball = None
+                        self.shadow_guardian.energy_ball = None
                     if enemy in self.obstacle_sprites:
                         enemy.kill()
                 if self.player.extra_life:
@@ -1937,66 +1955,66 @@ class Game:
             self.record_checked = True
             self.record_sound.play()
 
-    def draw_boss_health_bar(self):
-        if self.current_phase != 'boss':
+    def draw_shadow_guardian_health_bar(self):
+        if self.current_phase != 'shadow_guardian':
             return
 
         # --- animate display health ---
-        if self.boss.current_health > self.boss.target_health:
-            self.boss.current_health = max(self.boss.target_health,
-                self.boss.current_health - BOSS_HEALTH_CHANGE_SPEED)
+        if self.shadow_guardian.current_health > self.shadow_guardian.target_health:
+            self.shadow_guardian.current_health = max(self.shadow_guardian.target_health,
+                self.shadow_guardian.current_health - SHADOW_GUARDIAN_HEALTH_CHANGE_SPEED)
                 
         # shorthand
-        current = self.boss.current_health
-        target  = self.boss.target_health
-        ratio   = self.boss.health_ratio
+        current = self.shadow_guardian.current_health
+        target  = self.shadow_guardian.target_health
+        ratio   = self.shadow_guardian.health_ratio
 
         current_width = current / ratio
         target_width  = target / ratio
 
-        bar_x = WINDOW_CENTER[0] - BOSS_HEALTH_BAR_LENGTH / 2
+        bar_x = WINDOW_CENTER[0] - SHADOW_GUARDIAN_HEALTH_BAR_LENGTH / 2
         bar_y = WINDOW_HEIGHT - 50
 
         # --- create surface for the whole bar ---
-        bar_surface = pygame.Surface((BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT),
+        bar_surface = pygame.Surface((SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT),
             pygame.SRCALPHA)
 
         # --- base bar: REAL health ---
-        health_bar_rect = pygame.Rect(0, 0, target_width, BOSS_HEALTH_BAR_HEIGHT)
+        health_bar_rect = pygame.Rect(0, 0, target_width, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
             
-        pygame.draw.rect(bar_surface, COLOR['boss_health_bar'], health_bar_rect, border_radius=2)
+        pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar'], health_bar_rect, border_radius=2)
 
         # --- damage/transition bar ---
         if current_width > target_width:
             transition_width = current_width - target_width
-            transition_rect = pygame.Rect(target_width, 0, transition_width, BOSS_HEALTH_BAR_HEIGHT)
+            transition_rect = pygame.Rect(target_width, 0, transition_width, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
             
-            pygame.draw.rect(bar_surface, COLOR['boss_health_bar_damage'], transition_rect, border_radius=1)
+            pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar_damage'], transition_rect, border_radius=1)
 
         # --- bar border ---
-        border_rect = pygame.Rect(0, 0, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
+        border_rect = pygame.Rect(0, 0, SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
         
-        pygame.draw.rect(bar_surface, COLOR['boss_health_bar_border'], border_rect, width=3, border_radius=1)
+        pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar_border'], border_rect, width=3, border_radius=1)
 
         # --- adjust transparency ---
-        bar_world_rect = pygame.Rect(bar_x, bar_y, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
+        bar_world_rect = pygame.Rect(bar_x, bar_y, SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
         
-        # boss name
-        boss_name_shadow_surf = self.text_surfaces['boss_name_shadow'].copy()
-        boss_name_surf = self.text_surfaces['boss_name'].copy()
+        # shadow guardian name
+        shadow_guardian_name_shadow_surf = self.text_surfaces['shadow_guardian_name_shadow'].copy()
+        shadow_guardian_name_surf = self.text_surfaces['shadow_guardian_name'].copy()
 
         if self.player.rect.colliderect(bar_world_rect):
             bar_surface.set_alpha(100) 
         else: bar_surface.set_alpha(255)
-        if self.player.rect.colliderect(self.text_rects['boss_name']):
-            boss_name_shadow_surf.set_alpha(100)
-            boss_name_surf.set_alpha(100)
-        else: boss_name_shadow_surf.set_alpha(255); boss_name_surf.set_alpha(255)
+        if self.player.rect.colliderect(self.text_rects['shadow_guardian_name']):
+            shadow_guardian_name_shadow_surf.set_alpha(100)
+            shadow_guardian_name_surf.set_alpha(100)
+        else: shadow_guardian_name_shadow_surf.set_alpha(255); shadow_guardian_name_surf.set_alpha(255)
 
         # --- draw bar surface and name ---
         self.screen.blit(bar_surface, (bar_x, bar_y))
-        self.screen.blit(boss_name_shadow_surf, self.text_rects['boss_name_shadow'])
-        self.screen.blit(boss_name_surf, self.text_rects['boss_name'])
+        self.screen.blit(shadow_guardian_name_shadow_surf, self.text_rects['shadow_guardian_name_shadow'])
+        self.screen.blit(shadow_guardian_name_surf, self.text_rects['shadow_guardian_name'])
 
     def draw_hearts(self):
         alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 and self.state == 'play' else 255

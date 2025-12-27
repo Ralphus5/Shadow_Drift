@@ -753,19 +753,19 @@ class SpikeBall(RotatingObstacle):
 
 # --- boss related ---
 class ShadowGuardian(pygame.sprite.Sprite):
-    STATE_DURATIONS = BOSS_STATE_DURATIONS
+    STATE_DURATIONS = SHADOW_GUARDIAN_STATE_DURATIONS
 
     def __init__(self, game, groups):
         self.game = game
         self._layer = self.game.LAYERS['bosses']
         super().__init__(groups)
-        self.max_health = BOSS_HEALTH
+        self.max_health = SHADOW_GUARDIAN_HEALTH
         self.current_health = self.max_health
         self.target_health = self.max_health
-        self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
-        self.speed = BOSS_SPEED
-        self.speed_during_summon = BOSS_SPEED_DURING_SUMMON
-        self.image = self.game.boss_image
+        self.health_ratio = self.max_health / SHADOW_GUARDIAN_HEALTH_BAR_LENGTH
+        self.speed = SHADOW_GUARDIAN_SPEED
+        self.speed_during_summon = SHADOW_GUARDIAN_SPEED_DURING_SUMMON
+        self.image = self.game.shadow_guardian_image
         self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
         self.mask = pygame.mask.from_surface(self.image)
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
@@ -776,7 +776,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
         self.current_state = 'follow_player'
         self.select_next_state = False
         self.state_start = self.game.play_time
-        self.game.boss_growl_sound.play()
+        self.game.shadow_guardian_growl_sound.play()
 
     def track_player(self):
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
@@ -785,16 +785,16 @@ class ShadowGuardian(pygame.sprite.Sprite):
             self.direction = self.direction.normalize()
 
     def take_damage(self):
-        self.game.boss_hurt_sound.play()
-        self.target_health -= BOSS_DAMAGE_PER_SHOT
+        self.game.shadow_guardian_hurt_sound.play()
+        self.target_health -= SHADOW_GUARDIAN_DAMAGE_PER_SHOT
         if self.target_health > 0:
             self.hurting = True
             self.hurting_start = self.game.play_time
-        else: self.game.boss_death_sound.play(); BossDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()
+        else: self.game.shadow_guardian_death_sound.play(); ShadowGuardianDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()
 
     def update_appearance(self):
         # adjust facing
-        base = self.game.boss_image
+        base = self.game.shadow_guardian_image
         if self.distance_to_player[0] < 0:
             base = pygame.transform.flip(base, True, False)
         self.image = base.copy()
@@ -842,7 +842,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
             else: 
                 self.prev_state = self.current_state
                 self.current_state = 'transition'
-                self.game.boss_growl_sound.play()
+                self.game.shadow_guardian_growl_sound.play()
             self.state_start = self.game.play_time
             self.select_next_state = False
 
@@ -861,15 +861,15 @@ class ShadowGuardian(pygame.sprite.Sprite):
             self.rect.center += dt * self.speed * self.direction
 
     def summon_saw_blades(self, dt):
-        if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= BOSS_SAW_BLADE_SPAWN_DURATION:
-            SawBlade(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.saw_blade_image, BOSS_SAW_BLADE_SPEED, spawn=(random_of_selection(('left', 'right'))))
+        if self.game.play_time - getattr(self, 'last_saw_blade_summon', 0.0) >= SHADOW_GUARDIAN_SAW_BLADE_SPAWN_DURATION:
+            SawBlade(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.saw_blade_image, SHADOW_GUARDIAN_SAW_BLADE_SPEED, spawn=(random_of_selection(('left', 'right'))))
             self.last_saw_blade_summon = self.game.play_time
         if self.distance_to_player.length_squared() > 5:
             self.rect.center += dt * self.speed_during_summon * self.direction
 
     def summon_asteroids(self, dt):
-        if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= BOSS_ASTEROID_SPAWN_DURATION:
-            Asteroid(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.asteroid_image, BOSS_ASTEROID_SPEED, rotation_speed=0)
+        if self.game.play_time - getattr(self, 'last_asteroid_summon', 0.0) >= SHADOW_GUARDIAN_ASTEROID_SPAWN_DURATION:
+            Asteroid(self.game, self.game.LAYERS['obstacles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites), self.game.asteroid_image, SHADOW_GUARDIAN_ASTEROID_SPEED, rotation_speed=0)
             self.last_asteroid_summon = self.game.play_time
         if self.distance_to_player.length_squared() > 5:
             self.rect.center += dt * self.speed_during_summon * self.direction
@@ -903,7 +903,7 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         self.game.energy_ball_shot_sound.play()
         self.health -= 1
         if self.health <= 0:
-            self.game.boss.energy_ball = None
+            self.game.shadow_guardian.energy_ball = None
             self.kill()
 
     def home_in_on_player(self, dt):
@@ -915,7 +915,7 @@ class DarkEnergyBall(pygame.sprite.Sprite):
 
     def destroy(self):
         if self.game.play_time - self.creation_time > DART_ENERGY_BALL_LIFE_TIME:
-            self.game.boss.energy_ball = None
+            self.game.shadow_guardian.energy_ball = None
             self.game.energy_ball_shot_sound.play()
             self.kill()
 
@@ -923,23 +923,23 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         self.home_in_on_player(dt)
         self.destroy()
 
-class BossDeathAnimation(pygame.sprite.Sprite):
+class ShadowGuardianDeathAnimation(pygame.sprite.Sprite):
     def __init__(self, game, groups):
         self.game = game
         self._layer = self.game.LAYERS['boss_death_animation']
         super().__init__(groups)
         self.frame_index = 0
-        self.image = self.game.boss_death_animation_frames[0]
-        self.rect = self.image.get_frect(center=self.game.boss.rect.center)
+        self.image = self.game.shadow_guardian_death_animation_frames[0]
+        self.rect = self.image.get_frect(center=self.game.shadow_guardian.rect.center)
 
     def update(self, dt):
-        if self.frame_index <= len(self.game.boss_death_animation_frames):
-            self.image = self.game.boss_death_animation_frames[int(self.frame_index)]
-            if self.game.boss.distance_to_player[0] < 0:
+        if self.frame_index <= len(self.game.shadow_guardian_death_animation_frames):
+            self.image = self.game.shadow_guardian_death_animation_frames[int(self.frame_index)]
+            if self.game.shadow_guardian.distance_to_player[0] < 0:
                 self.image = pygame.transform.flip(self.image, True, False)
-            self.frame_index += BOSS_EXPLOSION_SPEED
+            self.frame_index += SHADOW_GUARDIAN_EXPLOSION_SPEED
         else:
-            self.game.boss_defeated = True
+            self.game.shadow_guardian_defeated = True
             self.kill()
 
 # --- effects ---

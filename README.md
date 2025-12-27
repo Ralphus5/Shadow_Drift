@@ -47,6 +47,8 @@ The game ends when health reaches zero.
 | **Grapes** | Grants extra life beyond base health |
 | **Pear** | Kills all obstacles currently on screen, granting 1 point for each |
 
+| **Coin** | Grants 2 points |
+
 ---
 
 ## ⚙️ System
