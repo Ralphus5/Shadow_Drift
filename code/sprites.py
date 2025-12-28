@@ -87,7 +87,8 @@ class Player(pygame.sprite.Sprite):
         self.fireball_ready = False
         self.last_fireball = self.game.play_time
         Fireball(self.game,
-                (self.game.all_sprites, self.game.fireball_sprites),
+                 self.game.LAYERS['player_fireballs'],
+                (self.game.all_sprites, self.game.player_fireball_sprites),
                 shoot_direction,
                 origin=self.rect.center)
 
@@ -408,9 +409,9 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
             self.kill()
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self, game, groups, direction: pygame.Vector2, origin=None, spawn_offset=40):
+    def __init__(self, game, layer, groups, direction: pygame.Vector2, origin=None, spawn_offset=40):
         self.game = game
-        self._layer = self.game.LAYERS['fireballs']
+        self._layer = layer
         super().__init__(*groups)
         self.game.shoot_sound.play()
         self.speed = FIRE_BALL_SPEED
@@ -751,7 +752,7 @@ class SpikeBall(RotatingObstacle):
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(1, 0) if spawn == 'left' else pygame.Vector2(-1, 0)
 
-# --- boss related ---
+# --- shadow guardian related ---
 class ShadowGuardian(pygame.sprite.Sprite):
     STATE_DURATIONS = SHADOW_GUARDIAN_STATE_DURATIONS
 
@@ -762,7 +763,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
         self.max_health = SHADOW_GUARDIAN_HEALTH
         self.current_health = self.max_health
         self.target_health = self.max_health
-        self.health_ratio = self.max_health / SHADOW_GUARDIAN_HEALTH_BAR_LENGTH
+        self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
         self.speed = SHADOW_GUARDIAN_SPEED
         self.speed_during_summon = SHADOW_GUARDIAN_SPEED_DURING_SUMMON
         self.image = self.game.shadow_guardian_image
@@ -940,6 +941,152 @@ class ShadowGuardianDeathAnimation(pygame.sprite.Sprite):
             self.frame_index += SHADOW_GUARDIAN_EXPLOSION_SPEED
         else:
             self.game.shadow_guardian_defeated = True
+            self.kill()
+
+# --- rotten shadow related ---
+class RottenShadow(pygame.sprite.Sprite):
+    STATE_DURATIONS = ROTTEN_SHADOW_STATE_DURATIONS
+
+    def __init__(self, game, groups):
+        self.game = game
+        self._layer = self.game.LAYERS['bosses']
+        super().__init__(groups)
+        self.max_health = ROTTEN_SHADOW_HEALTH
+        self.current_health = self.max_health
+        self.target_health = self.max_health
+        self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
+        self.speed = ROTTEN_SHADOW_SPEED
+        self.speed_during_action = ROTTEN_SHADOW_SPEED_DURING_ACTION
+        self.image = self.game.rotten_shadow_image
+        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + 100, WINDOW_CENTER[1]))
+        self.mask = pygame.mask.from_surface(self.image)
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
+        self.direction.normalize()
+        self.hurting = False
+        self.hurting_start = 0.0
+        self.current_state = 'follow_player'
+        self.select_next_state = False
+        self.state_start = self.game.play_time
+        self.next_fireball_time = 0.0
+        self.game.rotten_shadow_growl_sound.play()
+
+    def track_player(self):
+        self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
+        self.direction = self.distance_to_player
+        if self.direction.length_squared() != 0:
+            self.direction = self.direction.normalize()
+
+    def take_damage(self):
+        self.game.rotten_shadow_hurt_sound.play()
+        self.target_health -= ROTTEN_SHADOW_DAMAGE_PER_SHOT
+        if self.target_health > 0:
+            self.hurting = True
+            self.hurting_start = self.game.play_time
+        else: self.game.rotten_shadow_death_sound.play(); RottenShadowDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()
+
+    def update_appearance(self):
+        # adjust facing
+        base = self.game.rotten_shadow_image
+        if self.distance_to_player[0] < 0:
+            base = pygame.transform.flip(base, True, False)
+        self.image = base.copy()
+        self.mask = pygame.mask.from_surface(self.image)
+
+        # flash red after taking damage
+        if self.game.play_time - self.hurting_start > 0.5:
+            self.hurting = False
+        if self.hurting:
+            duration = 0.5
+            t = (self.game.play_time - self.hurting_start) / duration
+            t = max(0.0, min(t, 1.0))
+
+            # strong at start, then fades out
+            intensity = int(255 * (1.0 - t) ** 2)
+            if intensity <= 0:
+                return
+
+            # refresh mask for current frame (image may be flipped)
+            self.mask = pygame.mask.from_surface(self.image)
+
+            # build a surface in the exact shape of the boss
+            flash_surf = self.mask.to_surface(
+                setcolor=(255, 80, 80, 0),   
+                unsetcolor=(0, 0, 0, 0)
+            ).convert_alpha()
+
+            flash_surf.set_alpha(intensity)
+
+            # additively brighten only the masked area
+            self.image.blit(flash_surf, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+    def update(self, dt):
+        self.track_player()
+        self.set_state(dt)
+        self.update_appearance()
+
+    # states/phases
+    def set_state(self, dt):
+        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
+        if self.select_next_state:
+            if self.current_state == 'transition':
+                while self.prev_state is self.current_state or self.current_state == 'transition':
+                    self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+            else: 
+                self.prev_state = self.current_state
+                self.current_state = 'transition'
+                self.game.rotten_shadow_growl_sound.play()
+            self.state_start = self.game.play_time
+            self.select_next_state = False
+
+        match(self.current_state):
+            case 'follow_player':
+                self.follow_player(dt)
+            case 'shoot_fireballs':
+                self.shoot_fireballs(dt)
+            case 'shoot_radial_fireballs':
+                self.shoot_radial_fireballs()
+
+    def follow_player(self, dt):
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed * self.direction
+
+    def shoot_fireballs(self, dt):
+        if self.game.play_time >= self.next_fireball_time:
+            self.game.shoot_sound.play()
+            self.next_fireball_time = self.game.play_time + ROTTEN_SHADOW_FIREBALL_INTERVAL
+            self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), self.direction, self.rect.center)
+        if self.distance_to_player.length_squared() > 5:
+            self.rect.center += dt * self.speed_during_action * self.direction
+
+    def shoot_radial_fireballs(self):
+        if self.game.play_time >= self.next_fireball_time:
+            self.game.shoot_sound.play()
+            self.next_fireball_time = self.game.play_time + ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL
+            angles = [i * (360 / ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT) for i in range(ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT)]
+            angle_modifier = random_of_spectrum(0, 360)
+            for angle in angles:
+                direction = pygame.Vector2(1, 0).rotate(angle + angle_modifier)
+                self.game.shoot_sound.play()
+                self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), direction, self.rect.center)
+
+class RottenShadowDeathAnimation(pygame.sprite.Sprite):
+    def __init__(self, game, groups):
+        self.game = game
+        self._layer = self.game.LAYERS['boss_death_animation']
+        super().__init__(groups)
+        self.frame_index = 0
+        self.image = self.game.rotten_shadow_death_animation_frames[0]
+        self.rect = self.image.get_frect(center=self.game.rotten_shadow.rect.center)
+
+    def update(self, dt):
+        if self.frame_index <= len(self.game.rotten_shadow_death_animation_frames):
+            self.image = self.game.rotten_shadow_death_animation_frames[int(self.frame_index)]
+            if self.game.rotten_shadow.distance_to_player[0] < 0:
+                self.image = pygame.transform.flip(self.image, True, False)
+            self.frame_index += ROTTEN_SHADOW_EXPLOSION_SPEED
+        else:
+            self.game.rotten_shadow_defeated = True
             self.kill()
 
 # --- effects ---

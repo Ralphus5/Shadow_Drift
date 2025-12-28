@@ -594,6 +594,7 @@ class Game:
         self.check_record()
         self.all_sprites.draw(self.screen)
         self.draw_shadow_guardian_health_bar()
+        self.draw_rotten_shadow_health_bar()
         self.draw_hearts()
         self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
@@ -604,6 +605,7 @@ class Game:
             mouse_click = pygame.mouse.get_pressed()[0]
             self.all_sprites.draw(self.screen)
             self.draw_shadow_guardian_health_bar()
+            self.draw_rotten_shadow_health_bar()
 
             # --- dim effect ---
             dim = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
@@ -711,6 +713,7 @@ class Game:
             angle_deg = getattr(self, 'dead_angle_deg', 0.0)
             angle_rad = radians(angle_deg)
             Fireball(self,
+                     self.LAYERS['player_fireballs'],
                      (self.all_sprites, self.secret_fireballs),
                      pygame.Vector2(cos(angle_rad), -sin(angle_rad)) * (-1 if not self.player.facing_right else 1),
                      origin=self.dead_player_rect.center)
@@ -1073,7 +1076,8 @@ class Game:
                              'poison_cloud': pygame.mixer.Sound(join(self.AUDIO_DIR, 'poison_cloud_track.wav')),
                              'coconut': pygame.mixer.Sound(join(self.AUDIO_DIR, 'coconut_track.wav')),
                              'music_note': pygame.mixer.Sound(join(self.AUDIO_DIR, 'music_note_track.wav')),
-                             'shadow_guardian': pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_track.wav'))}
+                             'shadow_guardian': pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_track.wav')),
+                             'rotten_shadow': pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_track.wav'))}
 
         # --- sound effects ---
         self.using_controller_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'using_controller_sound.wav'))
@@ -1090,11 +1094,14 @@ class Game:
         self.dash_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'dash_sound.wav'))
         self.phase_switch_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'phase_switch_sound.wav'))
         self.shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shoot_sound.wav'))
+        self.buff_end_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'buff_end_sound.wav'))
         self.shadow_guardian_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_growl_sound.wav'))
         self.shadow_guardian_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_hurt_sound.wav'))
         self.energy_ball_shot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'energy_ball_shot_sound.wav'))
-        self.buff_end_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'buff_end_sound.wav'))
         self.shadow_guardian_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'shadow_guardian_death_sound.wav'))
+        self.rotten_shadow_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_growl_sound.wav'))
+        self.rotten_shadow_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_hurt_sound.wav'))
+        self.rotten_shadow_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_death_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -1113,6 +1120,7 @@ class Game:
         self.tracks['coconut'].set_volume(COCONUT_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['music_note'].set_volume(MUSIC_NOTE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['shadow_guardian'].set_volume(SHADOW_GUARDIAN_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.tracks['rotten_shadow'].set_volume(ROTTEN_SHADOW_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items() if name != 'credits'}
@@ -1137,6 +1145,9 @@ class Game:
         self.energy_ball_shot_sound.set_volume(ENERGY_BALL_SHOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.buff_end_sound.set_volume(BUFF_END_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.shadow_guardian_death_sound.set_volume(SHADOW_GUARDIAN_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.rotten_shadow_growl_sound.set_volume(ROTTEN_SHADOW_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.rotten_shadow_hurt_sound.set_volume(ROTTEN_SHADOW_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.rotten_shadow_death_sound.set_volume(ROTTEN_SHADOW_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -1158,7 +1169,8 @@ class Game:
                             'quit_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
                             'play_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
                             'settings_icon_text': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ICON_TEXTS_FONT_SIZE),
-                            'shadow_guardian_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SHADOW_GUARDIAN_NAME_FONT_SIZE)}
+                            'shadow_guardian_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SHADOW_GUARDIAN_NAME_FONT_SIZE),
+                            'rotten_shadow_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ROTTEN_SHADOW_NAME_FONT_SIZE)}
 
         # --- pre-render non-clickable static texts ---
         self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
@@ -1174,8 +1186,10 @@ class Game:
                                     'play_icon_text': self.fonts['quit_icon_text'].render("Continue", True, COLOR['play_icon_text']),
                                     'settings_icon_text': self.fonts['quit_icon_text'].render("Settings", True, COLOR['settings_icon_text']),
                                     'shadow_guardian_name': self.fonts['shadow_guardian_name'].render("Shadow Guardian", True, COLOR['shadow_guardian_name']),
-                                    'shadow_guardian_name_shadow': self.fonts['shadow_guardian_name'].render("Shadow Guardian", True, COLOR['shadow_guardian_name_shadow'])}
-        
+                                    'shadow_guardian_name_shadow': self.fonts['shadow_guardian_name'].render("Shadow Guardian", True, COLOR['shadow_guardian_name_shadow']),
+                                    'rotten_shadow_name': self.fonts['rotten_shadow_name'].render("Rotten Shadow", True, COLOR['rotten_shadow_name']),
+                                    'rotten_shadow_name_shadow': self.fonts['rotten_shadow_name'].render("Rotten Shadow", True, COLOR['rotten_shadow_name_shadow'])}
+
         # credits title
         self.credits_title_surf = self.text_surfaces['title'].copy()
 
@@ -1193,8 +1207,10 @@ class Game:
                                  'quit_icon_text': self.text_surfaces['quit_icon_text'].get_rect(center=(WINDOW_WIDTH - 70, 130)),
                                  'play_icon_text': self.text_surfaces['play_icon_text'].get_rect(center=(WINDOW_WIDTH - 170, 130)),
                                  'settings_icon_text': self.text_surfaces['settings_icon_text'].get_rect(center=(WINDOW_WIDTH - 270, 130)),
-                                 'shadow_guardian_name': self.text_surfaces['shadow_guardian_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)),
-                                 'shadow_guardian_name_shadow': self.text_surfaces['shadow_guardian_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 56 - SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT))}
+                                 'shadow_guardian_name': self.text_surfaces['shadow_guardian_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - BOSS_HEALTH_BAR_HEIGHT)),
+                                 'shadow_guardian_name_shadow': self.text_surfaces['shadow_guardian_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT- 56 - BOSS_HEALTH_BAR_HEIGHT)),
+                                 'rotten_shadow_name': self.text_surfaces['rotten_shadow_name'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 58 - BOSS_HEALTH_BAR_HEIGHT)),
+                                 'rotten_shadow_name_shadow': self.text_surfaces['rotten_shadow_name_shadow'].get_rect(center=(WINDOW_CENTER[0], WINDOW_HEIGHT - 56 - BOSS_HEALTH_BAR_HEIGHT))}
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
@@ -1316,8 +1332,9 @@ class Game:
             'poison_cloud': [pygame.image.load(join(self.IMG_DIR, 'bg_poison_cloud_phase', 'bg_poison_cloud_phase.png')).convert_alpha()],
             'coconut': [pygame.image.load(join(self.IMG_DIR, 'bg_coconut_phase', 'bg_coconut_phase.png')).convert_alpha()],
             'music_note': [pygame.image.load(join(self.IMG_DIR, 'bg_music_note_phase', 'bg_music_note_phase.png')).convert_alpha()],
-            'shadow_guardian': [pygame.image.load(join(self.IMG_DIR, 'bg_shadow_guardian_phase', 'bg_shadow_guardian_phase.png')).convert_alpha()]}
-        
+            'shadow_guardian': [pygame.image.load(join(self.IMG_DIR, 'bg_shadow_guardian_phase', 'bg_shadow_guardian_phase.png')).convert_alpha()],
+            'rotten_shadow': [pygame.image.load(join(self.IMG_DIR, 'bg_rotten_shadow_phase', 'bg_rotten_shadow_phase.png')).convert_alpha()]}
+
         # --- heart images ---
         self.empty_heart = pygame.image.load(join(self.IMG_DIR, 'empty_heart.png')).convert_alpha()
         self.red_heart = pygame.image.load(join(self.IMG_DIR, 'red_heart.png')).convert_alpha()
@@ -1377,7 +1394,12 @@ class Game:
         
         self.shadow_guardian_image = pygame.image.load(join(self.IMG_DIR, 'shadow_guardian.png')).convert_alpha()
 
+
         self.shadow_guardian_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'shadow_guardian_death_animation', f'shadow_guardian_death_frame{i}.png')).convert_alpha() for i in range(23)]
+
+        self.rotten_shadow_image = pygame.image.load(join(self.IMG_DIR, 'rotten_shadow.png')).convert_alpha()
+
+        self.rotten_shadow_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'rotten_shadow_death_animation', f'rotten_shadow_death_frame{i}.png')).convert_alpha() for i in range(25)]
 
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
@@ -1430,7 +1452,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'last_chili_drop'):
+                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'had_rotten_shadow', 'rotten_shadow', 'rotten_shadow_phase_end_start', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1439,7 +1461,8 @@ class Game:
         self.all_sprites = pygame.sprite.LayeredUpdates()
         # actual entities
         self.player_group = pygame.sprite.GroupSingle()
-        self.fireball_sprites = pygame.sprite.Group()
+        self.player_fireball_sprites = pygame.sprite.Group()
+        self.rotten_shadow_fireball_sprites = pygame.sprite.Group()
         self.coin_sprites = pygame.sprite.Group()
         self.fruit_sprites = pygame.sprite.Group()
         self.enemy_sprites = pygame.sprite.Group()
@@ -1473,7 +1496,7 @@ class Game:
                        'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
                        'coins': 4, 'fruits': 4.1,
-                       'fireballs': 5,
+                       'player_fireballs': 5,
                        'object_effects': 6, 'obstacles': 6.1,
                        'boss_projectiles': 7,
                        'ui_texts': 8}
@@ -1559,18 +1582,22 @@ class Game:
             kill_sprites(self.boss_sprites)
             kill_sprites(self.coin_sprites)
             kill_sprites(self.fruit_sprites)
-            kill_sprites(self.fireball_sprites)
+            kill_sprites(self.player_fireball_sprites)
             if STATS['score'] >= SHADOW_GUARDIAN_PHASE_START_POINTS and not getattr(self, 'had_shadow_guardian', False):
                 self.current_phase = 'shadow_guardian'
+            elif STATS['score'] >= ROTTEN_SHADOW_PHASE_START_POINTS and not getattr(self, 'had_rotten_shadow', False):
+                self.current_phase = 'rotten_shadow'
             else:
-                if self.current_phase not in ('rectangle', 'shadow_guardian'):
-                    self.prev_phase = self.current_phase
+                self.prev_phase = self.current_phase
+                if self.current_phase not in ('rectangle', 'shadow_guardian', 'rotten_shadow'):
                     self.completed_phases.add(self.current_phase)
                     if len(self.completed_phases) >= len(PHASE_PROBABILITIES.keys()):
                         self.completed_phases.clear()
+                print("PHASE END:", self.current_phase, "score:", STATS["score"])
+                print("completed:", getattr(self, "completed_phases", None), "prev:", getattr(self, "prev_phase", None))
                 while self.current_phase == self.prev_phase or self.current_phase in self.completed_phases:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
-            change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase == 'shadow_guardian' else False)
+            change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase in ('shadow_guardian', 'rotten_shadow') else False)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
                                                  self.backgrounds[self.current_phase],
@@ -1580,7 +1607,7 @@ class Game:
             if self.current_phase in ('arrow', 'saw_blade'):
                 self.player.rect.center = (WINDOW_CENTER[0] + 400, WINDOW_CENTER[1]) 
                 self.player.facing_right = False
-            elif self.current_phase in ('music_note'):
+            elif self.current_phase in ('music_note', 'rotten_shadow'):
                 self.player.rect.center = (WINDOW_CENTER[0] - 400, WINDOW_CENTER[1])
                 self.player.facing_right = True
             elif self.current_phase in ('rocket', 'jellyfish', 'poison_cloud'):
@@ -1641,6 +1668,9 @@ class Game:
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.3)
             case 'shadow_guardian':
                 self.shadow_guardian_phase()
+                self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
+            case 'rotten_shadow':
+                self.rotten_shadow_phase()
                 self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
@@ -1863,6 +1893,7 @@ class Game:
         if getattr(self, 'init_shadow_guardian_phase_end', False):
             if self.play_time - self.shadow_guardian_phase_end_start > SHADOW_GUARDIAN_PHASE_END_DURATION:
                 self.init_shadow_guardian_phase_end = False
+                self.had_shadow_guardian = True
                 self.phase_ended = True
                 self.music_channel.fadeout(3000)
             return
@@ -1874,10 +1905,32 @@ class Game:
             
         if getattr(self, 'shadow_guardian_defeated', False):
             self.shadow_guardian_defeated = False
-            self.had_shadow_guardian = True
             self.music_channel.stop()
             self.init_shadow_guardian_phase_end = True
             self.shadow_guardian_phase_end_start = self.play_time
+            kill_sprites(self.boss_obstacle_sprites)
+            kill_sprites(self.obstacle_sprites)
+            return
+
+    def rotten_shadow_phase(self):
+        if getattr(self, 'init_rotten_shadow_phase_end', False):
+            if self.play_time - self.rotten_shadow_phase_end_start > ROTTEN_SHADOW_PHASE_END_DURATION:
+                self.init_rotten_shadow_phase_end = False
+                self.had_rotten_shadow = True
+                self.phase_ended = True
+                self.music_channel.fadeout(3000)
+            return
+        if self.play_time - getattr(self, 'last_chili_drop', -10) > 8:
+            Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))
+            self.last_chili_drop = self.play_time
+        if not getattr(self, 'rotten_shadow', False):
+            self.rotten_shadow = RottenShadow(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
+            
+        if getattr(self, 'rotten_shadow_defeated', False):
+            self.rotten_shadow_defeated = False
+            self.music_channel.stop()
+            self.init_rotten_shadow_phase_end = True
+            self.rotten_shadow_phase_end_start = self.play_time
             kill_sprites(self.boss_obstacle_sprites)
             kill_sprites(self.obstacle_sprites)
             return
@@ -1893,12 +1946,15 @@ class Game:
 
     def collisions(self):
         # --- fireball collisions ---
-        shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
+        shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.player_fireball_sprites, False, True, pygame.sprite.collide_mask)
         if shot_obstacles:
             for obstacle in shot_obstacles:
-                obstacle.handle_getting_shot()
+                if obstacle not in self.rotten_shadow_fireball_sprites and obstacle not in self.player_fireball_sprites:
+                    obstacle.handle_getting_shot()
+                else:
+                    obstacle.kill()
 
-        shot_bosses = pygame.sprite.groupcollide(self.boss_sprites, self.fireball_sprites, False, True, pygame.sprite.collide_mask)
+        shot_bosses = pygame.sprite.groupcollide(self.boss_sprites, self.player_fireball_sprites, False, True, pygame.sprite.collide_mask)
         if shot_bosses:
             for boss in shot_bosses:
                 boss.take_damage()
@@ -1960,7 +2016,7 @@ class Game:
         # --- animate display health ---
         if self.shadow_guardian.current_health > self.shadow_guardian.target_health:
             self.shadow_guardian.current_health = max(self.shadow_guardian.target_health,
-                self.shadow_guardian.current_health - SHADOW_GUARDIAN_HEALTH_CHANGE_SPEED)
+                self.shadow_guardian.current_health - BOSS_HEALTH_CHANGE_SPEED)
                 
         # shorthand
         current = self.shadow_guardian.current_health
@@ -1970,32 +2026,32 @@ class Game:
         current_width = current / ratio
         target_width  = target / ratio
 
-        bar_x = WINDOW_CENTER[0] - SHADOW_GUARDIAN_HEALTH_BAR_LENGTH / 2
+        bar_x = WINDOW_CENTER[0] - BOSS_HEALTH_BAR_LENGTH / 2
         bar_y = WINDOW_HEIGHT - 50
 
         # --- create surface for the whole bar ---
-        bar_surface = pygame.Surface((SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT),
+        bar_surface = pygame.Surface((BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT),
             pygame.SRCALPHA)
 
         # --- base bar: REAL health ---
-        health_bar_rect = pygame.Rect(0, 0, target_width, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
+        health_bar_rect = pygame.Rect(0, 0, target_width, BOSS_HEALTH_BAR_HEIGHT)
             
         pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar'], health_bar_rect, border_radius=2)
 
         # --- damage/transition bar ---
         if current_width > target_width:
             transition_width = current_width - target_width
-            transition_rect = pygame.Rect(target_width, 0, transition_width, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
+            transition_rect = pygame.Rect(target_width, 0, transition_width, BOSS_HEALTH_BAR_HEIGHT)
             
             pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar_damage'], transition_rect, border_radius=1)
 
         # --- bar border ---
-        border_rect = pygame.Rect(0, 0, SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
+        border_rect = pygame.Rect(0, 0, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
         
         pygame.draw.rect(bar_surface, COLOR['shadow_guardian_health_bar_border'], border_rect, width=3, border_radius=1)
 
         # --- adjust transparency ---
-        bar_world_rect = pygame.Rect(bar_x, bar_y, SHADOW_GUARDIAN_HEALTH_BAR_LENGTH, SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT)
+        bar_world_rect = pygame.Rect(bar_x, bar_y, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
         
         # shadow guardian name
         shadow_guardian_name_shadow_surf = self.text_surfaces['shadow_guardian_name_shadow'].copy()
@@ -2013,6 +2069,67 @@ class Game:
         self.screen.blit(bar_surface, (bar_x, bar_y))
         self.screen.blit(shadow_guardian_name_shadow_surf, self.text_rects['shadow_guardian_name_shadow'])
         self.screen.blit(shadow_guardian_name_surf, self.text_rects['shadow_guardian_name'])
+
+    def draw_rotten_shadow_health_bar(self):
+        if self.current_phase != 'rotten_shadow':
+            return
+
+        # --- animate display health ---
+        if self.rotten_shadow.current_health > self.rotten_shadow.target_health:
+            self.rotten_shadow.current_health = max(self.rotten_shadow.target_health,
+                self.rotten_shadow.current_health - BOSS_HEALTH_CHANGE_SPEED)
+                
+        # shorthand
+        current = self.rotten_shadow.current_health
+        target  = self.rotten_shadow.target_health
+        ratio   = self.rotten_shadow.health_ratio
+
+        current_width = current / ratio
+        target_width  = target / ratio
+
+        bar_x = WINDOW_CENTER[0] - BOSS_HEALTH_BAR_LENGTH / 2
+        bar_y = WINDOW_HEIGHT - 50
+
+        # --- create surface for the whole bar ---
+        bar_surface = pygame.Surface((BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT),
+            pygame.SRCALPHA)
+
+        # --- base bar: REAL health ---
+        health_bar_rect = pygame.Rect(0, 0, target_width, BOSS_HEALTH_BAR_HEIGHT)
+            
+        pygame.draw.rect(bar_surface, COLOR['rotten_shadow_health_bar'], health_bar_rect, border_radius=2)
+
+        # --- damage/transition bar ---
+        if current_width > target_width:
+            transition_width = current_width - target_width
+            transition_rect = pygame.Rect(target_width, 0, transition_width, BOSS_HEALTH_BAR_HEIGHT)
+            
+            pygame.draw.rect(bar_surface, COLOR['rotten_shadow_health_bar_damage'], transition_rect, border_radius=1)
+
+        # --- bar border ---
+        border_rect = pygame.Rect(0, 0, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
+        
+        pygame.draw.rect(bar_surface, COLOR['rotten_shadow_health_bar_border'], border_rect, width=3, border_radius=1)
+
+        # --- adjust transparency ---
+        bar_world_rect = pygame.Rect(bar_x, bar_y, BOSS_HEALTH_BAR_LENGTH, BOSS_HEALTH_BAR_HEIGHT)
+        
+        # rotten shadow name
+        rotten_shadow_name_shadow_surf = self.text_surfaces['rotten_shadow_name_shadow'].copy()
+        rotten_shadow_name_surf = self.text_surfaces['rotten_shadow_name'].copy()
+
+        if self.player.rect.colliderect(bar_world_rect):
+            bar_surface.set_alpha(100) 
+        else: bar_surface.set_alpha(255)
+        if self.player.rect.colliderect(self.text_rects['rotten_shadow_name']):
+            rotten_shadow_name_shadow_surf.set_alpha(100)
+            rotten_shadow_name_surf.set_alpha(100)
+        else: rotten_shadow_name_shadow_surf.set_alpha(255); rotten_shadow_name_surf.set_alpha(255)
+
+        # --- draw bar surface and name ---
+        self.screen.blit(bar_surface, (bar_x, bar_y))
+        self.screen.blit(rotten_shadow_name_shadow_surf, self.text_rects['rotten_shadow_name_shadow'])
+        self.screen.blit(rotten_shadow_name_surf, self.text_rects['rotten_shadow_name'])
 
     def draw_hearts(self):
         alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 and self.state == 'play' else 255

@@ -14,40 +14,42 @@ MENU_GRAVITY: int = 981
 
 # colors
 COLOR = {'score_rectangle_phase': "#70C1FF",
-         'score_shadow_rectangle_phase': "#000000",
+            'score_shadow_rectangle_phase': "#000000",
          'score_arrow_phase': "#000000",
-         'score_shadow_arrow_phase': "#FFFFFF",
+            'score_shadow_arrow_phase': "#FFFFFF",
          'score_icicle_phase': "#000000",
-         'score_shadow_icicle_phase': "#FFFFFF",
+            'score_shadow_icicle_phase': "#FFFFFF",
          'score_jellyfish_phase': "#0037FF",
-         'score_shadow_jellyfish_phase': "#FFFFFF",
+            'score_shadow_jellyfish_phase': "#FFFFFF",
          'score_saw_blade_phase': "#0037FF",
-         'score_shadow_saw_blade_phase': "#000000",
+            'score_shadow_saw_blade_phase': "#000000",
          'score_rocket_phase': "#0037FF",
-         'score_shadow_rocket_phase': "#FFFFFF",
+            'score_shadow_rocket_phase': "#FFFFFF",
          'score_asteroid_phase': "#0037FF",
-         'score_shadow_asteroid_phase': "#FFFFFF",
+            'score_shadow_asteroid_phase': "#FFFFFF",
          'score_spike_ball_phase': "#0037FF",
-         'score_shadow_spike_ball_phase': "#FFFFFF",
+            'score_shadow_spike_ball_phase': "#FFFFFF",
          'score_spike_block_phase': "#0037FF",
-         'score_shadow_spike_block_phase': "#000000",
+            'score_shadow_spike_block_phase': "#000000",
          'score_poison_cloud_phase': "#0037FF",
-         'score_shadow_poison_cloud_phase': "#FFFFFF",
+            'score_shadow_poison_cloud_phase': "#FFFFFF",
          'score_coconut_phase': "#0037FF",
-         'score_shadow_coconut_phase': "#000000",
+            'score_shadow_coconut_phase': "#000000",
          'score_music_note_phase': "#0037FF",
-         'score_shadow_music_note_phase': "#000000",
+            'score_shadow_music_note_phase': "#000000",
          'score_shadow_guardian_phase': "#0037FF",
-         'score_shadow_shadow_guardian_phase': "#FFFFFF",
-         'blue_player_glow': "#0066FF81",
-         'red_player_glow': "#FF000081",
+            'score_shadow_shadow_guardian_phase': "#FFFFFF",
+         'score_rotten_shadow_phase': "#0037FF",
+            'score_shadow_rotten_shadow_phase': "#FFFFFF",
+            'blue_player_glow': "#0066FF81",
+            'red_player_glow': "#FF000081",
          'game_over_text': "#C90E0E",
          'start_screen_bg': "#11121F",
          'settings_bg': "#11121F",
          'credits_bg': "#11121F",
-         'title_text': "#2D0BEE",
-         'start_hint': '#2D0BEE',
-         'credits_hint': "#FFFFFF",
+            'title_text': "#2D0BEE",
+            'start_hint': '#2D0BEE',
+            'credits_hint': "#FFFFFF",
          'clickable_text_buttons': "#FFFFFF",
          'clickable_text_buttons_hovered': '#2D0BEE',
          'settings_headers': "#70C1FF",
@@ -55,13 +57,13 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'quit_prompt_rect': "#11121F",
          'quit_prompt_rect_outline': "#000000",
          'quit_prompt_heading': "#70C1FF",
-         'effect_text_shadow': "#FFFFFF",
-         'apple_effect_text': "#ea0808",
-         'blueberry_effect_text': "#2639db",
-         'banana_effect_text': "#efe508",
-         'chili_effect_text': "#953333",
-         'grapes_effect_text': "#8D53AA",
-         'pear_effect_text': "#99e550",
+            'effect_text_shadow': "#FFFFFF",
+            'apple_effect_text': "#ea0808",
+            'blueberry_effect_text': "#2639db",
+            'banana_effect_text': "#efe508",
+            'chili_effect_text': "#953333",
+            'grapes_effect_text': "#8D53AA",
+            'pear_effect_text': "#99e550",
          '250_rectangle_shot_effect_text': "#119329",
          '300_rectangle_shot_effect_text': "#d700ff",
          '350_rectangle_shot_effect_text': "#fff200",
@@ -77,18 +79,23 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
          'poisoncloud_shot_effect_text': "#abc632",
          'coconut_shot_effect_text': "#B5562A",
          'musicnote_shot_effect_text': "#000000",
-         'blue_banana_trail': "#1E3AC8FF",
-         'red_banana_trail': "#CA0909FF",
+            'blue_banana_trail': "#1E3AC8FF",
+            'red_banana_trail': "#CA0909FF",
          'credits_header': "#70C1FF",
          'credits_name': "#FFFFFF",
-         'quit_icon_text': "#FB0000",
-         'play_icon_text': "#00D512",
-         'settings_icon_text':"#7E7E7E",
+            'quit_icon_text': "#FB0000",
+            'play_icon_text': "#00D512",
+            'settings_icon_text':"#7E7E7E",
          'shadow_guardian_health_bar': "#FF0000",
          'shadow_guardian_health_bar_damage': "#FFF700",
          'shadow_guardian_health_bar_border': "#FFFFFF",
          'shadow_guardian_name': "#7B2087",
-         'shadow_guardian_name_shadow': "#DD00FF"}
+         'shadow_guardian_name_shadow': "#DD00FF",
+            'rotten_shadow_health_bar': "#FF0000",
+            'rotten_shadow_health_bar_damage': "#FFF700",
+            'rotten_shadow_health_bar_border': "#FFFFFF",
+            'rotten_shadow_name': "#228B22",
+            'rotten_shadow_name_shadow': "#7CFC00"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -108,6 +115,7 @@ CREDITS_HEADER_FONT_SIZE: int = 70
 CREDITS_NAME_FONT_SIZE: int = 45
 ICON_TEXTS_FONT_SIZE: int = 20
 SHADOW_GUARDIAN_NAME_FONT_SIZE: int = 50
+ROTTEN_SHADOW_NAME_FONT_SIZE: int = 50
 
 # quit prompt window
 QUIT_RECT_WIDTH: int = 850
@@ -125,6 +133,7 @@ PHASE_CHANGE_FADE_DURATION: float = 0.75
 GAME_OVER_FADE_DURATION: float = 1.6
 PLAYER_EXPLOSION_SPEED: float = 0.85
 SHADOW_GUARDIAN_EXPLOSION_SPEED: float = 0.7
+ROTTEN_SHADOW_EXPLOSION_SPEED: float = 0.7
 PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
@@ -144,7 +153,8 @@ BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
                                               'poison_cloud': None,
                                               'coconut': None,
                                               'music_note': None,
-                                              'shadow_guardian': None}
+                                              'shadow_guardian': None,
+                                              'rotten_shadow': None}
 
 # ----- AUDIO -----
 # user volume settings
@@ -170,6 +180,7 @@ POISON_CLOUD_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 COCONUT_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 MUSIC_NOTE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 SHADOW_GUARDIAN_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
+ROTTEN_SHADOW_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -193,6 +204,9 @@ SHADOW_GUARDIAN_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHADOW_GUARDIAN_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 SHADOW_GUARDIAN_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
+ROTTEN_SHADOW_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+ROTTEN_SHADOW_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+ROTTEN_SHADOW_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 
 
 # ----- GAMEPLAY -----
@@ -207,7 +221,7 @@ PLAYER_ABILITY_DURATION: float = 1.6 # seconds
 PLAYER_ABILITY_COOLDOWN: float = 15.0 # seconds
 DASH_DURATION: float = 0.12 # seconds (also determines dash distance)
 DASH_SPEED: float = 1600
-DASH_COOLDOWN: float = 0.25 # seconds
+DASH_COOLDOWN: float = 0.2 # seconds
 
 # coins
 COIN_SPAWNS_PER_MINUTE: float = 14.00
@@ -230,7 +244,7 @@ POINTS_FOR_OBSTACLE_SHOOT: int = 2
 # --- phases ---
 PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 0.9, 'coconut': 1.0, 'music_note': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'shadow_guardian': 200}
+PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'shadow_guardian': 200, 'rotten_shadow': 300}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -249,9 +263,9 @@ RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.
 ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
 ARROW_SINGLES_SPAWN_TIME: float = 0.32
-ARROW_COLUMN_SPAWN_TIME: float = 3.5
+ARROW_COLUMN_SPAWN_TIME: float = 3.45
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
-ARROW_SPEEDS: tuple[int] = (300, 320, 340, 360)
+ARROW_SPEEDS: tuple[int] = (340, 350, 360, 370)
 ARROW_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
 ARROW_BACKGROUND_SPEEDS: tuple[int] = (75, 90, 105, 120)
 
@@ -316,13 +330,18 @@ MUSIC_NOTE_SPAWN_TIME: float = 0.4 # seconds
 MUSIC_NOTE_SPEEDS: tuple[int] = (330, 360, 390, 420)
 MUSIC_NOTE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
+# --- BOSSES ---
+BOSS_HEALTH_BAR_HEIGHT: int = 26
+BOSS_HEALTH_BAR_LENGTH: int = 900
+BOSS_HEALTH_CHANGE_SPEED: float = 0.06
+
 # shadow guardian phase
 SHADOW_GUARDIAN_PHASE_START_POINTS: int = 500
 SHADOW_GUARDIAN_DAMAGE_PER_SHOT: int = 1
 SHADOW_GUARDIAN_HEALTH: int = 40
 SHADOW_GUARDIAN_SPEED: int = 170
 SHADOW_GUARDIAN_SPEED_DURING_SUMMON: int = 70
-SHADOW_GUARDIAN_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
+SHADOW_GUARDIAN_STATE_DURATIONS: dict[str:int] = {'transition': 1, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
 SHADOW_GUARDIAN_SAW_BLADE_SPAWN_DURATION: float = 0.38
 SHADOW_GUARDIAN_SAW_BLADE_SPEED: int = 360
 SHADOW_GUARDIAN_ASTEROID_SPAWN_DURATION: int =  0.4
@@ -331,9 +350,19 @@ DARK_ENERGY_BALL_SPEED: int = 200
 DART_ENERGY_BALL_LIFE_TIME: float = 8.0 # seconds
 DARK_ENERGY_BALL_GLOW_RADIUS: int = 200
 SHADOW_GUARDIAN_PHASE_END_DURATION: float = 3.0 # seconds
-SHADOW_GUARDIAN_HEALTH_BAR_HEIGHT: int = 26
-SHADOW_GUARDIAN_HEALTH_BAR_LENGTH: int = 900
-SHADOW_GUARDIAN_HEALTH_CHANGE_SPEED: float = 0.06
+
+# rotten shadow phase
+ROTTEN_SHADOW_PHASE_START_POINTS: int = 1200
+ROTTEN_SHADOW_DAMAGE_PER_SHOT: int = 1
+ROTTEN_SHADOW_HEALTH: int = 50
+ROTTEN_SHADOW_SPEED: int = 240
+ROTTEN_SHADOW_SPEED_DURING_ACTION: int = 150
+ROTTEN_SHADOW_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5}
+ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
+ROTTEN_SHADOW_FIREBALL_INTERVAL: float = 0.9 # seconds
+ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL: float = 0.9 # seconds
+ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT: int = 14
+ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
 
 
 # --- DEFAULT KEY BINDINGS ---
