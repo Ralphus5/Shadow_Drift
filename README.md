@@ -4,14 +4,16 @@
 
 **Shadow Drift** is a fast-paced arcade dodger.  
 Avoid obstacles, collect coins and fruits, and survive as long as possible.  
-Score increases over time and with coin/fruit pickups and when shooting obstacles. Hitting an obstacle costs health.  
+Score increases over time (1 point after 3 seconds), with coin/fruit pickups and when shooting obstacles and when completing a phase. Hitting an obstacle costs health.  
 The game ends when health reaches zero.
+After reaching enough points, you fight a Boss called "Shadow Guardian".
+Then, there is a second Boss with the name "Rotten Shadow" who you can encounter by reaching an even higer score.
 
 ### Game States
 - **Start Screen** – Press `ENTER` to begin or `ESC`.  
 - **Pause Menu** – Press `ESC` (during play) to pause or resume.  
 - **Game Over** – press `ENTER` to restart or `ESC` to quit.  
-- **Settings** – Adjust audio and key bindings.
+- **Settings** – Adjust audio and key bindings (for keyboard).
 
 ---
 

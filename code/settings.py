@@ -95,7 +95,8 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
             'rotten_shadow_health_bar_damage': "#FFF700",
             'rotten_shadow_health_bar_border': "#FFFFFF",
             'rotten_shadow_name': "#228B22",
-            'rotten_shadow_name_shadow': "#7CFC00"}
+            'rotten_shadow_name_shadow': "#7CFC00",
+            'rotten_shadow_laser': "#1EFF00C2"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -207,6 +208,9 @@ SHADOW_GUARDIAN_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
 ROTTEN_SHADOW_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
 ROTTEN_SHADOW_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 ROTTEN_SHADOW_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+LASER_CHARGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+LASER_SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
+FIREBALL_BLOCK_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 
 
 # ----- GAMEPLAY -----
@@ -238,7 +242,7 @@ BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 25.0
 FIRE_POWER_DURATION: float = 25.0
 FIREBALL_SHOOT_COOLDOWN: float = 0.55
-FIRE_BALL_SPEED: int = 600
+FIRE_BALL_SPEED: int = 620
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
@@ -262,7 +266,7 @@ RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.
 # arrow phase
 ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
-ARROW_SINGLES_SPAWN_TIME: float = 0.32
+ARROW_SINGLES_SPAWN_TIME: float = 0.31
 ARROW_COLUMN_SPAWN_TIME: float = 3.45
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 ARROW_SPEEDS: tuple[int] = (340, 350, 360, 370)
@@ -271,13 +275,13 @@ ARROW_BACKGROUND_SPEEDS: tuple[int] = (75, 90, 105, 120)
 
 # icicle phase
 ICICLE_PHASE_DELAY: float = 1.0
-ICICLE_SPAWN_TIME: float = 0.19 # seconds
+ICICLE_SPAWN_TIME: float = 0.195 # seconds
 ICICLE_SPEEDS: tuple[int] = (200, 250, 300, 350)
 ICICLE_SPAWN_RATE_FACTORS: tuple[float] = (1.15, 1.2, 1.25)
 
 # jellyfish phase
 JELLYFISH_PHASE_DELAY: float = 1.0
-JELLYFISH_SPAWN_TIME: float = 0.26
+JELLYFISH_SPAWN_TIME: float = 0.265
 JELLYFISH_SPEEDS: tuple[int] = (150, 180, 210, 240)
 JELLYFISH_GLOW_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
@@ -285,36 +289,36 @@ JELLYFISH_FRAME_INTERVALL: int = 50
 
 # saw blade phase
 SAW_BLADE_PHASE_DELAY: float = 1.5
-SAW_BLADE_SPAWN_TIME: float = 0.46 # seconds
+SAW_BLADE_SPAWN_TIME: float = 0.465 # seconds
 SAW_BLADE_SPEEDS: tuple[int] = (400, 480, 560, 640)
 SAW_BLADE_ROTATION_SPEEDS: tuple[int] = (-190, -230, -270, -320)
 SAW_BLADE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
 # rocket phase
 ROCKET_PHASE_DELAY: float = 2.0
-ROCKET_SPAWN_TIME: float = 0.27 # seconds
+ROCKET_SPAWN_TIME: float = 0.275 # seconds
 ROCKET_SPEEDS: tuple[int] = (600, 700, 800, 900)
 ROCKET_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
 # asteroid phase
 ASTEROID_PHASE_DELAY: float = 1.0
-ASTEROID_SPAWN_TIME: float = 0.35 # seconds
+ASTEROID_SPAWN_TIME: float = 0.355 # seconds
 ASTEROID_SPEEDS: tuple[int] = (200, 230, 260, 290)
 
 # spike ball phase
 SPIKE_BALL_PHASE_DELAY: float = 1.0
-SPIKE_BALL_SPAWN_TIME: float = 0.46 # seconds
+SPIKE_BALL_SPAWN_TIME: float = 0.465 # seconds
 SPIKE_BALL_SPEEDS: tuple[int] = (250, 300, 350, 400)
 SPIKE_BALL_ROTATION_SPEEDS: tuple[int] = (170, 190, 210, 230)
 
 # spike block phase
 SPIKE_BLOCK_PHASE_DELAY: float = 1.0
-SPIKE_BLOCK_SPAWN_TIME: float = 0.36 # seconds
+SPIKE_BLOCK_SPAWN_TIME: float = 0.365 # seconds
 SPIKE_BLOCK_SPEEDS: tuple[int] = (180, 200, 220, 240)
 
 # poison cloud phase
 POISON_CLOUD_DELAY: float = 1.0
-POISON_CLOUD_SPAWN_TIME: float = 0.36 # seconds
+POISON_CLOUD_SPAWN_TIME: float = 0.37 # seconds
 POISON_CLOUD_SPEEDS: tuple[int] = (120, 140, 160, 180)
 POISON_CLOUD_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
 
@@ -354,15 +358,27 @@ SHADOW_GUARDIAN_PHASE_END_DURATION: float = 3.0 # seconds
 # rotten shadow phase
 ROTTEN_SHADOW_PHASE_START_POINTS: int = 1200
 ROTTEN_SHADOW_DAMAGE_PER_SHOT: int = 1
-ROTTEN_SHADOW_HEALTH: int = 50
-ROTTEN_SHADOW_SPEED: int = 240
-ROTTEN_SHADOW_SPEED_DURING_ACTION: int = 150
-ROTTEN_SHADOW_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 5, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5}
+ROTTEN_SHADOW_HEALTH: int = 35
+ROTTEN_SHADOW_SPEED: int = 210
+ROTTEN_SHADOW_SPEED_DURING_ACTION: int = 120
+SECOND_PHASE_SPEED_MULTIPLIER: float = 1.3
+ROTTEN_SHADOW_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 6, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5, 'laser': 10}
 ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
 ROTTEN_SHADOW_FIREBALL_INTERVAL: float = 0.9 # seconds
-ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL: float = 0.9 # seconds
-ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT: int = 14
-ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
+ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL: float = 0.8 # seconds
+ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_1: int = 10
+ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_2: int = 15
+ROTTEN_SHADOW_PHASE_END_DURATION: float = 5.0 # seconds
+ROTTEN_SHADOW_DASH_SPEED: int = 1600
+ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_1: float = 0.004
+ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_2: float = 0.008
+ROTTEN_SHADOW_DASH_DURATION: float = 0.08 # seconds
+# rotten shadow laser
+DASH_DISTANCE_THRESHOLD: int = 400
+ROTTEN_SHADOW_LASER_CHARGE_TIME = 1.3     # seconds
+ROTTEN_SHADOW_LASER_DURATION_1 = 0.7        # seconds
+ROTTEN_SHADOW_LASER_DURATION_2 = 0.2        # seconds
+ROTTEN_SHADOW_LASER_WIDTH = 46
 
 
 # --- DEFAULT KEY BINDINGS ---

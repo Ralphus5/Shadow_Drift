@@ -89,6 +89,7 @@ class Player(pygame.sprite.Sprite):
         Fireball(self.game,
                  self.game.LAYERS['player_fireballs'],
                 (self.game.all_sprites, self.game.player_fireball_sprites),
+                self.game.fireball_image,
                 shoot_direction,
                 origin=self.rect.center)
 
@@ -409,7 +410,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
             self.kill()
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self, game, layer, groups, direction: pygame.Vector2, origin=None, spawn_offset=40):
+    def __init__(self, game, layer, groups, image, direction: pygame.Vector2, origin=None, spawn_offset=40):
         self.game = game
         self._layer = layer
         super().__init__(*groups)
@@ -422,7 +423,7 @@ class Fireball(pygame.sprite.Sprite):
         self.direction = direction.normalize()
 
         # --- base image and rotation ---
-        base_img = self.game.fireball_image
+        base_img = image
         angle_deg = degrees(atan2(-self.direction.y, self.direction.x))
         self.image = pygame.transform.rotozoom(base_img, angle_deg, 1.0)
 
@@ -435,7 +436,6 @@ class Fireball(pygame.sprite.Sprite):
         center = origin + self.direction * spawn_offset
         self.rect = self.image.get_frect(center=center)
         self.mask = pygame.mask.from_surface(self.image)
-
 
     def update(self, dt):
         self.rect.center += self.direction * self.speed * dt
@@ -969,6 +969,18 @@ class RottenShadow(pygame.sprite.Sprite):
         self.select_next_state = False
         self.state_start = self.game.play_time
         self.next_fireball_time = 0.0
+        self.dashing = False
+        self.dash_start_time = 0.0
+        self.dash_direction = pygame.Vector2()
+        self.next_dash_allowed = 0.0
+        self.laser_charging = False
+        self.laser_firing = False
+        self.laser_start_time = 0.0
+        self.laser_direction = pygame.Vector2()
+        self.next_laser_allowed = 0.0
+        self.last_laser_damage_time = 0.0
+        self.laser_beam = None
+        self.enraged = False
         self.game.rotten_shadow_growl_sound.play()
 
     def track_player(self):
@@ -985,50 +997,109 @@ class RottenShadow(pygame.sprite.Sprite):
             self.hurting_start = self.game.play_time
         else: self.game.rotten_shadow_death_sound.play(); RottenShadowDeathAnimation(self.game, (self.game.all_sprites, self.game.boss_effect_sprites)); self.kill()
 
-    def update_appearance(self):
-        # adjust facing
-        base = self.game.rotten_shadow_image
-        if self.distance_to_player[0] < 0:
-            base = pygame.transform.flip(base, True, False)
-        self.image = base.copy()
-        self.mask = pygame.mask.from_surface(self.image)
+    def enrage(self):
+        if self.enraged:
+            return
 
-        # flash red after taking damage
-        if self.game.play_time - self.hurting_start > 0.5:
-            self.hurting = False
+        if self.target_health <= self.max_health * 0.5:
+            self.enraged = True
+
+            self.speed *= SECOND_PHASE_SPEED_MULTIPLIER
+            self.speed_during_action *= SECOND_PHASE_SPEED_MULTIPLIER
+
+    def update_appearance(self):
+        # --- base sprite ---
+        base = self.game.rotten_shadow_image
+
+        if self.distance_to_player.x < 0:
+            base = pygame.transform.flip(base, True, False)
+
+        self.image = base.copy()
+
+        # --- dash darkening ---
+        if self.dashing:
+            overlay = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0))
+            self.image.blit(overlay, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+        # --- damage flash ---
         if self.hurting:
             duration = 0.5
             t = (self.game.play_time - self.hurting_start) / duration
             t = max(0.0, min(t, 1.0))
-
-            # strong at start, then fades out
             intensity = int(255 * (1.0 - t) ** 2)
-            if intensity <= 0:
+
+            if intensity > 0:
+                mask = pygame.mask.from_surface(self.image)
+                flash = mask.to_surface(
+                    setcolor=(255, 80, 80, 0),
+                    unsetcolor=(0, 0, 0, 0)
+                ).convert_alpha()
+                flash.set_alpha(intensity)
+                self.image.blit(flash, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+            else:
+                self.hurting = False
+
+        # --- laser visuals ---
+        if self.laser_charging:
+            pulse = 0.5 + 0.5 * sin(self.game.play_time * 8)
+            glow = pygame.Surface(self.image.get_size(), pygame.SRCALPHA)
+            glow.fill((0, 120, 0, int(120 * pulse)))
+            self.image.blit(glow, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+
+
+        self.mask = pygame.mask.from_surface(self.image)
+
+    def try_dash(self):
+        if self.dashing:
+            return
+
+        if self.game.play_time < self.next_dash_allowed:
+            return
+
+        if random.random() < (ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_1 if self.current_health > self.max_health/2 else ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_2) and self.distance_to_player.length_squared() > DASH_DISTANCE_THRESHOLD:
+            if self.distance_to_player.length_squared() == 0:
                 return
 
-            # refresh mask for current frame (image may be flipped)
-            self.mask = pygame.mask.from_surface(self.image)
+            self.dashing = True
+            self.dash_start_time = self.game.play_time
+            self.dash_direction = self.distance_to_player.normalize()
+            self.next_dash_allowed = (self.game.play_time + ROTTEN_SHADOW_DASH_DURATION * 2.5)
+            self.game.dash_sound.play()
 
-            # build a surface in the exact shape of the boss
-            flash_surf = self.mask.to_surface(
-                setcolor=(255, 80, 80, 0),   
-                unsetcolor=(0, 0, 0, 0)
-            ).convert_alpha()
+    def fire_laser(self):
+        origin = pygame.Vector2(self.rect.center)
+        direction = self.laser_direction
 
-            flash_surf.set_alpha(intensity)
+        length = max(WINDOW_WIDTH, WINDOW_HEIGHT)
 
-            # additively brighten only the masked area
-            self.image.blit(flash_surf, (0, 0), special_flags=pygame.BLEND_RGBA_ADD)
+        # laser rect (simple but effective)
+        laser_rect = pygame.Rect(0, 0, length, ROTTEN_SHADOW_LASER_WIDTH)
+        laser_rect.center = origin + direction * (length // 2)
+        laser_rect = laser_rect.copy()
 
     def update(self, dt):
+        self.enrage()
         self.track_player()
         self.set_state(dt)
+
+        if self.dashing:
+            self.rect.center += self.dash_direction * ROTTEN_SHADOW_DASH_SPEED * dt
+            if self.game.play_time - self.dash_start_time >= ROTTEN_SHADOW_DASH_DURATION:
+                self.dashing = False
+
         self.update_appearance()
 
     # states/phases
     def set_state(self, dt):
         if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
         if self.select_next_state:
+            if self.current_state == 'laser':
+                self.laser_charging = False
+                self.laser_firing = False
+                if self.laser_beam:
+                    self.laser_beam.kill()
+                    self.laser_beam = None
             if self.current_state == 'transition':
                 while self.prev_state is self.current_state or self.current_state == 'transition':
                     self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
@@ -1046,8 +1117,11 @@ class RottenShadow(pygame.sprite.Sprite):
                 self.shoot_fireballs(dt)
             case 'shoot_radial_fireballs':
                 self.shoot_radial_fireballs()
+            case 'laser':
+                self.laser_attack()
 
     def follow_player(self, dt):
+        self.try_dash()
         if self.distance_to_player.length_squared() > 5:
             self.rect.center += dt * self.speed * self.direction
 
@@ -1055,7 +1129,7 @@ class RottenShadow(pygame.sprite.Sprite):
         if self.game.play_time >= self.next_fireball_time:
             self.game.shoot_sound.play()
             self.next_fireball_time = self.game.play_time + ROTTEN_SHADOW_FIREBALL_INTERVAL
-            self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), self.direction, self.rect.center)
+            self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), self.game.blue_fireball_image, self.direction, self.rect.center)
         if self.distance_to_player.length_squared() > 5:
             self.rect.center += dt * self.speed_during_action * self.direction
 
@@ -1063,12 +1137,93 @@ class RottenShadow(pygame.sprite.Sprite):
         if self.game.play_time >= self.next_fireball_time:
             self.game.shoot_sound.play()
             self.next_fireball_time = self.game.play_time + ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL
-            angles = [i * (360 / ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT) for i in range(ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT)]
+            angles = [i * (360 / (ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_1 if self.current_health > self.max_health/2 else ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_2)) for i in range(ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_1 if self.current_health > self.max_health/2 else ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_2)]
             angle_modifier = random_of_spectrum(0, 360)
             for angle in angles:
                 direction = pygame.Vector2(1, 0).rotate(angle + angle_modifier)
                 self.game.shoot_sound.play()
-                self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), direction, self.rect.center)
+                self.fire_ball = Fireball(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.rotten_shadow_fireball_sprites), self.game.blue_fireball_image, direction, self.rect.center)
+
+    def laser_attack(self):
+        now = self.game.play_time
+
+        # start charging
+        if not self.laser_charging and not self.laser_firing:
+            self.laser_charging = True
+            self.game.laser_charge_sound.play()
+            self.laser_start_time = now
+            self.laser_direction = self.distance_to_player.normalize()
+
+        # charging phase
+        if self.laser_charging:
+            if now - self.laser_start_time >= ROTTEN_SHADOW_LASER_CHARGE_TIME:
+                self.laser_charging = False
+                self.laser_firing = True
+                self.laser_start_time = now
+
+                # spawn laser beam sprite
+                self.laser_beam = LaserBeam(
+                    self.game,
+                    (
+                        self.game.all_sprites,
+                        self.game.enemy_sprites,
+                        self.game.boss_obstacle_sprites,
+                    ),
+                    origin=self.rect.center,
+                    direction=self.laser_direction,
+                )
+            return
+
+        # firing phase
+        if self.laser_firing:
+            # keep laser attached to boss
+            if self.laser_beam:
+                self.laser_beam.origin = pygame.Vector2(self.rect.center)
+
+            if now - self.laser_start_time >= (ROTTEN_SHADOW_LASER_DURATION_1 if self.current_health > self.max_health/2 else ROTTEN_SHADOW_LASER_DURATION_2):
+                self.laser_firing = False
+                self.next_laser_allowed = now
+
+                if self.laser_beam:
+                    self.laser_beam.kill()
+                    self.laser_beam = None
+
+class LaserBeam(pygame.sprite.Sprite):
+    def __init__(self, game, groups, origin, direction):
+        self.game = game
+        self._layer = self.game.LAYERS['laser_beam']
+        super().__init__(groups)
+
+        self.origin = pygame.Vector2(origin)
+        self.direction = direction.normalize()
+
+        self.spawn_time = self.game.play_time
+        self.last_damage_time = 0.0
+
+        self.length = max(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.width = ROTTEN_SHADOW_LASER_WIDTH
+
+        # build a base surface (horizontal)
+        surf = pygame.Surface((self.length, self.width), pygame.SRCALPHA)
+        surf.fill((COLOR['rotten_shadow_laser']))
+
+        # rotate to direction
+        angle = degrees(atan2(-self.direction.y, self.direction.x))
+        self.image = pygame.transform.rotate(surf, angle)
+
+        self.rect = self.image.get_rect()
+        self.rect.center = self.origin + self.direction * (self.length // 2)
+
+        self.mask = pygame.mask.from_surface(self.image)
+        self.game.laser_shoot_sound.play()
+
+    def update(self, dt):
+        # follow boss origin every frame
+        self.rect.center = self.origin + self.direction * (self.length // 2)
+
+        # auto-destroy after duration
+        if self.game.play_time - self.spawn_time >= ROTTEN_SHADOW_LASER_DURATION_1:
+            self.kill()
 
 class RottenShadowDeathAnimation(pygame.sprite.Sprite):
     def __init__(self, game, groups):

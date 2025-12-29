@@ -715,6 +715,7 @@ class Game:
             Fireball(self,
                      self.LAYERS['player_fireballs'],
                      (self.all_sprites, self.secret_fireballs),
+                     self.fireball_image,
                      pygame.Vector2(cos(angle_rad), -sin(angle_rad)) * (-1 if not self.player.facing_right else 1),
                      origin=self.dead_player_rect.center)
             self.show_fireball = False
@@ -1102,6 +1103,9 @@ class Game:
         self.rotten_shadow_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_growl_sound.wav'))
         self.rotten_shadow_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_hurt_sound.wav'))
         self.rotten_shadow_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_death_sound.wav'))
+        self.laser_charge_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'laser_charge_sound.wav'))
+        self.laser_shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'laser_shoot_sound.wav'))
+        self.fireball_block_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'fireball_block_sound.wav'))
 
     def set_all_volumes(self):
         # --- game music ---
@@ -1148,6 +1152,9 @@ class Game:
         self.rotten_shadow_growl_sound.set_volume(ROTTEN_SHADOW_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.rotten_shadow_hurt_sound.set_volume(ROTTEN_SHADOW_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.rotten_shadow_death_sound.set_volume(ROTTEN_SHADOW_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.laser_charge_sound.set_volume(LASER_CHARGE_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.laser_shoot_sound.set_volume(LASER_SHOOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.fireball_block_sound.set_volume(FIREBALL_BLOCK_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
     def load_graphics(self):
         # --- fonts ---
@@ -1347,8 +1354,9 @@ class Game:
         
         self.player_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'player_death_animation', f'explosion{i}.png')).convert_alpha() for i in range(17)]
 
-        # --- fireball ---
+        # --- fireballs2 ---
         self.fireball_image = pygame.image.load(join(self.IMG_DIR, 'fireball.png')).convert_alpha()
+        self.blue_fireball_image = pygame.image.load(join(self.IMG_DIR, 'blue_fireball.png')).convert_alpha()
 
         # --- other entities ---
         self.rectangle_sprite_variants: list = [pygame.image.load(join(self.IMG_DIR, f"obstacle_{width}.png")).convert_alpha() for width in (250, 300, 350, 400)]
@@ -1493,6 +1501,7 @@ class Game:
         self.secret_obstacles = pygame.sprite.Group()
 
         self.LAYERS = {'backgrounds': 1,
+                       'laser_beam': 1.1,
                        'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,
                        'coins': 4, 'fruits': 4.1,
@@ -1952,6 +1961,7 @@ class Game:
                 if obstacle not in self.rotten_shadow_fireball_sprites and obstacle not in self.player_fireball_sprites:
                     obstacle.handle_getting_shot()
                 else:
+                    self.fireball_block_sound.play()
                     obstacle.kill()
 
         shot_bosses = pygame.sprite.groupcollide(self.boss_sprites, self.player_fireball_sprites, False, True, pygame.sprite.collide_mask)
