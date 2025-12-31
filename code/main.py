@@ -116,16 +116,17 @@ class Game:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN and getattr(self, 'show_credits',False):
                         self.show_credits = False
-                        self.credits_title_rect.center = WINDOW_CENTER
+                        self.credits_title_rect.top = WINDOW_CENTER[1]
                         for attr in ('header_counter', 'credits_instances', 'last_created'):
                             if hasattr(self, attr): delattr(self, attr)
                     if event.key == pygame.K_ESCAPE:
                         if getattr(self, 'show_credits',False): 
                             self.show_credits = False
-                            self.credits_title_rect.center = WINDOW_CENTER
+                            self.credits_title_rect.top = WINDOW_CENTER[1]
                             for attr in ('header_counter', 'credits_instances', 'last_created'):
                                 if hasattr(self, attr): delattr(self, attr)
-                        elif getattr(self, 'quit_prompt', False): self.quit_prompt = False
+                        elif getattr(self, 'quit_prompt', False): 
+                            self.quit_prompt = False; self.yes_btn.controller_hovered, self.no_btn.controller_hovered = False, False
                         else: self.requested_state = 'play'
 
                     if not getattr(self, 'quit_prompt', False):
@@ -152,12 +153,8 @@ class Game:
                                     button.click_sound.play()
 
                 elif event.type == pygame.JOYBUTTONDOWN:
-                    # --- If quit prompt is open, controller controls should operate YES/NO ---
                     if getattr(self, 'quit_prompt', False):
-
-                        # D-Pad left/right toggles YES/NO
                         if event.button in (PAD_D_PAD_LEFT, PAD_D_PAD_RIGHT):
-                            # default selection if nothing hovered yet
                             if not self.yes_btn.controller_hovered and not self.no_btn.controller_hovered:
                                 self.no_btn.controller_hovered = True
                                 self.yes_btn.controller_hovered = False
@@ -165,18 +162,15 @@ class Game:
                                 self.yes_btn.controller_hovered = not self.yes_btn.controller_hovered
                                 self.no_btn.controller_hovered = not self.no_btn.controller_hovered
 
-                        # A confirms (click hovered YES/NO)
                         elif event.button == PAD_A_BUTTON:
                             for button in (self.yes_btn, self.no_btn):
                                 if button.hovered or button.controller_hovered:
                                     button.controller_clicked = True
                                     button.click_sound.play()
 
-                        # B cancels prompt (like ESC)
                         elif event.button == PAD_B_BUTTON:
-                            self.quit_prompt = False
+                            self.quit_prompt = False; self.yes_btn.controller_hovered, self.no_btn.controller_hovered = False, False
 
-                        # optional: Start/Select/Home also cancels the prompt instead of resuming instantly
                         elif event.button in (PAD_START_BUTTON, PAD_SELECT_BUTTON, PAD_HOME_BUTTON):
                             self.quit_prompt = False
 
@@ -194,7 +188,7 @@ class Game:
                             if getattr(self, 'show_credits', False):
                                 self.show_credits = False
                                 pygame.time.set_timer(self.credits_event, 0)
-                                self.credits_title_rect.center = WINDOW_CENTER
+                                self.credits_title_rect.top = WINDOW_CENTER[1]
                                 for attr in ('header_counter', 'credits_instances', 'last_created'):
                                     if hasattr(self, attr):
                                         delattr(self, attr)
@@ -206,7 +200,7 @@ class Game:
                             if getattr(self, 'show_credits', False):
                                 self.show_credits = False
                                 pygame.time.set_timer(self.credits_event, 0)
-                                self.credits_title_rect.center = WINDOW_CENTER
+                                self.credits_title_rect.top = WINDOW_CENTER[1]
                                 for attr in ('header_counter', 'credits_instances', 'last_created'):
                                     if hasattr(self, attr):
                                         delattr(self, attr)
@@ -593,6 +587,7 @@ class Game:
         self.collisions()
         self.check_record()
         self.all_sprites.draw(self.screen)
+        self.draw_lightning_effect()
         self.draw_shadow_guardian_health_bar()
         self.draw_rotten_shadow_health_bar()
         self.draw_hearts()
@@ -1103,6 +1098,8 @@ class Game:
         self.rotten_shadow_growl_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_growl_sound.wav'))
         self.rotten_shadow_hurt_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_hurt_sound.wav'))
         self.rotten_shadow_death_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_death_sound.wav'))
+        self.rotten_shadow_defeated_jingle = pygame.mixer.Sound(join(self.AUDIO_DIR, 'rotten_shadow_defeated_jingle.wav'))
+        self.thunder_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'thunder_sound.wav'))
         self.laser_charge_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'laser_charge_sound.wav'))
         self.laser_shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'laser_shoot_sound.wav'))
         self.fireball_block_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'fireball_block_sound.wav'))
@@ -1125,6 +1122,7 @@ class Game:
         self.tracks['music_note'].set_volume(MUSIC_NOTE_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['shadow_guardian'].set_volume(SHADOW_GUARDIAN_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         self.tracks['rotten_shadow'].set_volume(ROTTEN_SHADOW_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
+        self.rotten_shadow_defeated_jingle.set_volume(ROTTEN_SHADOW_DEFEATED_JINGLE_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
 
         # --- store base volumes ---
         self.base_volumes = {name: track.get_volume() for name, track in self.tracks.items() if name != 'credits'}
@@ -1152,6 +1150,7 @@ class Game:
         self.rotten_shadow_growl_sound.set_volume(ROTTEN_SHADOW_GROWL_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.rotten_shadow_hurt_sound.set_volume(ROTTEN_SHADOW_HURT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.rotten_shadow_death_sound.set_volume(ROTTEN_SHADOW_DEATH_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
+        self.thunder_sound.set_volume(THUNDER_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.laser_charge_sound.set_volume(LASER_CHARGE_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.laser_shoot_sound.set_volume(LASER_SHOOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.fireball_block_sound.set_volume(FIREBALL_BLOCK_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
@@ -1221,6 +1220,7 @@ class Game:
         
         # credits title
         self.credits_title_rect = self.text_rects['title'].copy()
+        self.credits_title_rect.top = WINDOW_CENTER[1]
         
         # --- define fruit-collect messages ---
         self.FRUIT_PICKUP_TEXTS: dict = {Apple: (f"+{APPLE_POINTS} points", 'apple_effect_text'),
@@ -1341,6 +1341,9 @@ class Game:
             'music_note': [pygame.image.load(join(self.IMG_DIR, 'bg_music_note_phase', 'bg_music_note_phase.png')).convert_alpha()],
             'shadow_guardian': [pygame.image.load(join(self.IMG_DIR, 'bg_shadow_guardian_phase', 'bg_shadow_guardian_phase.png')).convert_alpha()],
             'rotten_shadow': [pygame.image.load(join(self.IMG_DIR, 'bg_rotten_shadow_phase', 'bg_rotten_shadow_phase.png')).convert_alpha()]}
+        
+        # --- decoration ---
+        self.rain_drop_image = pygame.image.load(join(self.IMG_DIR, 'rain_drop.png')).convert_alpha()
 
         # --- heart images ---
         self.empty_heart = pygame.image.load(join(self.IMG_DIR, 'empty_heart.png')).convert_alpha()
@@ -1409,6 +1412,8 @@ class Game:
 
         self.rotten_shadow_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'rotten_shadow_death_animation', f'rotten_shadow_death_frame{i}.png')).convert_alpha() for i in range(25)]
 
+        self.laser_beam_image = pygame.image.load(join(self.IMG_DIR, 'laser_beam.png')).convert_alpha()
+
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
     def init_game_state(self):
@@ -1460,7 +1465,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'had_rotten_shadow', 'rotten_shadow', 'rotten_shadow_phase_end_start', 'last_chili_drop'):
+                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'had_rotten_shadow', 'rotten_shadow', 'rotten_shadow_phase_end_start', 'rotten_shadow_jingle_played', 'thunder_sound_played', 'lightning_start', 'lightning_finished', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1490,12 +1495,13 @@ class Game:
         self.boss_sprites = pygame.sprite.Group()
         self.energy_ball_sprites = pygame.sprite.Group()
         self.boss_obstacle_sprites = pygame.sprite.Group()
-        # animations and UI
+        # animations, UI, effects
         self.player_effect_sprites = pygame.sprite.Group()
         self.obstacle_effect_sprites = pygame.sprite.Group()
         self.boss_effect_sprites = pygame.sprite.Group()
         self.UI_text_sprites = pygame.sprite.Group()
         self.background_sprites = pygame.sprite.Group()
+        self.particle_sprites = pygame.sprite.Group()
         self.secret_fireballs = pygame.sprite.Group()
         self.secret_fruits = pygame.sprite.Group()
         self.secret_obstacles = pygame.sprite.Group()
@@ -1508,7 +1514,8 @@ class Game:
                        'player_fireballs': 5,
                        'object_effects': 6, 'obstacles': 6.1,
                        'boss_projectiles': 7,
-                       'ui_texts': 8}
+                       'particles': 8,
+                       'ui_texts': 9}
 
         # --- instantiate background ---
         self.background = AnimatedBackground(self,
@@ -1592,18 +1599,17 @@ class Game:
             kill_sprites(self.coin_sprites)
             kill_sprites(self.fruit_sprites)
             kill_sprites(self.player_fireball_sprites)
+            kill_sprites(self.particle_sprites)
+            if self.current_phase not in ('rectangle', 'shadow_guardian', 'rotten_shadow'):
+                self.completed_phases.add(self.current_phase)
+                if len(self.completed_phases) >= len(PHASE_PROBABILITIES.keys()):
+                    self.completed_phases.clear()
             if STATS['score'] >= SHADOW_GUARDIAN_PHASE_START_POINTS and not getattr(self, 'had_shadow_guardian', False):
                 self.current_phase = 'shadow_guardian'
             elif STATS['score'] >= ROTTEN_SHADOW_PHASE_START_POINTS and not getattr(self, 'had_rotten_shadow', False):
                 self.current_phase = 'rotten_shadow'
             else:
                 self.prev_phase = self.current_phase
-                if self.current_phase not in ('rectangle', 'shadow_guardian', 'rotten_shadow'):
-                    self.completed_phases.add(self.current_phase)
-                    if len(self.completed_phases) >= len(PHASE_PROBABILITIES.keys()):
-                        self.completed_phases.clear()
-                print("PHASE END:", self.current_phase, "score:", STATS["score"])
-                print("completed:", getattr(self, "completed_phases", None), "prev:", getattr(self, "prev_phase", None))
                 while self.current_phase == self.prev_phase or self.current_phase in self.completed_phases:
                     self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
             change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase in ('shadow_guardian', 'rotten_shadow') else False)
@@ -1677,10 +1683,12 @@ class Game:
                 self.spawn_fruit(dt, spawn='top', spawn_tendency=0.3)
             case 'shadow_guardian':
                 self.shadow_guardian_phase()
-                self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
+                if self.shadow_guardian.current_health > 0:
+                    self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
             case 'rotten_shadow':
                 self.rotten_shadow_phase()
-                self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
+                if self.rotten_shadow.current_health > 0:
+                    self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
         # --- phase parameters ---
@@ -1922,18 +1930,29 @@ class Game:
             return
 
     def rotten_shadow_phase(self):
+        if not getattr(self, 'rotten_shadow', False):
+            self.rotten_shadow = RottenShadow(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
+
+        if self.rotten_shadow.enraged:
+            if not getattr(self, 'thunder_sound_played', False):
+                self.thunder_sound.play()
+                self.thunder_sound_played = True
+            RainDrop(self, self.LAYERS['particles'], (self.all_sprites, self.particle_sprites), self.rain_drop_image, 700)
+            RainDrop(self, self.LAYERS['particles'], (self.all_sprites, self.particle_sprites), self.rain_drop_image, 700)
+
         if getattr(self, 'init_rotten_shadow_phase_end', False):
+            if self.play_time - self.rotten_shadow_phase_end_start > 2.2 and not getattr(self, 'rotten_shadow_jingle_played', False):
+                self.rotten_shadow_defeated_jingle.play()
+                self.rotten_shadow_jingle_played = True
             if self.play_time - self.rotten_shadow_phase_end_start > ROTTEN_SHADOW_PHASE_END_DURATION:
                 self.init_rotten_shadow_phase_end = False
                 self.had_rotten_shadow = True
                 self.phase_ended = True
-                self.music_channel.fadeout(3000)
             return
+        
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 8:
             Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))
             self.last_chili_drop = self.play_time
-        if not getattr(self, 'rotten_shadow', False):
-            self.rotten_shadow = RottenShadow(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
             
         if getattr(self, 'rotten_shadow_defeated', False):
             self.rotten_shadow_defeated = False
@@ -2018,6 +2037,22 @@ class Game:
         if STATS['score'] > STATS['record'] and not getattr(self, 'record_checked', False):
             self.record_checked = True
             self.record_sound.play()
+
+    def draw_lightning_effect(self):
+        if self.current_phase != 'rotten_shadow':
+            return
+        
+        if self.rotten_shadow.enraged and not getattr(self, 'lightning_finished', False):
+            if not hasattr(self, 'lightning_start'):
+                self.lightning_start = self.play_time
+            flash_intensity = 100 + 155 * abs(sin(perf_counter() * ROTTEN_SHADOW_ENRAGE_FLASH_SPEED))
+            flash_overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
+            flash_overlay.fill((flash_intensity, flash_intensity, flash_intensity, 80))
+            self.screen.blit(flash_overlay, (0, 0))
+        # end it after a few sec
+        if getattr(self, 'lightning_start', None):
+            if self.play_time - self.lightning_start > LIGHTNING_DURATION:
+                self.lightning_finished = True
 
     def draw_shadow_guardian_health_bar(self):
         if self.current_phase != 'shadow_guardian':

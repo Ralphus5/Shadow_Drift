@@ -95,8 +95,7 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
             'rotten_shadow_health_bar_damage': "#FFF700",
             'rotten_shadow_health_bar_border': "#FFFFFF",
             'rotten_shadow_name': "#228B22",
-            'rotten_shadow_name_shadow': "#7CFC00",
-            'rotten_shadow_laser': "#1EFF00C2"}
+            'rotten_shadow_name_shadow': "#7CFC00"}
 
 # font sizes
 TITLE_FONT_SIZE: int = 140
@@ -139,6 +138,8 @@ PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
 BANANA_TRAIL_LIFETIME: float = 0.53
+ROTTEN_SHADOW_ENRAGE_FLASH_SPEED: float = 15.0
+LIGHTNING_DURATION: float = 1.8
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
@@ -181,7 +182,8 @@ POISON_CLOUD_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 COCONUT_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 MUSIC_NOTE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
 SHADOW_GUARDIAN_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
-ROTTEN_SHADOW_TRACK_VOLUME: Annotated[float, (0-1)] = 0.4
+ROTTEN_SHADOW_TRACK_VOLUME: Annotated[float, (0-1)] = 1.0
+ROTTEN_SHADOW_DEFEATED_JINGLE_VOLUME: Annotated[float, (0-1)] = 1.0
 
 # menu sound volumes
 MENU_HOVER_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
@@ -200,17 +202,18 @@ PHASE_SWITCH_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 RECORD_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 ABILITY_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 DASH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.55
+SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.5
 SHADOW_GUARDIAN_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
 SHADOW_GUARDIAN_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.4
 ENERGY_BALL_SHOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
 SHADOW_GUARDIAN_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1
-ROTTEN_SHADOW_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
-ROTTEN_SHADOW_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
+ROTTEN_SHADOW_GROWL_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
+ROTTEN_SHADOW_HURT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.7
 ROTTEN_SHADOW_DEATH_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
-LASER_CHARGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.8
-LASER_SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
-FIREBALL_BLOCK_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+THUNDER_SOUND_VOLUME: Annotated[float, (0-1)] = 1.0
+LASER_CHARGE_SOUND_VOLUME: Annotated[float, (0-1)] = 0.75
+LASER_SHOOT_SOUND_VOLUME: Annotated[float, (0-1)] = 0.75
+FIREBALL_BLOCK_SOUND_VOLUME: Annotated[float, (0-1)] = 0.9
 
 
 # ----- GAMEPLAY -----
@@ -358,27 +361,29 @@ SHADOW_GUARDIAN_PHASE_END_DURATION: float = 3.0 # seconds
 # rotten shadow phase
 ROTTEN_SHADOW_PHASE_START_POINTS: int = 1200
 ROTTEN_SHADOW_DAMAGE_PER_SHOT: int = 1
-ROTTEN_SHADOW_HEALTH: int = 35
+ROTTEN_SHADOW_HEALTH: int = 34
 ROTTEN_SHADOW_SPEED: int = 210
 ROTTEN_SHADOW_SPEED_DURING_ACTION: int = 120
 SECOND_PHASE_SPEED_MULTIPLIER: float = 1.3
 ROTTEN_SHADOW_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 6, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5, 'laser': 10}
 ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
-ROTTEN_SHADOW_FIREBALL_INTERVAL: float = 0.9 # seconds
+ROTTEN_SHADOW_FIREBALL_INTERVAL_1: float = 1.2 # seconds
+ROTTEN_SHADOW_FIREBALL_INTERVAL_2: float = 0.85 # seconds
 ROTTEN_SHADOW_RADIAL_FIREBALL_INTERVAL: float = 0.8 # seconds
 ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_1: int = 10
 ROTTEN_SHADOW_RADIAL_FIREBALL_COUNT_2: int = 15
-ROTTEN_SHADOW_PHASE_END_DURATION: float = 5.0 # seconds
-ROTTEN_SHADOW_DASH_SPEED: int = 1600
-ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_1: float = 0.004
-ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_2: float = 0.008
+ROTTEN_SHADOW_DASH_SPEED: int = 1500
+ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_1: float = 0.0035
+ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_2: float = 0.006
 ROTTEN_SHADOW_DASH_DURATION: float = 0.08 # seconds
 # rotten shadow laser
-DASH_DISTANCE_THRESHOLD: int = 400
-ROTTEN_SHADOW_LASER_CHARGE_TIME = 1.3     # seconds
+DASH_DISTANCE_THRESHOLD: int = 450
+ROTTEN_SHADOW_LASER_CHARGE_TIME_1 = 1.3     # seconds
+ROTTEN_SHADOW_LASER_CHARGE_TIME_2 = 1.1     # seconds
 ROTTEN_SHADOW_LASER_DURATION_1 = 0.7        # seconds
-ROTTEN_SHADOW_LASER_DURATION_2 = 0.2        # seconds
-ROTTEN_SHADOW_LASER_WIDTH = 46
+ROTTEN_SHADOW_LASER_DURATION_2 = 0.3        # seconds
+ROTTEN_SHADOW_LASER_WIDTH = 100
+ROTTEN_SHADOW_PHASE_END_DURATION: float = 7.2 # seconds
 
 
 # --- DEFAULT KEY BINDINGS ---
