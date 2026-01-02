@@ -1344,6 +1344,7 @@ class Game:
         
         # --- decoration ---
         self.rain_drop_image = pygame.image.load(join(self.IMG_DIR, 'rain_drop.png')).convert_alpha()
+        self.lightning_bolt_image = pygame.image.load(join(self.IMG_DIR, 'lightning_bolt.png')).convert_alpha()
 
         # --- heart images ---
         self.empty_heart = pygame.image.load(join(self.IMG_DIR, 'empty_heart.png')).convert_alpha()
@@ -1405,7 +1406,6 @@ class Game:
         
         self.shadow_guardian_image = pygame.image.load(join(self.IMG_DIR, 'shadow_guardian.png')).convert_alpha()
 
-
         self.shadow_guardian_death_animation_frames: list = [pygame.image.load(join(self.IMG_DIR, 'shadow_guardian_death_animation', f'shadow_guardian_death_frame{i}.png')).convert_alpha() for i in range(23)]
 
         self.rotten_shadow_image = pygame.image.load(join(self.IMG_DIR, 'rotten_shadow.png')).convert_alpha()
@@ -1465,7 +1465,7 @@ class Game:
                      # reset game over secrets
                      'show_game_over_hint', 'show_rectangle', 'show_chili', 'show_apple','secret_fruits','dead_player_rect','dead_player_mask',
                      # other flags
-                     'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'had_rotten_shadow', 'rotten_shadow', 'rotten_shadow_phase_end_start', 'rotten_shadow_jingle_played', 'thunder_sound_played', 'lightning_start', 'lightning_finished', 'last_chili_drop'):
+                     'new_fruit', 'prev_fruit', 'coin_spawn_accum', 'coin_spawn_threshold', 'fruit_spawn_accum', 'fruit_spawn_threshold', 'quit_prompt', 'stats_text', 'stats_text_shadow','prev_stats', 'record_checked', 'phase_ended', 'arrow_sub_phase_start', 'had_shadow_guardian', 'shadow_guardian', 'shadow_guardian_phase_end_start', 'had_rotten_shadow', 'rotten_shadow', 'rotten_shadow_phase_end_start', 'rotten_shadow_jingle_played', 'thunder_sound_played', 'lightning_start', 'lightning_finished', 'last_chili_drop'):
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -1688,7 +1688,7 @@ class Game:
             case 'rotten_shadow':
                 self.rotten_shadow_phase()
                 if self.rotten_shadow.current_health > 0:
-                    self.spawn_fruit(dt, spawn='top', spawns_per_min=5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
+                    self.spawn_fruit(dt, spawn='top', spawns_per_min=5.5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
     def rectangle_phase(self):
         # --- phase parameters ---
@@ -1939,6 +1939,7 @@ class Game:
                 self.thunder_sound_played = True
             RainDrop(self, self.LAYERS['particles'], (self.all_sprites, self.particle_sprites), self.rain_drop_image, 700)
             RainDrop(self, self.LAYERS['particles'], (self.all_sprites, self.particle_sprites), self.rain_drop_image, 700)
+            RainDrop(self, self.LAYERS['particles'], (self.all_sprites, self.particle_sprites), self.rain_drop_image, 700)
 
         if getattr(self, 'init_rotten_shadow_phase_end', False):
             if self.play_time - self.rotten_shadow_phase_end_start > 2.2 and not getattr(self, 'rotten_shadow_jingle_played', False):
@@ -1964,13 +1965,51 @@ class Game:
             return
 
     def spawn_coin(self, dt, spawn, spawns_per_min=COIN_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None):
-        if random.random() < spawns_per_min/60 * dt:
-            Coin(self, (self.all_sprites, self.coin_sprites), self.coin_frames, spawn=spawn, speed=random_of_spectrum(COIN_SPEED_RANGE[0], COIN_SPEED_RANGE[1], bias=speed_tendency),spawn_bias=spawn_tendency)
+        if not hasattr(self, "coin_spawn_accum"):
+            self.coin_spawn_accum = 0.0
+            self.coin_spawn_threshold = random.uniform(COIN_SPAWN_JITTER[0], COIN_SPAWN_JITTER[1])
+
+        self.coin_spawn_accum += (spawns_per_min / 60.0) * dt
+
+        if self.coin_spawn_accum >= self.coin_spawn_threshold:
+            self.coin_spawn_accum -= self.coin_spawn_threshold
+            self.coin_spawn_threshold = random.uniform(COIN_SPAWN_JITTER[0], COIN_SPAWN_JITTER[1])
+
+            Coin(self,
+                (self.all_sprites, self.coin_sprites),
+                self.coin_frames,
+                spawn=spawn,
+                speed=random_of_spectrum(COIN_SPEED_RANGE[0], COIN_SPEED_RANGE[1], bias=speed_tendency),
+                spawn_bias=spawn_tendency)
 
     def spawn_fruit(self, dt, spawn, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
-        if random.random() < spawns_per_min/60 * dt:
-            new_fruit = random_of_selection(fruits, (FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
-            new_fruit(self, (self.all_sprites, self.fruit_sprites), speed=random_of_spectrum(FRUIT_SPEED_RANGE[0], FRUIT_SPEED_RANGE[1], bias=speed_tendency), spawn=spawn, spawn_bias=spawn_tendency, rotate=rotation)
+        if not hasattr(self, "fruit_spawn_accum"):
+            self.fruit_spawn_accum = 0.0
+            self.fruit_spawn_threshold = random.uniform(FRUIT_SPAWN_JITTER[0], FRUIT_SPAWN_JITTER[1])
+
+        self.fruit_spawn_accum += (spawns_per_min / 60.0) * dt
+
+        if self.fruit_spawn_accum >= self.fruit_spawn_threshold:
+            self.fruit_spawn_accum -= self.fruit_spawn_threshold
+            self.fruit_spawn_threshold = random.uniform(FRUIT_SPAWN_JITTER[0], FRUIT_SPAWN_JITTER[1])
+
+            prev = getattr(self, "prev_fruit", None)
+
+            while True:
+                new = random_of_selection(fruits,
+                    (FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
+                if new == prev and new is not Apple:
+                    continue
+                self.new_fruit = new
+                break
+
+            self.new_fruit(self,
+                (self.all_sprites, self.fruit_sprites),
+                speed=random_of_spectrum(FRUIT_SPEED_RANGE[0], FRUIT_SPEED_RANGE[1], bias=speed_tendency),
+                spawn=spawn,
+                spawn_bias=spawn_tendency,
+                rotate=rotation)
+            self.prev_fruit = self.new_fruit
 
     def collisions(self):
         # --- fireball collisions ---
@@ -2053,6 +2092,8 @@ class Game:
         if getattr(self, 'lightning_start', None):
             if self.play_time - self.lightning_start > LIGHTNING_DURATION:
                 self.lightning_finished = True
+            if random.random() < LIGHTNING_BOLT_CHANCE_PER_FRAME:
+                self.screen.blit(self.lightning_bolt_image, (random_of_spectrum(0, WINDOW_WIDTH - self.lightning_bolt_image.get_width()), 0))
 
     def draw_shadow_guardian_health_bar(self):
         if self.current_phase != 'shadow_guardian':

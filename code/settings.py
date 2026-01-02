@@ -37,9 +37,9 @@ COLOR = {'score_rectangle_phase': "#70C1FF",
             'score_shadow_coconut_phase': "#000000",
          'score_music_note_phase': "#0037FF",
             'score_shadow_music_note_phase': "#000000",
-         'score_shadow_guardian_phase': "#0037FF",
+         'score_shadow_guardian_phase': "#7B2087",
             'score_shadow_shadow_guardian_phase': "#FFFFFF",
-         'score_rotten_shadow_phase': "#0037FF",
+         'score_rotten_shadow_phase': "#228B22",
             'score_shadow_rotten_shadow_phase': "#FFFFFF",
             'blue_player_glow': "#0066FF81",
             'red_player_glow': "#FF000081",
@@ -138,8 +138,9 @@ PLAYER_BLACK_FADE_SPEED: Annotated[float, (0-10)] = 7.5
 EFFECT_TEXT_DURATION: float = 1.0
 EFFECT_TEXT_RISE_SPEED: float = 65.0 # pixels / second
 BANANA_TRAIL_LIFETIME: float = 0.53
-ROTTEN_SHADOW_ENRAGE_FLASH_SPEED: float = 15.0
+ROTTEN_SHADOW_ENRAGE_FLASH_SPEED: float = 16.0
 LIGHTNING_DURATION: float = 1.8
+LIGHTNING_BOLT_CHANCE_PER_FRAME: float = 0.007
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
@@ -232,13 +233,15 @@ DASH_COOLDOWN: float = 0.2 # seconds
 
 # coins
 COIN_SPAWNS_PER_MINUTE: float = 14.00
+COIN_SPAWN_JITTER: tuple[float] = (0.15, 1.85)
 COIN_POINTS: int = 2
 COIN_SPEED_RANGE: tuple[int] = (100,220)
 COIN_FRAME_INTERVALL: int = 35
 
 # fruits
-FRUIT_SPAWNS_PER_MINUTE: float = 4.00
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.9, 'blueberry': 0.45, 'banana': 0.5, 'chili': 0.2, 'grapes': 0.4, 'pear': 0.2}
+FRUIT_SPAWNS_PER_MINUTE: float = 4.2
+FRUIT_SPAWN_JITTER: tuple[float] = (0.5, 1.5)
+FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.8, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.25, 'grapes': 0.4, 'pear': 0.2}
 FRUIT_SPEED_RANGE: tuple[int] = (100,220)
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
@@ -269,8 +272,8 @@ RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.
 # arrow phase
 ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
-ARROW_SINGLES_SPAWN_TIME: float = 0.31
-ARROW_COLUMN_SPAWN_TIME: float = 3.45
+ARROW_SINGLES_SPAWN_TIME: float = 0.3
+ARROW_COLUMN_SPAWN_TIME: float = 3.4
 ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
 ARROW_SPEEDS: tuple[int] = (340, 350, 360, 370)
 ARROW_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
