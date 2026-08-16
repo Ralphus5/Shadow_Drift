@@ -13,7 +13,7 @@ FPS: Annotated[int, (25-120)] = 60
 MENU_GRAVITY: int = 981
 
 # colors
-COLOR = {'score_rectangle_phase': "#70C1FF",
+COLOR: dict[str, str] = {'score_rectangle_phase': "#70C1FF",
             'score_shadow_rectangle_phase': "#000000",
          'score_arrow_phase': "#000000",
             'score_shadow_arrow_phase': "#FFFFFF",
@@ -144,7 +144,7 @@ LIGHTNING_BOLT_CHANCE_PER_FRAME: float = 0.007
 
 # backgrounds
 BACKGROUND_FRAME_INTERVALL: int = 70
-BACKGROUND_SCROLLABILITIES: dict[str:str] = {'rectangle': 'right',
+BACKGROUND_SCROLLABILITIES: dict[str, str | None] = {'rectangle': 'right',
                                               'arrow': 'left',
                                               'icicle': None,
                                               'jellyfish': None,
@@ -166,8 +166,8 @@ MUSIC_VOLUME: Annotated[float, (0-1)] = 1
 SFX_VOLUME: Annotated[float, (0-1)] = 1
 
 # game music volumes
-MUSIC_FADE_IN_ON_GAME_START: float = 1000 # milliseconds
-MUSIC_FADE_OUT_ON_GAME_START: float = 450 # milliseconds
+MUSIC_FADE_IN_ON_GAME_START: int = 1000 # milliseconds
+MUSIC_FADE_OUT_ON_GAME_START: int = 450 # milliseconds
 GAME_OVER_TRACK_VOLUME: Annotated[float, (0-1)] = 0.25
 CREDITS_TRACK_VOLUME: Annotated[float, (0-1)] = 0.7
 RECTANGLE_TRACK_VOLUME: Annotated[float, (0-1)] = 0.8
@@ -233,16 +233,16 @@ DASH_COOLDOWN: float = 0.2 # seconds
 
 # coins
 COIN_SPAWNS_PER_MINUTE: float = 14.00
-COIN_SPAWN_JITTER: tuple[float] = (0.15, 1.85)
+COIN_SPAWN_JITTER: tuple[float, float] = (0.15, 1.85)
 COIN_POINTS: int = 2
-COIN_SPEED_RANGE: tuple[int] = (100,220)
+COIN_SPEED_RANGE: tuple[int, int] = (100, 220)
 COIN_FRAME_INTERVALL: int = 35
 
 # fruits
 FRUIT_SPAWNS_PER_MINUTE: float = 4.2
-FRUIT_SPAWN_JITTER: tuple[float] = (0.5, 1.5)
-FRUITS_SPAWN_PROBABILITIES: dict[str:float] = {'apple': 0.8, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.25, 'grapes': 0.4, 'pear': 0.2}
-FRUIT_SPEED_RANGE: tuple[int] = (100,220)
+FRUIT_SPAWN_JITTER: tuple[float, float] = (0.5, 1.5)
+FRUITS_SPAWN_PROBABILITIES: dict[str, float] = {'apple': 0.8, 'blueberry': 0.4, 'banana': 0.5, 'chili': 0.25, 'grapes': 0.4, 'pear': 0.2}
+FRUIT_SPEED_RANGE: tuple[int, int] = (100, 220)
 APPLE_POINTS: int = 10
 BANANA_SPEED_BOOST: int = 150
 BANANA_BOOST_DURATION: float = 25.0
@@ -252,9 +252,9 @@ FIRE_BALL_SPEED: int = 620
 POINTS_FOR_OBSTACLE_SHOOT: int = 2
 
 # --- phases ---
-PHASE_PROBABILITIES: dict[str:float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 0.9, 'coconut': 1.0, 'music_note': 1.0}
+PHASE_PROBABILITIES: dict[str, float] = {'arrow': 1.0, 'icicle': 1.0, 'jellyfish': 1.0, 'saw_blade': 1.0, 'rocket': 0.9, 'asteroid': 1.0, 'spike_ball': 1.0, 'spike_block': 1.0, 'poison_cloud': 0.9, 'coconut': 1.0, 'music_note': 1.0}
 
-PHASE_END_POINTS: dict[str:int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'shadow_guardian': 200, 'rotten_shadow': 300}
+PHASE_END_POINTS: dict[str, int] = {'rectangle': 10, 'arrow': 15, 'icicle': 15, 'jellyfish': 15, 'saw_blade': 15, 'rocket': 30, 'asteroid': 15, 'spike_ball': 15, 'spike_block': 15, 'poison_cloud': 15, 'coconut': 15, 'music_note': 15, 'shadow_guardian': 200, 'rotten_shadow': 300}
 
 # sub-phase durations
 FIRST_OBSTACLE_PHASE_END: int = 10
@@ -264,31 +264,31 @@ FOURTH_OBSTACLE_PHASE_END: int = 60
 
 # rectangle phase
 RECTANGLE_SPAWN_TIME: float = 0.8 # seconds
-RECTANGLE_SPEEDS: tuple[int] = (280, 350, 420, 500)
-RECTANGLE_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
-RECTANGLE_BACKGROUND_SPEEDS: tuple[int] = (80, 95, 110, 125)
-RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float]] = ([1, 0.8, 0.6, 0.4], [0.8, 0.7, 0.7, 0.6], [0.6, 0.6, 0.8, 0.8], [0.4, 0.5, 0.9, 1])
+RECTANGLE_SPEEDS: tuple[int, int, int, int] = (280, 350, 420, 500)
+RECTANGLE_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
+RECTANGLE_BACKGROUND_SPEEDS: tuple[int, int, int, int] = (80, 95, 110, 125)
+RECTANGLE_SUB_PHASE_SPAWN_WEIGHTS: tuple[list[float], ...] = ([1, 0.8, 0.6, 0.4], [0.8, 0.7, 0.7, 0.6], [0.6, 0.6, 0.8, 0.8], [0.4, 0.5, 0.9, 1])
 
 # arrow phase
 ARROW_PHASE_DELAY: float = 1.0
 ARROW_SUB_PHASE_DURATION: int = 10
 ARROW_SINGLES_SPAWN_TIME: float = 0.3
 ARROW_COLUMN_SPAWN_TIME: float = 3.4
-ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int] = (20, 260)
-ARROW_SPEEDS: tuple[int] = (340, 350, 360, 370)
-ARROW_SPAWN_RATE_FACTORS: tuple[float] = (1.2, 1.4, 1.6)
-ARROW_BACKGROUND_SPEEDS: tuple[int] = (75, 90, 105, 120)
+ARROW_COLUMN_SPAWN_HEIGHTS: tuple[int, ...] = (20, 260)
+ARROW_SPEEDS: tuple[int, int, int, int] = (340, 350, 360, 370)
+ARROW_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
+ARROW_BACKGROUND_SPEEDS: tuple[int, int, int, int] = (75, 90, 105, 120)
 
 # icicle phase
 ICICLE_PHASE_DELAY: float = 1.0
 ICICLE_SPAWN_TIME: float = 0.195 # seconds
-ICICLE_SPEEDS: tuple[int] = (200, 250, 300, 350)
-ICICLE_SPAWN_RATE_FACTORS: tuple[float] = (1.15, 1.2, 1.25)
+ICICLE_SPEEDS: tuple[int, int, int, int] = (200, 250, 300, 350)
+ICICLE_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.15, 1.2, 1.25)
 
 # jellyfish phase
 JELLYFISH_PHASE_DELAY: float = 1.0
 JELLYFISH_SPAWN_TIME: float = 0.265
-JELLYFISH_SPEEDS: tuple[int] = (150, 180, 210, 240)
+JELLYFISH_SPEEDS: tuple[int, int, int, int] = (150, 180, 210, 240)
 JELLYFISH_GLOW_RADIUS: int = 175
 JELLYFISH_GLOW_FREQUENCY: float = 1.5
 JELLYFISH_FRAME_INTERVALL: int = 50
@@ -296,49 +296,49 @@ JELLYFISH_FRAME_INTERVALL: int = 50
 # saw blade phase
 SAW_BLADE_PHASE_DELAY: float = 1.5
 SAW_BLADE_SPAWN_TIME: float = 0.465 # seconds
-SAW_BLADE_SPEEDS: tuple[int] = (400, 480, 560, 640)
-SAW_BLADE_ROTATION_SPEEDS: tuple[int] = (-190, -230, -270, -320)
-SAW_BLADE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
+SAW_BLADE_SPEEDS: tuple[int, int, int, int] = (400, 480, 560, 640)
+SAW_BLADE_ROTATION_SPEEDS: tuple[int, int, int, int] = (-190, -230, -270, -320)
+SAW_BLADE_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
 
 # rocket phase
 ROCKET_PHASE_DELAY: float = 2.0
 ROCKET_SPAWN_TIME: float = 0.275 # seconds
-ROCKET_SPEEDS: tuple[int] = (600, 700, 800, 900)
-ROCKET_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
+ROCKET_SPEEDS: tuple[int, int, int, int] = (600, 700, 800, 900)
+ROCKET_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
 
 # asteroid phase
 ASTEROID_PHASE_DELAY: float = 1.0
 ASTEROID_SPAWN_TIME: float = 0.355 # seconds
-ASTEROID_SPEEDS: tuple[int] = (200, 230, 260, 290)
+ASTEROID_SPEEDS: tuple[int, int, int, int] = (200, 230, 260, 290)
 
 # spike ball phase
 SPIKE_BALL_PHASE_DELAY: float = 1.0
 SPIKE_BALL_SPAWN_TIME: float = 0.465 # seconds
-SPIKE_BALL_SPEEDS: tuple[int] = (250, 300, 350, 400)
-SPIKE_BALL_ROTATION_SPEEDS: tuple[int] = (170, 190, 210, 230)
+SPIKE_BALL_SPEEDS: tuple[int, int, int, int] = (250, 300, 350, 400)
+SPIKE_BALL_ROTATION_SPEEDS: tuple[int, int, int, int] = (170, 190, 210, 230)
 
 # spike block phase
 SPIKE_BLOCK_PHASE_DELAY: float = 1.0
 SPIKE_BLOCK_SPAWN_TIME: float = 0.365 # seconds
-SPIKE_BLOCK_SPEEDS: tuple[int] = (180, 200, 220, 240)
+SPIKE_BLOCK_SPEEDS: tuple[int, int, int, int] = (180, 200, 220, 240)
 
 # poison cloud phase
 POISON_CLOUD_DELAY: float = 1.0
 POISON_CLOUD_SPAWN_TIME: float = 0.37 # seconds
-POISON_CLOUD_SPEEDS: tuple[int] = (120, 140, 160, 180)
-POISON_CLOUD_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
+POISON_CLOUD_SPEEDS: tuple[int, int, int, int] = (120, 140, 160, 180)
+POISON_CLOUD_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
 
 # coconut phase
 COCONUT_PHASE_DELAY: float = 1.0
 COCONUT_SPAWN_TIME: float = 0.28 # seconds
-COCONUT_SPEEDS: tuple[int] = (420, 470, 510, 540)
-COCONUT_SPAWN_RATE_FACTORS: tuple[int] = (1.1, 1.15, 1.2)
+COCONUT_SPEEDS: tuple[int, int, int, int] = (420, 470, 510, 540)
+COCONUT_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.1, 1.15, 1.2)
 
 # music note phase
 MUSIC_NOTE_PHASE_DELAY: float = 1.0
 MUSIC_NOTE_SPAWN_TIME: float = 0.4 # seconds
-MUSIC_NOTE_SPEEDS: tuple[int] = (330, 360, 390, 420)
-MUSIC_NOTE_SPAWN_RATE_FACTORS: tuple[int] = (1.2, 1.4, 1.6)
+MUSIC_NOTE_SPEEDS: tuple[int, int, int, int] = (330, 360, 390, 420)
+MUSIC_NOTE_SPAWN_RATE_FACTORS: tuple[float, float, float] = (1.2, 1.4, 1.6)
 
 # --- BOSSES ---
 BOSS_HEALTH_BAR_HEIGHT: int = 26
@@ -351,10 +351,10 @@ SHADOW_GUARDIAN_DAMAGE_PER_SHOT: int = 1
 SHADOW_GUARDIAN_HEALTH: int = 40
 SHADOW_GUARDIAN_SPEED: int = 170
 SHADOW_GUARDIAN_SPEED_DURING_SUMMON: int = 70
-SHADOW_GUARDIAN_STATE_DURATIONS: dict[str:int] = {'transition': 1, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
+SHADOW_GUARDIAN_STATE_DURATIONS: dict[str, int] = {'transition': 1, 'follow_player': 5, 'summon_saw_blades': 8, 'summon_asteroids': 8, 'shoot_energy_ball': 7}
 SHADOW_GUARDIAN_SAW_BLADE_SPAWN_DURATION: float = 0.38
 SHADOW_GUARDIAN_SAW_BLADE_SPEED: int = 360
-SHADOW_GUARDIAN_ASTEROID_SPAWN_DURATION: int =  0.4
+SHADOW_GUARDIAN_ASTEROID_SPAWN_DURATION: float =  0.4
 SHADOW_GUARDIAN_ASTEROID_SPEED: int = 240
 DARK_ENERGY_BALL_SPEED: int = 200
 DART_ENERGY_BALL_LIFE_TIME: float = 8.0 # seconds
@@ -368,7 +368,7 @@ ROTTEN_SHADOW_HEALTH: int = 34
 ROTTEN_SHADOW_SPEED: int = 210
 ROTTEN_SHADOW_SPEED_DURING_ACTION: int = 120
 SECOND_PHASE_SPEED_MULTIPLIER: float = 1.3
-ROTTEN_SHADOW_STATE_DURATIONS: dict[str:int] = {'transition': 1.0, 'follow_player': 6, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5, 'laser': 10}
+ROTTEN_SHADOW_STATE_DURATIONS: dict[str, int] = {'transition': 1, 'follow_player': 6, 'shoot_fireballs': 10, 'shoot_radial_fireballs': 5, 'laser': 10}
 ROTTEN_SHADOW_PHASE_END_DURATION: float = 3.0 # seconds
 ROTTEN_SHADOW_FIREBALL_INTERVAL_1: float = 1.2 # seconds
 ROTTEN_SHADOW_FIREBALL_INTERVAL_2: float = 0.85 # seconds
@@ -381,16 +381,16 @@ ROTTEN_SHADOW_DASH_CHANCE_PER_FRAME_2: float = 0.006
 ROTTEN_SHADOW_DASH_DURATION: float = 0.08 # seconds
 # rotten shadow laser
 DASH_DISTANCE_THRESHOLD: int = 450
-ROTTEN_SHADOW_LASER_CHARGE_TIME_1 = 1.3     # seconds
-ROTTEN_SHADOW_LASER_CHARGE_TIME_2 = 1.1     # seconds
-ROTTEN_SHADOW_LASER_DURATION_1 = 0.7        # seconds
-ROTTEN_SHADOW_LASER_DURATION_2 = 0.3        # seconds
-ROTTEN_SHADOW_LASER_WIDTH = 100
+ROTTEN_SHADOW_LASER_CHARGE_TIME_1: float = 1.3     # seconds
+ROTTEN_SHADOW_LASER_CHARGE_TIME_2: float = 1.1     # seconds
+ROTTEN_SHADOW_LASER_DURATION_1: float = 0.7        # seconds
+ROTTEN_SHADOW_LASER_DURATION_2: float = 0.3        # seconds
+ROTTEN_SHADOW_LASER_WIDTH: int = 100
 ROTTEN_SHADOW_PHASE_END_DURATION: float = 7.2 # seconds
 
 
 # --- DEFAULT KEY BINDINGS ---
-KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
+KEY_BINDINGS: dict[str, int] = {'move_left': pygame.K_a,
                                'move_right': pygame.K_d,
                                'move_up': pygame.K_w,
                                'move_down': pygame.K_s,
@@ -404,22 +404,22 @@ KEY_BINDINGS: dict[str:int] = {'move_left': pygame.K_a,
 
 # --- CONTROLLER ---
 CONTROLLER_DEADZONE: float = 0.3
-PAD_AXIS_MOVE_X = 0    # left stick horizontal
-PAD_AXIS_MOVE_Y = 1    # left stick vertical
-PAD_AXIS_SHOOT_X = 2   # right stick horizontal
-PAD_AXIS_SHOOT_Y = 3   # right stick vertical
-PAD_A_BUTTON = 0
-PAD_B_BUTTON = 1
-PAD_X_BUTTON = 2
-PAD_Y_BUTTON = 3
-PAD_HOME_BUTTON = 5
-PAD_SELECT_BUTTON = 4
-PAD_START_BUTTON = 6
-PAD_LEFT_SHOULDER_BUTTON = 9
-PAD_RIGHT_SHOULDER_BUTTON = 10
-PAD_D_PAD_UP = 11
-PAD_D_PAD_DOWN = 12
-PAD_D_PAD_LEFT = 13
-PAD_D_PAD_RIGHT = 14
-PAD_LEFT_JOYSTICK = 7
-PAD_RIGHT_JOYSTICK = 8
+PAD_AXIS_MOVE_X: int = 0    # left stick horizontal
+PAD_AXIS_MOVE_Y: int = 1    # left stick vertical
+PAD_AXIS_SHOOT_X: int = 2   # right stick horizontal
+PAD_AXIS_SHOOT_Y: int = 3   # right stick vertical
+PAD_A_BUTTON: int = 0
+PAD_B_BUTTON: int = 1
+PAD_X_BUTTON: int = 2
+PAD_Y_BUTTON: int = 3
+PAD_HOME_BUTTON: int = 5
+PAD_SELECT_BUTTON: int = 4
+PAD_START_BUTTON: int = 6
+PAD_LEFT_SHOULDER_BUTTON: int = 9
+PAD_RIGHT_SHOULDER_BUTTON: int = 10
+PAD_D_PAD_UP: int = 11
+PAD_D_PAD_DOWN: int = 12
+PAD_D_PAD_LEFT: int = 13
+PAD_D_PAD_RIGHT: int = 14
+PAD_LEFT_JOYSTICK: int = 7
+PAD_RIGHT_JOYSTICK: int = 8

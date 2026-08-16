@@ -4,47 +4,47 @@ from utils import *
 class Player(pygame.sprite.Sprite):
     """Player sprite: handles movement, abilities, and player presisentation."""
 
-    def __init__(self, game, groups):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.GroupSingle|pygame.sprite.LayeredUpdates]) -> None:
         # --- parameters ---
         self.game = game
         self._layer = self.game.LAYERS['player']
         super().__init__(groups)
         
         # --- gameplay attributes ---
-        self.is_alive = True
-        self.facing_right = False if self.game.current_phase == 'arrow' else True
-        self.health = 2
-        self.extra_life = 0
-        self.speed = DEFAULT_PLAYER_SPEED
-        self.iframes = False
-        self.iframe_start = 0.0
-        self.banana_boosted = False
-        self.banana_boost_start = 0.0
-        self.fire_power = False
-        self.fire_power_start = 0.0
-        self.fireball_ready = True
-        self.last_fireball = 0.0
+        self.is_alive: bool = True
+        self.facing_right: bool = False if self.game.current_phase == 'arrow' else True
+        self.health: int = 2
+        self.extra_life: int = 0
+        self.speed: int = DEFAULT_PLAYER_SPEED
+        self.iframes: bool = False
+        self.iframe_start: float = 0.0
+        self.banana_boosted: bool = False
+        self.banana_boost_start: float = 0.0
+        self.fire_power: bool = False
+        self.fire_power_start: float = 0.0
+        self.fireball_ready: bool = True
+        self.last_fireball: float = 0.0
 
         # --- ability system ---
-        self.want_ability = False
-        self.can_collide = True
-        self.ability_ready = True
-        self.ability_start_time = 0.0
-        self.ability_cooldown = PLAYER_ABILITY_COOLDOWN
-        self.ability_duration = PLAYER_ABILITY_DURATION
+        self.want_ability: bool = False
+        self.can_collide: bool = True
+        self.ability_ready: bool = True
+        self.ability_start_time: float = 0.0
+        self.ability_cooldown: float = PLAYER_ABILITY_COOLDOWN
+        self.ability_duration: float = PLAYER_ABILITY_DURATION
 
         # s--- dash system ---
-        self.want_dash = False
-        self.dashing = False
-        self.dash_ready = True
-        self.dash_start_time = 0.0
-        self.dash_cooldown = DASH_COOLDOWN
-        self.dash_duration = DASH_DURATION
+        self.want_dash: bool = False
+        self.dashing: bool = False
+        self.dash_ready: bool = True
+        self.dash_start_time: float = 0.0
+        self.dash_cooldown: float = DASH_COOLDOWN
+        self.dash_duration: float = DASH_DURATION
 
         # --- rendering ---
-        self.image = self.game.player_sprite_variants[self.health]
-        self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.image.get_frect(center=WINDOW_CENTER)
+        self.image: pygame.Surface = self.game.player_sprite_variants[self.health]
+        self.mask: pygame.Mask = pygame.mask.from_surface(self.image)
+        self.rect: pygame.FRect = self.image.get_frect(center=WINDOW_CENTER)
 
         # --- glow sprite ---
         self.glow_sprite = PlayerGlow(self.game,
@@ -55,8 +55,8 @@ class Player(pygame.sprite.Sprite):
                                                      (self.game.all_sprites, self.game.player_effect_sprites))
 
         # --- motion setup ---
-        self.direction = pygame.Vector2()
-        self.dash_direction = pygame.Vector2()
+        self.direction: pygame.Vector2 = pygame.Vector2(0,0)
+        self.dash_direction: pygame.Vector2 = pygame.Vector2(0,0)
 
     def activate_iframes(self):
         if self.can_collide:
@@ -281,8 +281,8 @@ class PlayerFireOutline(pygame.sprite.Sprite):
         self._layer = self.game.LAYERS['player_fire_outline']
         super().__init__(groups)
 
-        self.image = pygame.Surface((1,1), pygame.SRCALPHA)
-        self.rect = self.image.get_rect()
+        self.image: pygame.Surface = pygame.Surface((1,1), pygame.SRCALPHA)
+        self.rect: pygame.Rect = self.image.get_rect()
 
     def update(self, dt):
         if not self.game.player.is_alive:
@@ -404,7 +404,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
 
         center = self.rect.center
         self.image = img
-        self.rect = self.image.get_rect(center=center)
+        self.rect: pygame.Rect = self.image.get_rect(center=center)
 
         if t >= 1.0:
             self.kill()
@@ -434,7 +434,7 @@ class Fireball(pygame.sprite.Sprite):
             origin = pygame.Vector2(origin)
 
         center = origin + self.direction * spawn_offset
-        self.rect = self.image.get_frect(center=center)
+        self.rect: pygame.FRect = self.image.get_frect(center=center)
         self.mask = pygame.mask.from_surface(self.image)
 
     def update(self, dt):
@@ -456,8 +456,8 @@ class AnimatedBackground(pygame.sprite.Sprite):
         self.index = 0
         self.timer = 0
         self.interval = interval
-        self.image = self.frames[self.index]
-        self.rect = self.image.get_rect(topleft=(-WINDOW_WIDTH,0) if self.scroll == 'right' else (0, 0))
+        self.image: pygame.Surface = self.frames[self.index]
+        self.rect: pygame.Rect = self.image.get_rect(topleft=(-WINDOW_WIDTH,0) if self.scroll == 'right' else (0, 0))
         self.speed = 0
 
     def update(self, dt):
@@ -490,7 +490,7 @@ class Coin(pygame.sprite.Sprite):
         self.image = self.frames[self.index]
         width, height = self.image.get_size()
         COIN_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(30,WINDOW_HEIGHT-30,bias=spawn_bias)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(30,WINDOW_HEIGHT-30,bias=spawn_bias)), (-1,0)], 'top': [(random_of_spectrum(30,WINDOW_WIDTH-30,bias=spawn_bias),-height/2), (0,1)], 'bottom': [(random_of_spectrum(30,WINDOW_WIDTH-30,bias=spawn_bias),WINDOW_HEIGHT+height/2), (0,-1)]}
-        self.rect = self.image.get_frect(center=(COIN_ATTRIBUTES[spawn][0]))
+        self.rect: pygame.FRect = self.image.get_frect(center=(COIN_ATTRIBUTES[spawn][0]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(COIN_ATTRIBUTES[spawn][1])
 
@@ -513,10 +513,10 @@ class Fruit(pygame.sprite.Sprite):
         super().__init__(groups)
         self.speed = speed
         self.rotate = rotate
-        self.image = self.game.fruit_sprite_variants[self.__class__]
+        self.image: pygame.Surface = self.game.fruit_sprite_variants[self.__class__]
         width, height = self.image.get_size()
         FRUIT_ATTRIBUTES: dict = {'left': [(-width/2,random_of_spectrum(50,WINDOW_HEIGHT-50,bias=spawn_bias)), (1,0)], 'right': [(WINDOW_WIDTH+width/2,random_of_spectrum(50,WINDOW_HEIGHT-50, bias=spawn_bias)), (-1,0)], 'top': [(random_of_spectrum(50,WINDOW_WIDTH-50, bias=spawn_bias),-height/2), (0,1)], 'bottom': [(random_of_spectrum(50,WINDOW_WIDTH-50),WINDOW_HEIGHT+height/2), (0,-1)]}
-        self.rect = self.image.get_frect(center=(FRUIT_ATTRIBUTES[spawn][0]))
+        self.rect: pygame.FRect = self.image.get_frect(center=(FRUIT_ATTRIBUTES[spawn][0]))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(FRUIT_ATTRIBUTES[spawn][1])
         if self.rotate:
@@ -595,15 +595,17 @@ class Pear(Fruit):
 
 # --- obstacles ---
 class Obstacle(pygame.sprite.Sprite):
-    def __init__(self, game, layer, groups, image, speed):
+    def __init__(self, game, layer, groups, image: pygame.Surface, speed: int):
         self.game = game
         self._layer = layer
         super().__init__(groups)
-        self.image = image
-        self.size = self.image.get_size()
-        self.speed = speed
+        self.image: pygame.Surface = image
+        self.size: tuple[int, int] = self.image.get_size()
+        self.speed: int = speed
         self.effect_text_color = COLOR[(f'{self.size[0]}_' if self.__class__ == Rectangle else '') + f'{str(self.__class__.__name__).lower()}_shot_effect_text']
-
+        self.rect: pygame.Rect|pygame.FRect
+        self.direction: pygame.Vector2
+        
     def handle_getting_shot(self):
         if self not in self.game.boss_obstacle_sprites:
             EffectText(self.game, (self.game.all_sprites, self.game.UI_text_sprites), f"+{POINTS_FOR_OBSTACLE_SHOOT} points", self.game.fonts['effect_texts'], self.effect_text_color, self.rect.center)
@@ -638,14 +640,14 @@ class RotatingObstacle(Obstacle):
 class Rectangle(Obstacle):
     def __init__(self, game, layer, groups, image, speed):
         super().__init__(game, layer, groups, image, speed)
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + self.size[0]/2, random_of_spectrum(0, WINDOW_HEIGHT)))
-        self.mask = pygame.mask.from_surface(self.image)
-        self.direction = pygame.Vector2(-1, 0)
+        self.rect: pygame.FRect = self.image.get_frect(center=(WINDOW_WIDTH + self.size[0]/2, random_of_spectrum(0, WINDOW_HEIGHT)))
+        self.mask: pygame.Mask = pygame.mask.from_surface(self.image)
+        self.direction: pygame.Vector2 = pygame.Vector2(-1, 0)
 
 class Arrow(Obstacle):
     def __init__(self, game, layer, groups, image, speed, spawn_height):
         super().__init__(game, layer, groups, image, speed)
-        self.rect = self.image.get_frect(center=(0 - self.size[0]/2, spawn_height))
+        self.rect: pygame.FRect = self.image.get_frect(center=(0 - self.size[0]/2, spawn_height))
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(1, 0)
 
@@ -735,9 +737,9 @@ class SawBlade(RotatingObstacle):
 
 class Asteroid(RotatingObstacle):
     def __init__(self, game, layer, groups, image, speed, angle=random_of_spectrum(0,360), rotation_speed=random_of_spectrum(-180,180)):
-        ASTEROID_ATTRIBUTES: dict = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
+        ASTEROID_ATTRIBUTES: dict[str, list[tuple[int|float, int|float]]] = {'left': [(-70,random_of_spectrum(0,WINDOW_HEIGHT)), (1,uniform(-0.5,0.5))], 'right': [(WINDOW_WIDTH+70,random_of_spectrum(0,WINDOW_HEIGHT)), (-1,uniform(-0.5,0.5))], 'top': [(random_of_spectrum(0,WINDOW_WIDTH),-70), (uniform(-0.5,0.5),1)], 'bottom': [(random_of_spectrum(0,WINDOW_WIDTH),WINDOW_HEIGHT+70), (uniform(-0.5,0.5),-1)]}
         super().__init__(game, layer, groups, image, speed, angle, rotation_speed)
-        self.spawn_border = random_of_selection(ASTEROID_ATTRIBUTES.keys())
+        self.spawn_border = random_of_selection(list(ASTEROID_ATTRIBUTES.keys()))
         self.rect = self.image.get_frect(center=ASTEROID_ATTRIBUTES[self.spawn_border][0])
         self.mask = pygame.mask.from_surface(self.image)
         self.direction = pygame.Vector2(ASTEROID_ATTRIBUTES[self.spawn_border][1])
@@ -760,23 +762,23 @@ class ShadowGuardian(pygame.sprite.Sprite):
         self.game = game
         self._layer = self.game.LAYERS['bosses']
         super().__init__(groups)
-        self.max_health = SHADOW_GUARDIAN_HEALTH
-        self.current_health = self.max_health
-        self.target_health = self.max_health
-        self.health_ratio = self.max_health / BOSS_HEALTH_BAR_LENGTH
-        self.speed = SHADOW_GUARDIAN_SPEED
-        self.speed_during_summon = SHADOW_GUARDIAN_SPEED_DURING_SUMMON
-        self.image = self.game.shadow_guardian_image
-        self.rect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
+        self.max_health: int = SHADOW_GUARDIAN_HEALTH
+        self.current_health: int = self.max_health
+        self.target_health: int = self.max_health
+        self.health_ratio: float = self.max_health / BOSS_HEALTH_BAR_LENGTH
+        self.speed: int = SHADOW_GUARDIAN_SPEED
+        self.speed_during_summon: int = SHADOW_GUARDIAN_SPEED_DURING_SUMMON
+        self.image: pygame.Surface = self.game.shadow_guardian_image
+        self.rect: pygame.FRect = self.image.get_frect(center=(WINDOW_CENTER[0], -500))
         self.mask = pygame.mask.from_surface(self.image)
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
         self.direction = self.distance_to_player
         self.direction.normalize()
-        self.hurting = False
-        self.hurting_start = 0.0
-        self.current_state = 'follow_player'
-        self.select_next_state = False
-        self.state_start = self.game.play_time
+        self.hurting: bool = False
+        self.hurting_start: float = 0.0
+        self.current_state: str = 'follow_player'
+        self.select_next_state: bool = False
+        self.state_start: float = self.game.play_time
         self.game.shadow_guardian_growl_sound.play()
 
     def track_player(self):
@@ -839,7 +841,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
         if self.select_next_state:
             if self.current_state == 'transition':
                 while self.prev_state is self.current_state or self.current_state == 'transition':
-                    self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+                    self.current_state = random_of_selection(list(self.STATE_DURATIONS.keys()))
             else: 
                 self.prev_state = self.current_state
                 self.current_state = 'transition'
@@ -877,7 +879,7 @@ class ShadowGuardian(pygame.sprite.Sprite):
 
     def shoot_energy_ball(self):
         if not getattr(self, 'energy_ball', None):
-            self.energy_ball = DarkEnergyBall(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.energy_ball_sprites), self.rect.center)
+            self.energy_ball: DarkEnergyBall|None = DarkEnergyBall(self.game, self.game.LAYERS['boss_projectiles'], (self.game.all_sprites, self.game.enemy_sprites, self.game.obstacle_sprites, self.game.boss_obstacle_sprites, self.game.energy_ball_sprites), self.rect.center)
 
 class DarkEnergyBall(pygame.sprite.Sprite):
     def __init__(self, game, layer, groups, pos):
@@ -888,7 +890,7 @@ class DarkEnergyBall(pygame.sprite.Sprite):
         self.health = 2
         self.speed = DARK_ENERGY_BALL_SPEED
         self.image = self.game.dark_energy_ball_image
-        self.rect = self.image.get_frect(center=pos)
+        self.rect: pygame.FRect = self.image.get_frect(center=pos)
         self.mask = pygame.mask.from_surface(self.image)
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
         self.direction = self.distance_to_player
@@ -958,7 +960,7 @@ class RottenShadow(pygame.sprite.Sprite):
         self.speed = ROTTEN_SHADOW_SPEED
         self.speed_during_action = ROTTEN_SHADOW_SPEED_DURING_ACTION
         self.image = self.game.rotten_shadow_image
-        self.rect = self.image.get_frect(center=(WINDOW_WIDTH + 100, WINDOW_CENTER[1]))
+        self.rect: pygame.FRect = self.image.get_frect(center=(WINDOW_WIDTH + 100, WINDOW_CENTER[1]))
         self.mask = pygame.mask.from_surface(self.image)
         self.distance_to_player = pygame.Vector2(self.game.player.rect.center) - pygame.Vector2(self.rect.center)
         self.direction = self.distance_to_player
@@ -1094,7 +1096,7 @@ class RottenShadow(pygame.sprite.Sprite):
 
     # states/phases
     def set_state(self, dt):
-        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[self.current_state]: self.select_next_state = True
+        if self.game.play_time - self.state_start >= self.STATE_DURATIONS[str(self.current_state)]: self.select_next_state = True
         if self.select_next_state:
             if self.current_state == 'laser':
                 self.laser_charging = False
@@ -1104,7 +1106,7 @@ class RottenShadow(pygame.sprite.Sprite):
                     self.laser_beam = None
             if self.current_state == 'transition':
                 while self.prev_state is self.current_state or self.current_state == 'transition':
-                    self.current_state = random_of_selection(self.STATE_DURATIONS.keys())
+                    self.current_state = random_of_selection(list(self.STATE_DURATIONS.keys()))
             else: 
                 self.prev_state = self.current_state
                 self.current_state = 'transition'
@@ -1222,7 +1224,7 @@ class LaserBeam(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(beam_surf, angle)
 
         # Position so that the beam starts at origin and extends forward.
-        self.rect = self.image.get_rect()
+        self.rect: pygame.Rect = self.image.get_rect()
         self.rect.center = self.origin + self.direction * (self.length // 2)
 
         self.mask = pygame.mask.from_surface(self.image)
@@ -1249,7 +1251,7 @@ class RottenShadowDeathAnimation(pygame.sprite.Sprite):
         super().__init__(groups)
         self.frame_index = 0
         self.image = self.game.rotten_shadow_death_animation_frames[0]
-        self.rect = self.image.get_frect(center=self.game.rotten_shadow.rect.center)
+        self.rect: pygame.FRect = self.image.get_frect(center=self.game.rotten_shadow.rect.center)
 
     def update(self, dt):
         if self.frame_index <= len(self.game.rotten_shadow_death_animation_frames):
@@ -1271,10 +1273,10 @@ class EffectText(pygame.sprite.Sprite):
         super().__init__(groups)
         base = font.render(text, True, color)
         shadow = font.render(text, True, (COLOR['effect_text_shadow']))
-        self.image = pygame.Surface(base.get_size(), pygame.SRCALPHA)
+        self.image: pygame.Surface = pygame.Surface(base.get_size(), pygame.SRCALPHA)
         self.image.blit(shadow, (2, 2))
         self.image.blit(base, (0, 0))
-        self.rect = self.image.get_rect(center=pos)
+        self.rect: pygame.Rect = self.image.get_rect(center=pos)
         self.spawn = perf_counter()
         self.lifetime = lifetime
         self.rise = rise
@@ -1326,7 +1328,7 @@ class ObjectGlow(pygame.sprite.Sprite):
 
         self.base_glow = ObjectGlow.CACHE[key]
         self.image = self.base_glow.copy()
-        self.rect = self.image.get_rect(center=(object.rect.centerx + self.offsetx, object.rect.centery + self.offsety))
+        self.rect: pygame.Rect = self.image.get_rect(center=(object.rect.centerx + self.offsetx, object.rect.centery + self.offsety))
 
     def update(self, dt):
         if not self.object.alive():
@@ -1349,10 +1351,10 @@ class RainDrop(pygame.sprite.Sprite):
         self._layer = layer
         super().__init__(groups)
         self.image = image
-        self.rect = self.image.get_frect(center=(random_of_spectrum(0, WINDOW_WIDTH), -self.image.get_height()/2))
+        self.rect: pygame.FRect = self.image.get_frect(center=(random_of_spectrum(0, WINDOW_WIDTH), -self.image.get_height()/2))
         self.mask = pygame.mask.from_surface(self.image)
         self.speed = speed
-        self.direction = pygame.Vector2(random_of_selection((-0.05, 0, 0.05)), 1)
+        self.direction = pygame.Vector2(random_of_selection((-0.05, 0.0, 0.05)), 1)
 
     def update(self, dt):
         self.rect.center += dt * self.speed * self.direction
@@ -1430,7 +1432,7 @@ class GameOverApple(Apple):
         rotated = pygame.transform.rotozoom(self.base_image, angle_deg, 1.0)
 
         self.image = rotated
-        self.rect = self.image.get_frect(center=self.body.position)
+        self.rect: pygame.FRect = self.image.get_frect(center=self.body.position)
         self.mask = pygame.mask.from_surface(self.image)
 
 class GameOverChili(Chili):

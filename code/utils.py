@@ -1,26 +1,29 @@
 from settings import *
 import settings
 
+T = TypeVar('T')
+
 # --- essential game utilities ---
-def clear_input():
+def clear_input() -> None:
     """Use this to prevent input from carrying over to the next screen."""
 
     pygame.event.clear()
     pygame.key.get_pressed()
     pygame.mouse.get_pressed()
 
-def kill_sprites(group, exceptions: tuple = (), space=None):
+def kill_sprites(group, exceptions: tuple = (), space: Optional[pymunk.Space] = None) -> None:
     for sprite in group:
         if sprite not in exceptions:
-            if hasattr(sprite, 'body') and hasattr(sprite, 'shape'):
-                space.remove(sprite.body, sprite.shape)
+            if space is not None:
+                if hasattr(sprite, 'body') and hasattr(sprite, 'shape'):
+                    space.remove(sprite.body, sprite.shape)
             sprite.kill()
 
-def close_game():
+def close_game() -> None:
     pygame.quit()
     sys.exit()
 
-def save_settings(game):
+def save_settings(game: Game) -> None:
     global MASTER_VOLUME, MUSIC_VOLUME, SFX_VOLUME
 
     save_data = {}
@@ -40,7 +43,7 @@ def save_settings(game):
     with open(game.SETTINGS_FILE, "w") as f:
         json.dump(save_data, f, indent=2)
 
-def save_game(game):
+def save_game(game: Game) -> None:
     # update record if needed
     if STATS['score'] > STATS['record']:
         STATS['record'] = STATS['score']
@@ -60,13 +63,13 @@ def save_game(game):
     with open(game.SAVE_FILE, "w") as f:
         json.dump(save_data, f, indent=2)
 
-def get_scaled_mouse_pos(game):
+def get_scaled_mouse_pos(game: Game) -> tuple[int, int]:
     mouse_x, mouse_y = pygame.mouse.get_pos()
     scale_x = BASE_RESOLUTION[0] / game.window.get_width()
     scale_y = BASE_RESOLUTION[1] / game.window.get_height()
     return int(mouse_x * scale_x), int(mouse_y * scale_y)
 
-def change_track(game, key, fade_out=1, fade_in=1, loop=True):
+def change_track(game: Game, key: str, fade_out: int = 1, fade_in: int = 1, loop: bool = True) -> None:
     """Switch to another track while preserving base volume."""
 
     if hasattr(game, 'music_channel') and game.music_channel and game.music_channel.get_busy():
@@ -74,10 +77,10 @@ def change_track(game, key, fade_out=1, fade_in=1, loop=True):
 
     track = game.tracks[key]
     game.music_channel = track.play(loops=-1 if loop else 0, fade_ms=fade_in)
-    game.music_channel.set_volume(game.base_volumes[key])
+    if game.music_channel: game.music_channel.set_volume(game.base_volumes[key])
     game.current_track = key
 
-def fade_to_black(game, duration=FADE_TO_BLACK_DURATION, smoothness=FADE_TO_BLACK_SMOOTHNESS):
+def fade_to_black(game: Game, duration: float = FADE_TO_BLACK_DURATION, smoothness: int = FADE_TO_BLACK_SMOOTHNESS) -> None:
     """Fade the screen to black over a fixed duration (seconds), with given smoothness."""
     
     bar_width = WINDOW_WIDTH / smoothness
@@ -97,20 +100,20 @@ def fade_to_black(game, duration=FADE_TO_BLACK_DURATION, smoothness=FADE_TO_BLAC
         if progress >= 1.0:
             break
 
-def present_frame(game):
+def present_frame(game: Game) -> None:
     window_w, window_h = game.window.get_size()
     scaled = pygame.transform.smoothscale(game.screen, (window_w, window_h))
     game.window.blit(scaled, (0, 0))
     pygame.display.flip()
 
-def toggle_fullscreen(game):
-    game.fullscreen = not getattr(game, 'fullscreen', True)
+def toggle_fullscreen(game: Game) -> None:
+    game.fullscreen = not game.fullscreen
     if game.fullscreen:
         game.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
     else:
         game.window = pygame.display.set_mode(BASE_RESOLUTION)
 
-def set_phase_parameters(game, speeds: list, rotation_speeds = [0,0,0,0], spawn_rate_factors = [1,1,1], background_speeds = [0,0,0,0]):
+def set_phase_parameters(game: Game, speeds: tuple[int,int,int,int], rotation_speeds: tuple[int, int, int, int] = (0,0,0,0), spawn_rate_factors: tuple[float, float, float] = (1,1,1), background_speeds: tuple[int, int, int, int] = (0,0,0,0)) -> tuple[int, int, float, list[float]]:
     if game.play_time - game.phase_start < FIRST_OBSTACLE_PHASE_END:
         speed = speeds[0]
         rotation_speed = rotation_speeds[0]
@@ -138,7 +141,7 @@ def set_phase_parameters(game, speeds: list, rotation_speeds = [0,0,0,0], spawn_
     return speed, rotation_speed, spawn_rate_factor, weight
 
 # --- randomizers ---
-def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: float=None) -> int|float:
+def random_of_spectrum(start: int, end: int, as_float: bool = False, bias: Optional[float] = None) -> int|float:
     """Return random number from [start, end].
     - as_float: True → return float, False → return integer
     - bias: if given (0.0–1.0), biases result toward one end
@@ -149,7 +152,7 @@ def random_of_spectrum(start: int|float, end: int|float, as_float=False, bias: f
         return value if as_float else int(value)
     return uniform(start, end) if as_float else randint(start, end)
 
-def random_of_selection(selection: Sequence, weights: Optional[Sequence[float]] =None, unique: bool=False) -> Sequence[Any]:
+def random_of_selection(selection: Sequence[T], weights: Optional[Sequence[float]] = None, unique: bool = False) -> T:
     """Return random element from a collection.
     - weights: optional list of probabilities (must match len(selection))
     - unique: if True, convert to set before choice (removes duplicates)"""
@@ -160,7 +163,7 @@ def random_of_selection(selection: Sequence, weights: Optional[Sequence[float]] 
     return choice(seq)
 
 # --- one time uses ---
-def save_runtime(game):
+def save_runtime(game: Game) -> None:
     """Save total runtime of the game. This method gets called every time the program closes."""
     save_data = {}
 
@@ -176,7 +179,7 @@ def save_runtime(game):
     with open(game.SAVE_FILE, 'w') as f:
         json.dump(save_data, f, indent=2)
 
-def title_flash(game):
+def title_flash(game: Game) -> None:
     """Play title flash and transition to play mode."""
     
     game.title_flash_sound.play()
@@ -192,16 +195,16 @@ def title_flash(game):
         game.clock.tick(FPS)
 
 # --- time system ---
-def update_play_time(game):
+def update_play_time(game: Game) -> None:
     if not game.is_paused and game.play_start is not None:
         game.play_time = perf_counter() - game.play_start - game.total_paused
 
-def pause_play_time(game):
+def pause_play_time(game: Game) -> None:
     if not game.is_paused:
         game.pause_start = perf_counter()
         game.is_paused = True
 
-def resume_play_time(game):
+def resume_play_time(game: Game) -> None:
     if game.is_paused:
         game.total_paused += perf_counter() - game.pause_start
         game.is_paused = False
@@ -210,9 +213,9 @@ def resume_play_time(game):
 class ClickableIcon:
     """Clickable image button used in the pause menu."""
 
-    def __init__(self, image, pos: tuple, anchor: str = "center", hover_scale_factor: float = 1.1):
+    def __init__(self, image: pygame.Surface, pos: tuple[int, int], anchor: str = "center", hover_scale_factor: float = 1.1) -> None:
         self.base_image = image
-        self.rect = image.get_rect()
+        self.rect: pygame.Rect = image.get_rect()
         setattr(self.rect, anchor, pos)
         self.scale_factor = hover_scale_factor
 
@@ -222,14 +225,14 @@ class ClickableIcon:
         self.hover_changed = False
         self.clicked = False
 
-    def update(self, mouse_pos: tuple[float, float], mouse_click: bool):
+    def update(self, mouse_pos: tuple[float, float], mouse_click: bool) -> None:
         prev_hover = self.hovered
         self.hovered = any((self.rect.collidepoint(mouse_pos), self.controller_hovered))
         self.controller_hovered = False if self.rect.collidepoint(mouse_pos) else self.controller_hovered
         self.hover_changed = (self.hovered != prev_hover)
         self.clicked = mouse_click and not self.controller_hovered and self.hovered
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface) -> None:
         scale = self.scale_factor if self.hovered else 1.0
         surf = pygame.transform.rotozoom(self.base_image, 0, scale)
         rect = surf.get_rect(center=self.rect.center)
@@ -238,7 +241,7 @@ class ClickableIcon:
 class ClickableText:
     """Clickable text button that changes color when hovered."""
 
-    def __init__(self, text, font, pos, color, hover_color, click_sound=None, hover_sound=None, anchor="center"):
+    def __init__(self, text: str, font: pygame.Font, pos: tuple[float, float], color: str, hover_color: str, click_sound: Optional[pygame.Sound] = None, hover_sound: Optional[pygame.Sound] = None, anchor: str = "center") -> None:
         self.font = font
         self.text = text
         self.color = color
@@ -248,8 +251,8 @@ class ClickableText:
         self.click_sound = click_sound
         self.hover_sound = hover_sound
 
-        self.surface = self.font.render(self.text, True, self.color)
-        self.rect = self.surface.get_rect()
+        self.surface: pygame.Surface = self.font.render(self.text, True, self.color)
+        self.rect: pygame.Rect = self.surface.get_rect()
         setattr(self.rect, self.anchor, self.pos)
 
         self.controller_hovered = False
@@ -258,7 +261,7 @@ class ClickableText:
         self.hover_changed = False
         self.clicked = False
 
-    def update(self, mouse_pos, mouse_click):
+    def update(self, mouse_pos: tuple[float, float], mouse_click: bool) -> None:
         prev_hover = self.hovered
         self.hovered = any((self.rect.collidepoint(mouse_pos), self.controller_hovered))
         self.controller_hovered = False if self.rect.collidepoint(mouse_pos) else self.controller_hovered
@@ -274,27 +277,27 @@ class ClickableText:
         if self.clicked and self.click_sound:
             self.click_sound.play()
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface):
         screen.blit(self.surface, self.rect)
 
 class CreditsText:
     """Texts that appear on the credits screen and move upwards."""
 
-    def __init__(self, text, font, pos, color):
+    def __init__(self, text: str, font: pygame.Font, pos: tuple[float, float], color: str) -> None:
         self.text = text
         self.font = font
         self.pos = pos
         self.color = color
 
         self.surface = self.font.render(self.text, True, self.color)
-        self.rect = self.surface.get_rect()
+        self.rect: pygame.Rect = self.surface.get_rect()
         setattr(self.rect, 'center', self.pos)
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         self.rect.bottom -= 60 * dt
         self.surface = self.font.render(self.text, True, self.color)
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface) -> None:
         screen.blit(self.surface, self.rect)
 
 # --- debugging and performance check ---
@@ -312,23 +315,23 @@ def get_func_time(func: Callable) -> Callable:
 
     return wrapper
 
-def print_game_time(game):
+def print_game_time(game: Game) -> None:
     '''DEBUGGING TOOL: Use this at top of the event handler function to measure times.'''
 
     print(f"[time] played = {game.play_time:.3f}s   stopped = {game.total_paused:.3f}s   absolute runtime = {game.runtime}")
 
-def print_track_volume(game):
+def print_track_volume(game: Game) -> None:
     """DEBUGGING TOOL: Show current track, its base volume, and the current channel volume."""
+    if game.music_channel:
+        print("Track:", game.current_track,"| Default Volume:", game.tracks[game.current_track].get_volume(), "| Total Volume:", game.tracks[game.current_track].get_volume()*game.music_channel.get_volume())
 
-    print("Track:", game.current_track,"| Default Volume:", game.tracks[game.current_track].get_volume(), "| Total Volume:", game.tracks[game.current_track].get_volume()*game.music_channel.get_volume())
-
-def print_sprite_counts(game):
+def print_sprite_counts(game: Game) -> None:
     """DEBUGGING TOOL: Show count of sprites for every sprite group."""
+    print(f"Total Sprites: {len(game.all_sprites)} | Coin Sprites: {len(game.coin_sprites)} | Fruit Sprites: {len(game.fruit_sprites)} | Obstacle Sprites: {len(game.obstacle_sprites)} | Fireball Sprites: {len(game.player_fireball_sprites)} | UI Texts: {len(game.UI_text_sprites)} | Background: {len(game.background_sprites)} | Player Sprite: {len(game.player_group)}")
 
-    print(f"Total Sprites: {len(game.all_sprites)} | Coin Sprites: {len(game.coin_sprites)} | Fruit Sprites: {len(game.fruit_sprites)} | Obstacle Sprites: {len(game.obstacle_sprites)} | Fireball Sprites: {len(game.fireball_sprites)} | UI Texts: {len(game.UI_text_sprites)} | Background: {len(game.background_sprites)} | Player Sprite: {len(game.player_group)}")
-
-def show_rects(sprites, surf):
+def show_rects(sprites: list[pygame.sprite.Sprite], surf: pygame.Surface) -> None:
     """DEBUGGING TOOL: Show rectangles of sprites."""
 
     for sprite in sprites:
-        pygame.draw.rect(surf, (255,0,0), sprite.rect, 1)
+        if sprite.rect:
+            pygame.draw.rect(surf, (255,0,0), sprite.rect, 1)

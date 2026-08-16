@@ -150,7 +150,7 @@ class Game:
                             for button in (self.yes_btn, self.no_btn):
                                 if button.hovered or button.controller_hovered:
                                     button.controller_clicked = True
-                                    button.click_sound.play()
+                                    if button.click_sound: button.click_sound.play()
 
                 elif event.type == pygame.JOYBUTTONDOWN:
                     if getattr(self, 'quit_prompt', False):
@@ -166,7 +166,7 @@ class Game:
                             for button in (self.yes_btn, self.no_btn):
                                 if button.hovered or button.controller_hovered:
                                     button.controller_clicked = True
-                                    button.click_sound.play()
+                                    if button.click_sound: button.click_sound.play()
 
                         elif event.button == PAD_B_BUTTON:
                             self.quit_prompt = False; self.yes_btn.controller_hovered, self.no_btn.controller_hovered = False, False
@@ -418,6 +418,8 @@ class Game:
         # --- enter actions ---
         if new == 'start':
             if old == 'game_over':
+                if self.music_channel: self.music_channel.stop()
+                pygame.mixer.music.stop()
                 kill_sprites(self.all_sprites, space=self.menu_space)
                 self.init_game_state()
                 self.init_sprites()
@@ -426,7 +428,7 @@ class Game:
         elif new == 'play':
             if old == 'start':
                 change_track(self, self.current_phase, fade_out=MUSIC_FADE_OUT_ON_GAME_START, fade_in=MUSIC_FADE_IN_ON_GAME_START, loop=False)
-                kill_sprites(self.all_sprites, exceptions=[self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background], space=self.menu_space)
+                kill_sprites(self.all_sprites, exceptions=(self.player, self.player.glow_sprite, self.player.fire_outline_sprite, self.background), space=self.menu_space)
                 self.play_start = perf_counter()
                 pygame.key.get_pressed()
                 clear_input()
@@ -436,7 +438,7 @@ class Game:
                 for button in self.main_settings_buttons:
                     button.controller_hovered = False
 
-                self.music_channel.unpause()
+                if self.music_channel: self.music_channel.unpause()
                 resume_play_time(self)
 
         elif new == 'stop':
@@ -449,7 +451,7 @@ class Game:
             self.controller_hover_icon = 1
             self.controller_hover_main_settings_text = 1
             if old != 'settings':
-                self.music_channel.pause()
+                if self.music_channel: self.music_channel.pause()
                 pause_play_time(self)
             
         elif new == 'game_over':
@@ -484,12 +486,12 @@ class Game:
         flicker = MAX_FLICKER_INT + (MAX_FLICKER_INT - MIN_FLICKER_INT) * sin(perf_counter() * TITLE_FLICKER_SPEED)
         base_surface = self.text_surfaces['title']
         scaled = pygame.transform.rotozoom(base_surface, 0, 1.1) if self.hovered else base_surface
-        scaled.set_alpha(flicker)
+        scaled.set_alpha(int(flicker))
         rect = scaled.get_rect(center=self.text_rects['title'].center)
         self.screen.blit(scaled, rect)
         self.start_secrets(dt)
 
-    def start_secrets(self, dt):
+    def start_secrets(self, dt): 
         if getattr(self, 'show_start_hint', False):
             self.screen.blit(self.text_surfaces['start_hint'], self.text_rects['start_hint'])
 
@@ -751,7 +753,7 @@ class Game:
                       self.LAYERS['obstacles'],
                       (self.all_sprites, self.secret_obstacles),
                       self.rectangle_sprite_variants[3],
-                      random_of_spectrum(300, 500))
+                      int(random_of_spectrum(300, 500)))
             self.show_rectangle = False
 
         if getattr(self, 'secret_obstacles', False):
@@ -765,7 +767,7 @@ class Game:
                         self.damage_sound.play()
             if getattr(self, 'secret_fireballs', False):
                 for obstacle in self.secret_obstacles.sprites():
-                    if pygame.sprite.groupcollide(self.secret_obstacles, self.secret_fireballs, True, True, pygame.sprite.collide_mask):
+                    if pygame.sprite.groupcollide(self.secret_obstacles, self.secret_fireballs, True, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2))):
                         self.eat_fruit_sound.play()
 
     def settings_menu(self, dt):
@@ -991,8 +993,8 @@ class Game:
     def init_paths(self):
         # --- detect running mode ---
         if getattr(sys, "frozen", False):
-            base_dir = sys._MEIPASS
-            user_dir = os.path.expanduser(join("~", "Documents", "ShadowDrift"))
+            base_dir: str = sys._MEIPASS # type: ignore
+            user_dir: str = os.path.expanduser(join("~", "Documents", "ShadowDrift"))
         else:
             base_dir = os.path.dirname(os.path.dirname(__file__))
             user_dir = join(base_dir, "data")
@@ -1001,14 +1003,14 @@ class Game:
         os.makedirs(user_dir, exist_ok=True)
 
         # --- asset file paths ---
-        self.BASE_DIR = base_dir
-        self.USER_DIR = user_dir
-        self.IMG_DIR = join(base_dir, "images")
-        self.AUDIO_DIR = join(base_dir, "audio")
-        self.DATA_DIR = join(base_dir, "data")
-        self.FONT_DIR = join(base_dir, "fonts")
-        self.SAVE_FILE = join(user_dir, "save.json")
-        self.SETTINGS_FILE = join(user_dir, "settings.json")
+        self.BASE_DIR: str = base_dir
+        self.USER_DIR: str = user_dir
+        self.IMG_DIR: str = join(base_dir, "images")
+        self.AUDIO_DIR: str = join(base_dir, "audio")
+        self.DATA_DIR: str = join(base_dir, "data")
+        self.FONT_DIR: str = join(base_dir, "fonts")
+        self.SAVE_FILE: str = join(user_dir, "save.json")
+        self.SETTINGS_FILE: str = join(user_dir, "settings.json")
 
     def init_pygame(self):
         try:
@@ -1017,17 +1019,17 @@ class Game:
             print("Audio preinit failed. Using defaults.")
         pygame.init()
         pygame.mixer.set_num_channels(128)
-        self.clock = pygame.time.Clock()
+        self.clock: pygame.Clock = pygame.time.Clock()
 
         # --- initialize controller ---
         pygame.joystick.init()
-        self.controller = None
+        self.controller: Optional[pygame.joystick.JoystickType] = None
         if pygame.joystick.get_count() > 0:
             self.controller = pygame.joystick.Joystick(0)
             print(f"Using {self.controller.get_name()}")
 
     def init_menu_physics(self):
-        self.menu_space = pymunk.Space()
+        self.menu_space: pymunk.Space = pymunk.Space()
         self.menu_space.gravity = (0, MENU_GRAVITY)
         
         # --- menu floor ---
@@ -1231,7 +1233,7 @@ class Game:
                                          Pear: ("clear obstacles", 'pear_effect_text')}
         
         # --- define credits texts ---
-        self.credits_texts: list = ("Director",
+        self.credits_texts: tuple[str, ...] = ("Director",
                               "Producer",
                               "Designer",
                               "Pixel Artist",
@@ -1419,17 +1421,20 @@ class Game:
     def init_game_state(self):
         # --- Game starting conditions ---
         STATS['score'] = 0
-        self.state = None
-        self.requested_state = 'start'
-        self.active_settings_tab = None
+        self.state: str|None = None
+        self.requested_state: str|None = 'start'
+        self.active_settings_tab: str|None = None
         self.waiting_for_key = None
         self.score_event = pygame.event.custom_type()
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
+        self.music_channel: Optional[pygame.mixer.Channel] = None
+        self.current_track: Optional[str] = None
+        self.fullscreen: bool = True
 
         # --- starting phase ---
-        self.current_phase = 'rectangle'
-        self.prev_phase = self.current_phase
-        self.completed_phases = set()
+        self.current_phase: str = 'rectangle'
+        self.prev_phase: str = self.current_phase
+        self.completed_phases: Set[str] = set()
 
         # --- spawn timers ---
         self.next_rectangle_spawn_time = RECTANGLE_SPAWN_TIME
@@ -1447,18 +1452,18 @@ class Game:
 
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
-            self.absolute_start_time = perf_counter()
-        self.play_time = 0.0
-        self.phase_start = 0.0
-        self.play_start = None
-        self.pause_start = 0.0
-        self.total_paused = 0.0
-        self.is_paused = False
+            self.absolute_start_time: float = perf_counter()
+        self.play_time: float = 0.0
+        self.phase_start: float = 0.0
+        self.play_start: float|None = None
+        self.pause_start: float = 0.0
+        self.total_paused: float = 0.0
+        self.is_paused: bool = False
 
         # start player
-        self.start_ability_time = 0.0
-        self.start_ability_duration = PLAYER_ABILITY_DURATION
-        self.start_ability = False
+        self.start_ability_time: float = 0.0
+        self.start_ability_duration: float = PLAYER_ABILITY_DURATION
+        self.start_ability: bool = False
 
         for attr in (# reset start secrets
                      'show_start_hint', 'show_icicle', 'show_blueberry', 'show_start_player','start_player_pos','start_player_vel','start_player_facing_right',
@@ -1525,7 +1530,7 @@ class Game:
 
         # --- instantiate player sprite ---
         Player(self, (self.all_sprites, self.player_group))
-        self.player = self.player_group.sprite
+        self.player: Player | Any = self.player_group.sprite
 
     def load_save(self):
         try:
@@ -1611,7 +1616,7 @@ class Game:
             else:
                 self.prev_phase = self.current_phase
                 while self.current_phase == self.prev_phase or self.current_phase in self.completed_phases:
-                    self.current_phase = random_of_selection(PHASE_PROBABILITIES.keys(), PHASE_PROBABILITIES.values())
+                    self.current_phase = random_of_selection(list(PHASE_PROBABILITIES.keys()), list(PHASE_PROBABILITIES.values()))
             change_track(self, self.current_phase, fade_out=100, fade_in=150, loop=True if self.current_phase in ('shadow_guardian', 'rotten_shadow') else False)
             self.background = AnimatedBackground(self,
                                                  (self.all_sprites, self.background_sprites),
@@ -1912,7 +1917,7 @@ class Game:
                 self.init_shadow_guardian_phase_end = False
                 self.had_shadow_guardian = True
                 self.phase_ended = True
-                self.music_channel.fadeout(3000)
+                if self.music_channel: self.music_channel.fadeout(3000)
             return
         if self.play_time - getattr(self, 'last_chili_drop', -10) > 10:
             Chili(self, (self.all_sprites, self.fruit_sprites), 'top', random_of_spectrum(100,180))
@@ -1922,7 +1927,7 @@ class Game:
             
         if getattr(self, 'shadow_guardian_defeated', False):
             self.shadow_guardian_defeated = False
-            self.music_channel.stop()
+            if self.music_channel: self.music_channel.stop()
             self.init_shadow_guardian_phase_end = True
             self.shadow_guardian_phase_end_start = self.play_time
             kill_sprites(self.boss_obstacle_sprites)
@@ -1957,7 +1962,7 @@ class Game:
             
         if getattr(self, 'rotten_shadow_defeated', False):
             self.rotten_shadow_defeated = False
-            self.music_channel.stop()
+            if self.music_channel: self.music_channel.stop()
             self.init_rotten_shadow_phase_end = True
             self.rotten_shadow_phase_end_start = self.play_time
             kill_sprites(self.boss_obstacle_sprites)
@@ -1997,7 +2002,7 @@ class Game:
 
             while True:
                 new = random_of_selection(fruits,
-                    (FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
+                    list(FRUITS_SPAWN_PROBABILITIES[str(fruit.__name__).lower()] for fruit in fruits))
                 if new == prev and new is not Apple:
                     continue
                 self.new_fruit = new
@@ -2013,7 +2018,7 @@ class Game:
 
     def collisions(self):
         # --- fireball collisions ---
-        shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.player_fireball_sprites, False, True, pygame.sprite.collide_mask)
+        shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.player_fireball_sprites, False, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
         if shot_obstacles:
             for obstacle in shot_obstacles:
                 if obstacle not in self.rotten_shadow_fireball_sprites and obstacle not in self.player_fireball_sprites:
@@ -2022,7 +2027,7 @@ class Game:
                     self.fireball_block_sound.play()
                     obstacle.kill()
 
-        shot_bosses = pygame.sprite.groupcollide(self.boss_sprites, self.player_fireball_sprites, False, True, pygame.sprite.collide_mask)
+        shot_bosses = pygame.sprite.groupcollide(self.boss_sprites, self.player_fireball_sprites, False, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
         if shot_bosses:
             for boss in shot_bosses:
                 boss.take_damage()
@@ -2031,7 +2036,7 @@ class Game:
             return
         # --- enemy collisions ---
         if not self.player.iframes and self.player.can_collide and not self.player.dashing:
-            hit_enemy = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, pygame.sprite.collide_mask)
+            hit_enemy = pygame.sprite.spritecollide(self.player, self.enemy_sprites, False, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
             if hit_enemy:
                 for enemy in hit_enemy: 
                     if enemy in self.energy_ball_sprites:
@@ -2056,7 +2061,7 @@ class Game:
                             sprite.kill()
 
         # --- fruit collisions ---
-        eaten_fruits = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, pygame.sprite.collide_mask)
+        eaten_fruits = pygame.sprite.spritecollide(self.player, self.fruit_sprites, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
         if eaten_fruits:
             for fruit in eaten_fruits:
                 last_stats = [STATS['score'], self.player.health, self.player.banana_boost_start, self.player.fire_power_start, self.player.extra_life]
@@ -2066,7 +2071,7 @@ class Game:
                     fruit.display_pickup_message(self.fonts['effect_texts'], self.FRUIT_PICKUP_TEXTS)
                 self.eat_fruit_sound.play()
 
-        collected_coins = pygame.sprite.spritecollide(self.player, self.coin_sprites, True, pygame.sprite.collide_mask)
+        collected_coins = pygame.sprite.spritecollide(self.player, self.coin_sprites, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
         if collected_coins:
             for coin in collected_coins:
                 STATS['score'] += COIN_POINTS
@@ -2084,9 +2089,9 @@ class Game:
         if self.rotten_shadow.enraged and not getattr(self, 'lightning_finished', False):
             if not hasattr(self, 'lightning_start'):
                 self.lightning_start = self.play_time
-            flash_intensity = 100 + 155 * abs(sin(perf_counter() * ROTTEN_SHADOW_ENRAGE_FLASH_SPEED))
-            flash_overlay = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
-            flash_overlay.fill((flash_intensity, flash_intensity, flash_intensity, 80))
+            flash_intensity: int = int(100 + 155 * abs(sin(perf_counter() * ROTTEN_SHADOW_ENRAGE_FLASH_SPEED)))
+            flash_overlay: pygame.Surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert_alpha()
+            flash_overlay.fill(pygame.Color(flash_intensity, flash_intensity, flash_intensity, 80))
             self.screen.blit(flash_overlay, (0, 0))
         # end it after a few sec
         if getattr(self, 'lightning_start', None):
@@ -2101,8 +2106,8 @@ class Game:
 
         # --- animate display health ---
         if self.shadow_guardian.current_health > self.shadow_guardian.target_health:
-            self.shadow_guardian.current_health = max(self.shadow_guardian.target_health,
-                self.shadow_guardian.current_health - BOSS_HEALTH_CHANGE_SPEED)
+            self.shadow_guardian.current_health = int(max(self.shadow_guardian.target_health,
+                self.shadow_guardian.current_health - BOSS_HEALTH_CHANGE_SPEED))
                 
         # shorthand
         current = self.shadow_guardian.current_health
@@ -2162,8 +2167,8 @@ class Game:
 
         # --- animate display health ---
         if self.rotten_shadow.current_health > self.rotten_shadow.target_health:
-            self.rotten_shadow.current_health = max(self.rotten_shadow.target_health,
-                self.rotten_shadow.current_health - BOSS_HEALTH_CHANGE_SPEED)
+            self.rotten_shadow.current_health = int(max(self.rotten_shadow.target_health,
+                self.rotten_shadow.current_health - BOSS_HEALTH_CHANGE_SPEED))
                 
         # shorthand
         current = self.rotten_shadow.current_health
