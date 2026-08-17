@@ -1,6 +1,5 @@
 from imports import *
 
-
 # --- VISUALS ---
 # display
 WINDOW_WIDTH: int = 1280 

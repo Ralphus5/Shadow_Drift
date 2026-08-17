@@ -33,13 +33,7 @@ Thumbs.db
 # --- Project specific ---
 data/save.json
 data/settings.json
-*.wav
-*.ogg
-*.mp3
 *.flac
 *.m4a
-audio/*.wav
-audio/*.ogg
-audio/*.mp3
 audio/*.flac
 audio/*.m4a

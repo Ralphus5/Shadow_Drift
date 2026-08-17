@@ -2,7 +2,6 @@ from sprites import *
 import settings
 
 class Game:
-
 # --- Define game modes ---
     def __init__(self):
         self.init_paths()
@@ -32,7 +31,7 @@ class Game:
             elif self.state == 'game_over':
                 self.game_over_screen(dt)
             elif self.state == 'settings':
-                self.settings_menu(dt)
+                self.settings_menu()
             #print_game_time(self) # DEBUGGING
             #print_track_volume(self) # DEBUGGING
             #print(self.player.speed) # DEBUGGING
@@ -770,7 +769,7 @@ class Game:
                     if pygame.sprite.groupcollide(self.secret_obstacles, self.secret_fireballs, True, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2))):
                         self.eat_fruit_sound.play()
 
-    def settings_menu(self, dt):
+    def settings_menu(self):
         self.screen.fill(COLOR['settings_bg'])
         mouse_pos = get_scaled_mouse_pos(self)
         mouse_click = pygame.mouse.get_just_pressed()[0]
@@ -996,21 +995,21 @@ class Game:
             base_dir: str = sys._MEIPASS # type: ignore
             user_dir: str = os.path.expanduser(join("~", "Documents", "ShadowDrift"))
         else:
-            base_dir = os.path.dirname(os.path.dirname(__file__))
-            user_dir = join(base_dir, "data")
+            base_dir: str = os.path.dirname(os.path.dirname(__file__))
+            user_dir: str = join(base_dir, "data")
 
         # --- create save directory if needed ---
         os.makedirs(user_dir, exist_ok=True)
 
         # --- asset file paths ---
-        self.BASE_DIR: str = base_dir
-        self.USER_DIR: str = user_dir
-        self.IMG_DIR: str = join(base_dir, "images")
-        self.AUDIO_DIR: str = join(base_dir, "audio")
-        self.DATA_DIR: str = join(base_dir, "data")
-        self.FONT_DIR: str = join(base_dir, "fonts")
-        self.SAVE_FILE: str = join(user_dir, "save.json")
-        self.SETTINGS_FILE: str = join(user_dir, "settings.json")
+        self.BASE_DIR = base_dir
+        self.USER_DIR = user_dir
+        self.IMG_DIR = join(base_dir, "images")
+        self.AUDIO_DIR = join(base_dir, "audio")
+        self.DATA_DIR = join(base_dir, "data")
+        self.FONT_DIR = join(base_dir, "fonts")
+        self.SAVE_FILE = join(user_dir, "save.json")
+        self.SETTINGS_FILE = join(user_dir, "settings.json")
 
     def init_pygame(self):
         try:
@@ -1511,7 +1510,7 @@ class Game:
         self.secret_fruits = pygame.sprite.Group()
         self.secret_obstacles = pygame.sprite.Group()
 
-        self.LAYERS = {'backgrounds': 1,
+        self.LAYERS: dict[str, float] = {'backgrounds': 1,
                        'laser_beam': 1.1,
                        'bosses': 2, 'boss_death_animation': 2.1,
                        'player_banana_trail': 3, 'player': 3.1, 'player_fire_outline': 3.2, 'player_glow': 3.3, 'player_death_animation': 3.4,

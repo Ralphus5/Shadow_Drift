@@ -2,8 +2,6 @@ from utils import *
 
 # --- player related ---
 class Player(pygame.sprite.Sprite):
-    """Player sprite: handles movement, abilities, and player presisentation."""
-
     def __init__(self, game: Game, groups: Iterable[pygame.sprite.GroupSingle|pygame.sprite.LayeredUpdates]) -> None:
         # --- parameters ---
         self.game = game
@@ -11,35 +9,35 @@ class Player(pygame.sprite.Sprite):
         super().__init__(groups)
         
         # --- gameplay attributes ---
-        self.is_alive: bool = True
-        self.facing_right: bool = False if self.game.current_phase == 'arrow' else True
-        self.health: int = 2
-        self.extra_life: int = 0
-        self.speed: int = DEFAULT_PLAYER_SPEED
-        self.iframes: bool = False
-        self.iframe_start: float = 0.0
-        self.banana_boosted: bool = False
-        self.banana_boost_start: float = 0.0
-        self.fire_power: bool = False
-        self.fire_power_start: float = 0.0
-        self.fireball_ready: bool = True
-        self.last_fireball: float = 0.0
+        self.is_alive = True
+        self.facing_right = False if self.game.current_phase in ('arrow', 'saw_blade') else True
+        self.health = 2
+        self.extra_life = 0
+        self.speed = DEFAULT_PLAYER_SPEED
+        self.iframes = False
+        self.iframe_start = 0.0
+        self.banana_boosted = False
+        self.banana_boost_start = 0.0
+        self.fire_power = False
+        self.fire_power_start = 0.0
+        self.fireball_ready = True
+        self.last_fireball = 0.0
 
         # --- ability system ---
-        self.want_ability: bool = False
-        self.can_collide: bool = True
-        self.ability_ready: bool = True
-        self.ability_start_time: float = 0.0
-        self.ability_cooldown: float = PLAYER_ABILITY_COOLDOWN
-        self.ability_duration: float = PLAYER_ABILITY_DURATION
+        self.want_ability = False
+        self.can_collide = True
+        self.ability_ready = True
+        self.ability_start_time = 0.0
+        self.ability_cooldown = PLAYER_ABILITY_COOLDOWN
+        self.ability_duration = PLAYER_ABILITY_DURATION
 
         # s--- dash system ---
-        self.want_dash: bool = False
-        self.dashing: bool = False
-        self.dash_ready: bool = True
-        self.dash_start_time: float = 0.0
-        self.dash_cooldown: float = DASH_COOLDOWN
-        self.dash_duration: float = DASH_DURATION
+        self.want_dash = False
+        self.dashing = False
+        self.dash_ready = True
+        self.dash_start_time = 0.0
+        self.dash_cooldown = DASH_COOLDOWN
+        self.dash_duration = DASH_DURATION
 
         # --- rendering ---
         self.image: pygame.Surface = self.game.player_sprite_variants[self.health]
@@ -55,15 +53,15 @@ class Player(pygame.sprite.Sprite):
                                                      (self.game.all_sprites, self.game.player_effect_sprites))
 
         # --- motion setup ---
-        self.direction: pygame.Vector2 = pygame.Vector2(0,0)
-        self.dash_direction: pygame.Vector2 = pygame.Vector2(0,0)
+        self.direction = pygame.Vector2(0,0)
+        self.dash_direction = pygame.Vector2(0,0)
 
-    def activate_iframes(self):
+    def activate_iframes(self) -> None:
         if self.can_collide:
             self.iframes = True
             self.iframe_start = self.game.play_time
 
-    def dash(self):
+    def dash(self) -> None:
         if self.direction.length_squared() != 0:
             self.game.dash_sound.play()
             self.dashing = True
@@ -77,13 +75,13 @@ class Player(pygame.sprite.Sprite):
                 self.dash_direction = pygame.Vector2(0, 1 if self.direction.y > 0 else -1)
             self.dash_direction = pygame.Vector2(self.direction.normalize())
 
-    def activate_ability(self):
+    def activate_ability(self) -> None:
         self.game.ability_sound.play()
         self.ability_start_time = self.game.play_time
         self.ability_ready = False
         self.can_collide = False
 
-    def shoot_fireball(self, shoot_direction):
+    def shoot_fireball(self, shoot_direction: pygame.Vector2) -> None:
         self.fireball_ready = False
         self.last_fireball = self.game.play_time
         Fireball(self.game,
@@ -93,7 +91,7 @@ class Player(pygame.sprite.Sprite):
                 shoot_direction,
                 origin=self.rect.center)
 
-    def get_input(self):
+    def get_input(self) -> None:
         keys = pygame.key.get_pressed()
         recent_keys = pygame.key.get_just_pressed()
 
@@ -137,7 +135,7 @@ class Player(pygame.sprite.Sprite):
             if abs(rx) > CONTROLLER_DEADZONE or abs(ry) > CONTROLLER_DEADZONE:
                 self.shoot_dir = pygame.Vector2(rx, ry)
 
-    def update_banana_boost(self):
+    def update_banana_boost(self) -> None:
         if self.banana_boosted and self.game.play_time - self.banana_boost_start > BANANA_BOOST_DURATION:
             self.banana_boosted = False
             self.game.buff_end_sound.play()
@@ -147,7 +145,7 @@ class Player(pygame.sprite.Sprite):
         else: 
             self.speed = DEFAULT_PLAYER_SPEED if self.health > 1 else ONE_LIFE_PLAYER_SPEED
 
-    def update_fire_power(self):
+    def update_fire_power(self) -> None:
         if not self.fire_power:
             return
         
@@ -162,7 +160,7 @@ class Player(pygame.sprite.Sprite):
         if self.fireball_ready and self.shoot_dir.length_squared() != 0:
             self.shoot_fireball(self.shoot_dir)
 
-    def update_dash(self, dt):
+    def update_dash(self) -> None:
         if not self.dash_ready and self.game.play_time - self.dash_start_time > self.dash_cooldown:
             self.dash_ready = True  
 
@@ -173,7 +171,7 @@ class Player(pygame.sprite.Sprite):
         if self.dashing and self.game.play_time - self.dash_start_time > self.dash_duration:
             self.dashing = False
 
-    def update_ability(self):
+    def update_ability(self) -> None:
         if not self.ability_ready and self.game.play_time - self.ability_start_time > self.ability_cooldown:
             self.ability_ready = True
 
@@ -184,11 +182,11 @@ class Player(pygame.sprite.Sprite):
         if not self.can_collide and self.game.play_time - self.ability_start_time > self.ability_duration:
             self.can_collide = True
 
-    def update_iframes(self):
+    def update_iframes(self) -> None:
         if self.iframes and self.game.play_time - self.iframe_start > PLAYER_IFRAMES_DURATION:
             self.iframes = False
 
-    def apply_movement(self, dt):
+    def apply_movement(self, dt: float) -> None:
         if self.dashing:
             self.rect.center += dt * DASH_SPEED * self.dash_direction
             return
@@ -197,7 +195,7 @@ class Player(pygame.sprite.Sprite):
             self.direction = self.direction.normalize()
         self.rect.center += dt * self.speed * self.direction
 
-    def update_appearance(self):
+    def update_appearance(self) -> None:
         # --- facing direction ---
         if self.direction.x < 0:
             self.facing_right = False
@@ -235,11 +233,11 @@ class Player(pygame.sprite.Sprite):
         else:
             self.image.set_alpha(255)
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         self.get_input()
         self.update_banana_boost()
         self.update_fire_power()
-        self.update_dash(dt)
+        self.update_dash()
         self.update_ability()
         self.update_iframes()
         self.apply_movement(dt)
@@ -247,7 +245,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.clamp_ip(pygame.Rect(-10, -7, WINDOW_WIDTH + 19, WINDOW_HEIGHT + 14))
 
 class PlayerGlow(pygame.sprite.Sprite):
-    def __init__(self, game, groups):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.AbstractGroup]) -> None:
         self.game = game
         self._layer = self.game.LAYERS['player_glow']
         super().__init__(groups)
@@ -261,7 +259,7 @@ class PlayerGlow(pygame.sprite.Sprite):
         self.image = pygame.Surface((1,1), pygame.SRCALPHA)
         self.rect = self.image.get_rect()
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         if not self.game.player.is_alive:
             self.kill()
             return
@@ -276,7 +274,7 @@ class PlayerGlow(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.game.player.rect.center)
 
 class PlayerFireOutline(pygame.sprite.Sprite):
-    def __init__(self, game, groups):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.AbstractGroup]) -> None:
         self.game = game
         self._layer = self.game.LAYERS['player_fire_outline']
         super().__init__(groups)
@@ -284,7 +282,7 @@ class PlayerFireOutline(pygame.sprite.Sprite):
         self.image: pygame.Surface = pygame.Surface((1,1), pygame.SRCALPHA)
         self.rect: pygame.Rect = self.image.get_rect()
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         if not self.game.player.is_alive:
             self.kill()
             return
@@ -317,7 +315,7 @@ class PlayerFireOutline(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.game.player.rect.center)
 
 class PlayerDeathAnimation(pygame.sprite.Sprite):
-    def __init__(self, game, groups):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.AbstractGroup]) -> None:
         self.game = game
         self._layer = self.game.LAYERS['player_death_animation']
         super().__init__(groups)
@@ -325,7 +323,7 @@ class PlayerDeathAnimation(pygame.sprite.Sprite):
         self.image = self.game.player_death_animation_frames[0]
         self.rect = self.image.get_frect(center=self.game.player.rect.center)
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         if self.frame_index <= len(self.game.player_death_animation_frames):
             self.image = self.game.player_death_animation_frames[int(self.frame_index)]
             if not self.game.player.facing_right:
@@ -339,7 +337,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
     BLUE_SURF = None
     RED_SURF = None
 
-    def __init__(self, game, groups, pos, lifetime=BANANA_TRAIL_LIFETIME):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.AbstractGroup], pos: tuple[float, float], lifetime: float = BANANA_TRAIL_LIFETIME) -> None:
         self.game = game
         self._layer = self.game.LAYERS['player_banana_trail']
         super().__init__(groups)
@@ -370,7 +368,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
         self.image = base.copy()
         self.rect = self.image.get_rect(center=pos)
 
-    def _build_radial_glow(self, radius, color_hex):
+    def _build_radial_glow(self, radius: int, color_hex: str) -> pygame.Surface:
         size = radius * 2
         surf = pygame.Surface((size, size), pygame.SRCALPHA)
         cx = cy = radius
@@ -387,7 +385,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
 
         return surf
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         # normalized lifetime 0 → 1
         t = (perf_counter() - self._spawn) / max(self._lifetime, 1e-6)
         t = max(0.0, min(1.0, t))
@@ -410,7 +408,7 @@ class PlayerBananaTrail(pygame.sprite.Sprite):
             self.kill()
 
 class Fireball(pygame.sprite.Sprite):
-    def __init__(self, game, layer, groups, image, direction: pygame.Vector2, origin=None, spawn_offset=40):
+    def __init__(self, game: Game, layer: float, groups: Iterable[pygame.sprite.AbstractGroup], image: pygame.Surface, direction: pygame.Vector2, origin: Optional[tuple[int,int]|tuple[float,float]|pygame.Vector2] = None, spawn_offset: int = 40) -> None:
         self.game = game
         self._layer = layer
         super().__init__(*groups)
@@ -437,7 +435,7 @@ class Fireball(pygame.sprite.Sprite):
         self.rect: pygame.FRect = self.image.get_frect(center=center)
         self.mask = pygame.mask.from_surface(self.image)
 
-    def update(self, dt):
+    def update(self, dt: float) -> None:
         self.rect.center += self.direction * self.speed * dt
         if (self.rect.right < 0 or self.rect.left > WINDOW_WIDTH or
             self.rect.bottom < 0 or self.rect.top > WINDOW_HEIGHT):
@@ -445,9 +443,7 @@ class Fireball(pygame.sprite.Sprite):
 
 # --- background and decoration related ---
 class AnimatedBackground(pygame.sprite.Sprite):
-    """Animated background sprite cycling through frames."""
-
-    def __init__(self, game, groups, frames, scroll, interval=BACKGROUND_FRAME_INTERVALL):
+    def __init__(self, game: Game, groups: Iterable[pygame.sprite.AbstractGroup], frames, scroll, interval=BACKGROUND_FRAME_INTERVALL):
         self.game = game
         self._layer = self.game.LAYERS['backgrounds']
         super().__init__(groups)
