@@ -1,5 +1,3 @@
-"""This file implements libraries for core scripting functionalities."""
-
 import pygame
 import pymunk
 import os
@@ -13,4 +11,5 @@ import random
 from random import randint, choice, choices, uniform, triangular
 from time import perf_counter
 from functools import wraps
+
 if TYPE_CHECKING: from main import Game

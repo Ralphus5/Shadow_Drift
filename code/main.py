@@ -3,7 +3,7 @@ import settings
 
 class Game:
 # --- Define game modes ---
-    def __init__(self):
+    def __init__(self) -> None:
         self.init_paths()
         self.init_pygame()
         self.init_menu_physics()
@@ -17,7 +17,7 @@ class Game:
         self.init_sprites()
         self.load_save()
 
-    def run(self):
+    def run(self) -> None:
         while True:
             dt = self.clock.tick(FPS) / 1000
             self.handle_events_and_input()
@@ -40,8 +40,7 @@ class Game:
             self.display_controller_image(dt)
             present_frame(self)
 
-    def handle_events_and_input(self):
-        '''Check for user input regarding non-gameplay actions and handling timed events.'''
+    def handle_events_and_input(self) -> None:
 
         for event in pygame.event.get():
             # --- General events ---
@@ -316,8 +315,8 @@ class Game:
                         elif event.key == pygame.K_RETURN:
                             idx = self.controller_hover_main_settings_text % 3
                             self.main_settings_buttons[idx].controller_clicked = True
-                            if self.main_settings_buttons[idx].click_sound:
-                                self.main_settings_buttons[idx].click_sound.play()
+                            if self.main_settings_buttons[idx].click_sound: 
+                                self.main_settings_buttons[idx].click_sound.play() # type: ignore
 
                     elif self.active_settings_tab == 'controls':
                         if event.key in (pygame.K_UP, pygame.K_DOWN):
@@ -398,8 +397,7 @@ class Game:
                     elif event.button == PAD_B_BUTTON:
                         pygame.event.post(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
 
-    def set_game_mode(self):
-        '''Switches game mode and handles necessary changes.'''
+    def set_game_mode(self) -> None:
         # check for state change request
         if not self.requested_state or self.requested_state == self.state:
             if getattr(self, 'show_credits', False) and not getattr(self, 'playing_credits', False):
@@ -467,7 +465,7 @@ class Game:
             self.controller_hover_control_text = len(self.control_texts)
             self.prev_state = old
 
-    def start_screen(self, dt):
+    def start_screen(self, dt: float) -> None:
         self.menu_space.step(dt)
         self.screen.fill(COLOR['start_screen_bg'])
         scaled_pos = get_scaled_mouse_pos(self)
@@ -490,7 +488,7 @@ class Game:
         self.screen.blit(scaled, rect)
         self.start_secrets(dt)
 
-    def start_secrets(self, dt): 
+    def start_secrets(self, dt: float) -> None: 
         if getattr(self, 'show_start_hint', False):
             self.screen.blit(self.text_surfaces['start_hint'], self.text_rects['start_hint'])
 
@@ -578,7 +576,7 @@ class Game:
                         obstacle.kill()
                         self.damage_sound.play()
 
-    def play_loop(self, dt):
+    def play_loop(self, dt: float) -> None:
         # update dt
         # handle_events
         # set_game_mode
@@ -595,7 +593,7 @@ class Game:
         self.draw_score_text(COLOR[f'score_{self.current_phase}_phase'], COLOR[f'score_shadow_{self.current_phase}_phase'])
         # present_frame
 
-    def pause_menu(self, dt):
+    def pause_menu(self, dt: float) -> None:
         if not getattr(self, 'show_credits', False):
             mouse_pos = get_scaled_mouse_pos(self)
             mouse_click = pygame.mouse.get_pressed()[0]
@@ -687,13 +685,13 @@ class Game:
                         instance.update(dt)
                     instance.draw(self.screen)
 
-    def game_over_screen(self, dt):
+    def game_over_screen(self, dt: float) -> None:
         self.menu_space.step(dt)
         self.screen.fill('black')
         self.screen.blit(self.text_surfaces['game_over'], self.text_rects['game_over'])
         self.game_over_secrets(dt)
         
-    def game_over_secrets(self, dt):
+    def game_over_secrets(self, dt: float) -> None:
         if getattr(self, 'show_game_over_hint', False):
             self.screen.blit(self.text_surfaces['game_over_hint'], self.text_rects['game_over_hint']) 
             self.screen.blit(self.text_surfaces['game_over_score'], self.text_rects['game_over_score'])
@@ -769,7 +767,7 @@ class Game:
                     if pygame.sprite.groupcollide(self.secret_obstacles, self.secret_fireballs, True, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2))):
                         self.eat_fruit_sound.play()
 
-    def settings_menu(self):
+    def settings_menu(self) -> None:
         self.screen.fill(COLOR['settings_bg'])
         mouse_pos = get_scaled_mouse_pos(self)
         mouse_click = pygame.mouse.get_just_pressed()[0]
@@ -989,7 +987,7 @@ class Game:
                         other["plus"].controller_hovered = False
 
 # --- Initialization steps ---
-    def init_paths(self):
+    def init_paths(self) -> None:
         # --- detect running mode ---
         if getattr(sys, "frozen", False):
             base_dir: str = sys._MEIPASS # type: ignore
@@ -1011,7 +1009,7 @@ class Game:
         self.SAVE_FILE = join(user_dir, "save.json")
         self.SETTINGS_FILE = join(user_dir, "settings.json")
 
-    def init_pygame(self):
+    def init_pygame(self) -> None:
         try:
             pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
         except:
@@ -1027,7 +1025,7 @@ class Game:
             self.controller = pygame.joystick.Joystick(0)
             print(f"Using {self.controller.get_name()}")
 
-    def init_menu_physics(self):
+    def init_menu_physics(self) -> None:
         self.menu_space: pymunk.Space = pymunk.Space()
         self.menu_space.gravity = (0, MENU_GRAVITY)
         
@@ -1047,7 +1045,7 @@ class Game:
         self.menu_floor.friction = left_wall.friction = right_wall.friction = 0.7
         self.menu_space.add(self.menu_floor, left_wall, right_wall)
 
-    def init_window(self):
+    def init_window(self) -> None:
         # --- open window ---
         self.window = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         self.screen = pygame.Surface(BASE_RESOLUTION).convert_alpha()
@@ -1057,7 +1055,7 @@ class Game:
         icon = pygame.image.load(join(self.IMG_DIR, 'icon.png')).convert_alpha()
         pygame.display.set_icon(icon)
         
-    def load_sounds(self):
+    def load_sounds(self) -> None:
         # --- game music ---
         self.tracks: dict = {'game_over': pygame.mixer.Sound(join(self.AUDIO_DIR, 'game_over_track.ogg')),
                              'credits': pygame.mixer.music.load(join(self.AUDIO_DIR, 'credits_track.ogg')),
@@ -1105,7 +1103,7 @@ class Game:
         self.laser_shoot_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'laser_shoot_sound.wav'))
         self.fireball_block_sound = pygame.mixer.Sound(join(self.AUDIO_DIR, 'fireball_block_sound.wav'))
 
-    def set_all_volumes(self):
+    def set_all_volumes(self) -> None:
         # --- game music ---
         self.tracks['game_over'].set_volume(GAME_OVER_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
         pygame.mixer.music.set_volume(CREDITS_TRACK_VOLUME * settings.MUSIC_VOLUME * settings.MASTER_VOLUME)
@@ -1156,9 +1154,9 @@ class Game:
         self.laser_shoot_sound.set_volume(LASER_SHOOT_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
         self.fireball_block_sound.set_volume(FIREBALL_BLOCK_SOUND_VOLUME * settings.SFX_VOLUME * settings.MASTER_VOLUME)
 
-    def load_graphics(self):
+    def load_graphics(self) -> None:
         # --- fonts ---
-        self.fonts: dict = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
+        self.fonts: dict[str, pygame.font.Font] = {'title': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), TITLE_FONT_SIZE),
                             'stats': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), SCORE_FONT_SIZE),
                             'game_over': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_FONT_SIZE),
                             'game_over_score': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), GAME_OVER_SCORE_FONT_SIZE),
@@ -1180,7 +1178,7 @@ class Game:
                             'rotten_shadow_name': pygame.font.Font(join(self.FONT_DIR, 'slkscr.ttf'), ROTTEN_SHADOW_NAME_FONT_SIZE)}
 
         # --- pre-render non-clickable static texts ---
-        self.text_surfaces: dict = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
+        self.text_surfaces: dict[str, pygame.Surface] = {'title': self.fonts['title'].render("Shadow Drift", True, COLOR['title_text']),
                                     'game_over': self.fonts['game_over'].render("Game Over!", True, COLOR['game_over_text']),
                                     'game_over_hint': self.fonts['game_over_hint'].render("Play again: " + ("START" if self.controller else "ENTER") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['game_over_text']),
                                     'start_hint': self.fonts['start_hint'].render("Start game: " + ("START" if self.controller else "RETURN") + "\nClose game: " + ("HOME" if self.controller else "ESC"), True, COLOR['start_hint']),
@@ -1202,7 +1200,7 @@ class Game:
 
 
         # --- define non-clickable texts positions ---
-        self.text_rects: dict = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
+        self.text_rects: dict[str, pygame.Rect] = {'title': self.text_surfaces['title'].get_rect(center=WINDOW_CENTER),
                                  'game_over': self.text_surfaces['game_over'].get_rect(center=WINDOW_CENTER),
                                  'game_over_hint': self.text_surfaces['game_over_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
                                  'start_hint': self.text_surfaces['start_hint'].get_rect(bottomleft=(15, WINDOW_HEIGHT- 15)),
@@ -1224,7 +1222,7 @@ class Game:
         self.credits_title_rect.top = WINDOW_CENTER[1]
         
         # --- define fruit-collect messages ---
-        self.FRUIT_PICKUP_TEXTS: dict = {Apple: (f"+{APPLE_POINTS} points", 'apple_effect_text'),
+        self.FRUIT_PICKUP_TEXTS: dict[type[Fruit],tuple[str,str]] = {Apple: (f"+{APPLE_POINTS} points", 'apple_effect_text'),
                                          Banana: ("+speed", 'banana_effect_text'),
                                          Blueberry: ("health restored", 'blueberry_effect_text'),
                                          Chili: ("fire power", 'chili_effect_text'),
@@ -1252,11 +1250,11 @@ class Game:
         # --- images ---
         self.using_controller_image = pygame.image.load(join(self.IMG_DIR, 'using_controller.png')).convert_alpha()
 
-        self.clickable_icons: list = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
+        self.clickable_icons: list[ClickableIcon] = [ClickableIcon(pygame.image.load(join(self.IMG_DIR, "quit_button.png")).convert_alpha(),(WINDOW_WIDTH - 70, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "resume_button.png")).convert_alpha(),(WINDOW_WIDTH - 170, 70)),
                                       ClickableIcon(pygame.image.load(join(self.IMG_DIR, "cog_wheel.png")).convert_alpha(),(WINDOW_WIDTH - 270, 70))]
 
-        self.main_settings_buttons: list = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
+        self.main_settings_buttons: list[ClickableText] = [ClickableText("Audio", self.fonts['settings_texts'], (WINDOW_CENTER[0], 300), COLOR ['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
                                       ClickableText("Controls", self.fonts['settings_texts'], (WINDOW_CENTER[0], 380), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),
                                       ClickableText("Back", self.fonts['settings_texts'], (WINDOW_CENTER[0], WINDOW_HEIGHT - 60), COLOR['clickable_text_buttons'], COLOR['clickable_text_buttons_hovered'], self.menu_select_sound, self.menu_hover_sound),]
         
@@ -1327,7 +1325,7 @@ class Game:
         self.audio_nav_col = 0
 
         # --- animated backgrounds ---
-        self.backgrounds: dict = {
+        self.backgrounds: dict[str, list[pygame.Surface]] = {
             'rectangle': [pygame.image.load(join(self.IMG_DIR, 'bg_rectangle_phase', f'bg_rectangle_phase_{i}.png')).convert_alpha() for i in range(12)],
             'arrow': [pygame.image.load(join(self.IMG_DIR, 'bg_arrow_phase', 'bg_arrow_phase.png')).convert_alpha()],
             'icicle': [pygame.image.load(join(self.IMG_DIR, 'bg_icicle_phase', 'bg_icicle_phase.png')).convert_alpha()],
@@ -1417,21 +1415,21 @@ class Game:
 
         self.dark_energy_ball_image = pygame.image.load(join(self.IMG_DIR, 'dark_energy_ball.png')).convert_alpha()
 
-    def init_game_state(self):
+    def init_game_state(self) -> None:
         # --- Game starting conditions ---
         STATS['score'] = 0
-        self.state: str|None = None
-        self.requested_state: str|None = 'start'
-        self.active_settings_tab: str|None = None
-        self.waiting_for_key = None
+        self.state: Optional[str] = None
+        self.requested_state: Optional[str] = 'start'
+        self.active_settings_tab: Optional[str] = None
+        self.waiting_for_key: Optional[str] = None
         self.score_event = pygame.event.custom_type()
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
         self.music_channel: Optional[pygame.mixer.Channel] = None
         self.current_track: Optional[str] = None
-        self.fullscreen: bool = True
+        self.fullscreen = True
 
         # --- starting phase ---
-        self.current_phase: str = 'rectangle'
+        self.current_phase = 'rectangle'
         self.prev_phase: str = self.current_phase
         self.completed_phases: Set[str] = set()
 
@@ -1452,12 +1450,12 @@ class Game:
         # --- time tracking ---
         if not hasattr(self,'absolute_start_time'):
             self.absolute_start_time: float = perf_counter()
-        self.play_time: float = 0.0
-        self.phase_start: float = 0.0
-        self.play_start: float|None = None
-        self.pause_start: float = 0.0
-        self.total_paused: float = 0.0
-        self.is_paused: bool = False
+        self.play_time = 0.0
+        self.phase_start = 0.0
+        self.play_start: Optional[float] = None
+        self.pause_start = 0.0
+        self.total_paused = 0.0
+        self.is_paused = False
 
         # start player
         self.start_ability_time: float = 0.0
@@ -1473,7 +1471,7 @@ class Game:
             if hasattr(self, attr):
                 delattr(self, attr)
 
-    def init_sprites(self):
+    def init_sprites(self) -> None:
         # --- sprite groups and layers ---
         self.all_sprites = pygame.sprite.LayeredUpdates()
         # actual entities
@@ -1531,7 +1529,7 @@ class Game:
         Player(self, (self.all_sprites, self.player_group))
         self.player: Player | Any = self.player_group.sprite
 
-    def load_save(self):
+    def load_save(self) -> None:
         try:
             with open(self.SAVE_FILE) as f:
                 save_data = json.load(f)
@@ -1540,7 +1538,7 @@ class Game:
         except:
             self.previous_runtime = 0.0
 
-    def load_settings(self):
+    def load_settings(self) -> None:
         try:
             with open(self.SETTINGS_FILE) as f:
                 settings_data = json.load(f)
@@ -1561,7 +1559,7 @@ class Game:
         except:
             pass
 
-    def create_custome_events(self):
+    def create_custome_events(self) -> None:
         # --- credits text spawn rate ---
         self.credits_event = pygame.event.custom_type()
         pygame.time.set_timer(self.credits_event, 5000)
@@ -1571,11 +1569,11 @@ class Game:
         pygame.time.set_timer(self.score_event, SCORE_UPDATE_TIME)
 
     @property
-    def runtime(self):
+    def runtime(self) -> float:
         """Total runtime since the program started (seconds)."""
         return perf_counter() - self.absolute_start_time
 
-    def display_controller_image(self, dt):
+    def display_controller_image(self, dt: float) -> None:
         if not self.controller:
             return
         
@@ -1587,7 +1585,7 @@ class Game:
 
 # --- Play loop ---
 
-    def set_phase(self, dt):
+    def set_phase(self, dt: float) -> None:
         if getattr(self, 'phase_ended', False) and self.player.is_alive:
             self.phase_ended = False
             STATS['score'] += PHASE_END_POINTS[self.current_phase]
@@ -1694,7 +1692,7 @@ class Game:
                 if self.rotten_shadow.current_health > 0:
                     self.spawn_fruit(dt, spawn='top', spawns_per_min=5.5, speed_tendency=0.3, fruits=(Blueberry, Banana, Grapes))
 
-    def rectangle_phase(self):
+    def rectangle_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1710,7 +1708,7 @@ class Game:
                       speed)
             self.next_rectangle_spawn_time = self.play_time + RECTANGLE_SPAWN_TIME / spawn_rate_factor
 
-    def arrow_phase(self):
+    def arrow_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1747,7 +1745,7 @@ class Game:
                               random_of_spectrum(0,WINDOW_HEIGHT))
                         self.next_arrow_spawn_time = self.play_time + ARROW_SINGLES_SPAWN_TIME / spawn_rate_factor
 
-    def icicle_phase(self):
+    def icicle_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1763,7 +1761,7 @@ class Game:
                    speed)
             self.next_icicle_spawn_time = self.play_time + ICICLE_SPAWN_TIME / spawn_rate_factor
 
-    def jellyfish_phase(self):
+    def jellyfish_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1779,7 +1777,7 @@ class Game:
                       speed)
             self.next_jellyfish_spawn_time = self.play_time + JELLYFISH_SPAWN_TIME
 
-    def saw_blade_phase(self):
+    def saw_blade_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1796,7 +1794,7 @@ class Game:
                      rotation_speed=rotation_speed)
             self.next_saw_blade_spawn_time = self.play_time + SAW_BLADE_SPAWN_TIME / spawn_rate_factor
 
-    def rocket_phase(self):
+    def rocket_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1812,7 +1810,7 @@ class Game:
                    speed)
             self.next_rocket_spawn_time = self.play_time + ROCKET_SPAWN_TIME / spawn_rate_factor
 
-    def asteroid_phase(self):
+    def asteroid_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1828,7 +1826,7 @@ class Game:
                     speed)
             self.next_asteroid_spawn_time = self.play_time + ASTEROID_SPAWN_TIME
 
-    def spike_ball_phase(self):
+    def spike_ball_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1847,7 +1845,7 @@ class Game:
                       random_of_selection(('right', 'left')))
             self.next_spike_ball_spawn_time = self.play_time + SPIKE_BALL_SPAWN_TIME
 
-    def spike_block_phase(self):
+    def spike_block_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1864,7 +1862,7 @@ class Game:
                        random_of_selection(('top', 'bottom')))
             self.next_spike_block_spawn_time = self.play_time + SPIKE_BLOCK_SPAWN_TIME
 
-    def poison_cloud_phase(self):
+    def poison_cloud_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1879,7 +1877,7 @@ class Game:
                        speed)
             self.next_poison_cloud_spawn_time = self.play_time + POISON_CLOUD_SPAWN_TIME / spawn_rate_factor
 
-    def coconut_phase(self):
+    def coconut_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1895,7 +1893,7 @@ class Game:
                     speed)
             self.next_coconut_spawn_time = self.play_time + COCONUT_SPAWN_TIME / spawn_rate_factor
 
-    def music_note_phase(self):
+    def music_note_phase(self) -> None:
         # --- phase parameters ---
         if self.play_time - self.phase_start >= FOURTH_OBSTACLE_PHASE_END:
             self.phase_ended = True
@@ -1910,7 +1908,7 @@ class Game:
                       speed)
             self.next_music_note_spawn_time = self.play_time + MUSIC_NOTE_SPAWN_TIME / spawn_rate_factor
 
-    def shadow_guardian_phase(self):
+    def shadow_guardian_phase(self) -> None:
         if getattr(self, 'init_shadow_guardian_phase_end', False):
             if self.play_time - self.shadow_guardian_phase_end_start > SHADOW_GUARDIAN_PHASE_END_DURATION:
                 self.init_shadow_guardian_phase_end = False
@@ -1933,7 +1931,7 @@ class Game:
             kill_sprites(self.obstacle_sprites)
             return
 
-    def rotten_shadow_phase(self):
+    def rotten_shadow_phase(self) -> None:
         if not getattr(self, 'rotten_shadow', False):
             self.rotten_shadow = RottenShadow(self, (self.all_sprites, self.enemy_sprites, self.boss_sprites))
 
@@ -1968,7 +1966,7 @@ class Game:
             kill_sprites(self.obstacle_sprites)
             return
 
-    def spawn_coin(self, dt, spawn, spawns_per_min=COIN_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None):
+    def spawn_coin(self, dt: float, spawn: str, spawns_per_min: float = COIN_SPAWNS_PER_MINUTE, spawn_tendency: Optional[float] = None, speed_tendency: Optional[float] = None) -> None:
         if not hasattr(self, "coin_spawn_accum"):
             self.coin_spawn_accum = 0.0
             self.coin_spawn_threshold = random.uniform(COIN_SPAWN_JITTER[0], COIN_SPAWN_JITTER[1])
@@ -1986,7 +1984,7 @@ class Game:
                 speed=random_of_spectrum(COIN_SPEED_RANGE[0], COIN_SPEED_RANGE[1], bias=speed_tendency),
                 spawn_bias=spawn_tendency)
 
-    def spawn_fruit(self, dt, spawn, spawns_per_min=FRUIT_SPAWNS_PER_MINUTE, spawn_tendency=None, speed_tendency=None, rotation=False, fruits=(Apple,Blueberry,Banana,Chili,Grapes,Pear)):
+    def spawn_fruit(self, dt: float, spawn: str, spawns_per_min: float = FRUIT_SPAWNS_PER_MINUTE, spawn_tendency: Optional[float] = None, speed_tendency: Optional[float] = None, rotation: bool = False, fruits: tuple[type[Fruit], ...] = (Apple,Blueberry,Banana,Chili,Grapes,Pear)) -> None:
         if not hasattr(self, "fruit_spawn_accum"):
             self.fruit_spawn_accum = 0.0
             self.fruit_spawn_threshold = random.uniform(FRUIT_SPAWN_JITTER[0], FRUIT_SPAWN_JITTER[1])
@@ -2015,7 +2013,7 @@ class Game:
                 rotate=rotation)
             self.prev_fruit = self.new_fruit
 
-    def collisions(self):
+    def collisions(self) -> None:
         # --- fireball collisions ---
         shot_obstacles = pygame.sprite.groupcollide(self.obstacle_sprites, self.player_fireball_sprites, False, True, lambda s1, s2: bool(pygame.sprite.collide_mask(s1, s2)))
         if shot_obstacles:
@@ -2076,12 +2074,12 @@ class Game:
                 STATS['score'] += COIN_POINTS
                 self.coin_pickup_sound.play()
 
-    def check_record(self):
+    def check_record(self) -> None:
         if STATS['score'] > STATS['record'] and not getattr(self, 'record_checked', False):
             self.record_checked = True
             self.record_sound.play()
 
-    def draw_lightning_effect(self):
+    def draw_lightning_effect(self) -> None:
         if self.current_phase != 'rotten_shadow':
             return
         
@@ -2099,7 +2097,7 @@ class Game:
             if random.random() < LIGHTNING_BOLT_CHANCE_PER_FRAME:
                 self.screen.blit(self.lightning_bolt_image, (random_of_spectrum(0, WINDOW_WIDTH - self.lightning_bolt_image.get_width()), 0))
 
-    def draw_shadow_guardian_health_bar(self):
+    def draw_shadow_guardian_health_bar(self) -> None:
         if self.current_phase != 'shadow_guardian':
             return
 
@@ -2160,7 +2158,7 @@ class Game:
         self.screen.blit(shadow_guardian_name_shadow_surf, self.text_rects['shadow_guardian_name_shadow'])
         self.screen.blit(shadow_guardian_name_surf, self.text_rects['shadow_guardian_name'])
 
-    def draw_rotten_shadow_health_bar(self):
+    def draw_rotten_shadow_health_bar(self) -> None:
         if self.current_phase != 'rotten_shadow':
             return
 
@@ -2221,7 +2219,7 @@ class Game:
         self.screen.blit(rotten_shadow_name_shadow_surf, self.text_rects['rotten_shadow_name_shadow'])
         self.screen.blit(rotten_shadow_name_surf, self.text_rects['rotten_shadow_name'])
 
-    def draw_hearts(self):
+    def draw_hearts(self) -> None:
         alpha = 100 if self.player.rect.top < 55 and self.player.rect.left < 200 and self.state == 'play' else 255
         self.empty_heart.set_alpha(alpha)
         self.red_heart.set_alpha(alpha)
@@ -2232,7 +2230,7 @@ class Game:
         self.screen.blit(self.blue_heart if self.player.health > 1 else self.empty_heart, (75, 16))
         self.screen.blit(self.purple_heart if self.player.extra_life else self.empty_heart, (125, 16))
 
-    def draw_score_text(self, text_color, text_shadow_color):
+    def draw_score_text(self, text_color: str, text_shadow_color: str) -> None:
         '''Render text surfaces only when stats change.'''
 
         #render
@@ -2257,7 +2255,7 @@ class Game:
         self.screen.blit(self.stats_text, (190, 20))
 
 # --- Execute Lifecycle ---
-def main():
+if __name__ == '__main__':
     game = Game()
     atexit.register(lambda: save_runtime(game))
     atexit.register(pygame.display.quit)
@@ -2265,6 +2263,3 @@ def main():
     atexit.register(pygame.mixer.quit)
     atexit.register(pygame.quit)
     game.run()
-
-if __name__ == '__main__':
-    main()

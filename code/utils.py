@@ -180,12 +180,11 @@ def save_runtime(game: Game) -> None:
         json.dump(save_data, f, indent=2)
 
 def title_flash(game: Game) -> None:
-    """Play title flash and transition to play mode."""
     
     game.title_flash_sound.play()
     start = perf_counter()
     while perf_counter() - start < 0.4:
-        flicker = 255 * abs(sin((perf_counter() - start) * 25))
+        flicker = int(255 * abs(sin((perf_counter() - start) * 25)))
         surf = game.text_surfaces['title'].copy()
         surf.set_alpha(flicker)
         rect = surf.get_rect(center=game.text_rects['title'].center)
